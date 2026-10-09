@@ -41,6 +41,49 @@ If `~/.local/bin` is not on your `PATH`, the installer says so at the end and pr
 
 Optional: to upload PDF files, install Poppler yourself (`brew install poppler`). Without it, the workbench tells you to use TXT or MD instead.
 
+## 中文安裝說明
+
+**需要什麼**
+
+- Apple 晶片（M1 以後）的 Mac。Intel Mac、Windows 目前不能用。
+- 一種 AI 執行方式（只有分析資料時需要，安裝和開啟不需要）：自己安裝並登入 Codex 或 Claude Code，或準備自己的 OpenAI API key。
+- 會開「終端機」輸入指令。
+
+**安裝（只要做一次）**
+
+1. 到 [Releases](https://github.com/ke22/ditl-sbp/releases/latest) 下載 `ditl-sbp-0.1.0.zip`，雙擊解壓縮。
+2. 在 Finder 對解壓後的 `ditl-sbp-0.1.0` 資料夾按右鍵，選「服務」→「新增位於檔案夾位置的終端機視窗」。（找不到這個選項時，打開「終端機」，輸入 `cd ` 加一個空格，把資料夾拖進視窗後按 Enter。）
+3. 輸入下面這行並按 Enter，等到出現「安裝完成」（第一次約需 1–3 分鐘，要連網）：
+
+   ```bash
+   ./install.sh
+   ```
+
+   如果出現 `permission denied` 或被系統擋下，改輸入 `bash install.sh`。
+
+**開啟**
+
+```bash
+ditl-sbp start
+```
+
+瀏覽器會自動打開工作台。如果安裝最後提示「目前不在你的 PATH 裡」，請改用它印出的完整路徑（例如 `~/.local/bin/ditl-sbp start`）。要關閉時，在終端機按 `Ctrl-C`。之後每次使用，只要再執行一次 `ditl-sbp start`。
+
+**第一次使用**
+
+右上角「設定」選擇 AI 執行方式（Codex、Claude Code 或 OpenAI API），接著在專案首頁選檔案、寫研究目的、建立專案。要上傳 PDF 需另外安裝 Poppler（`brew install poppler`），沒有的話請改用 TXT 或 MD。
+
+**資料在哪裡**
+
+研究資料只存在你的電腦：`~/Library/Application Support/ditl_sbp/`。重新安裝不會動到它。分析時，資料會送到你在「設定」選的 AI 服務。
+
+**更新與移除**
+
+- 更新：下載新版 ZIP，在新資料夾執行一次 `./install.sh`。研究資料不受影響。
+- 移除程式：刪除 `~/.local/share/ditl-sbp` 資料夾與 `~/.local/bin/ditl-sbp`。研究資料不會一起刪除；要刪除資料，請自行刪除上面的資料夾。
+
+**授權**：可以下載、安裝並用於研究、教學與工作；不得修改或轉傳，請他人直接從本頁下載。詳見 [LICENSE](LICENSE)。
+
 ## Configure AI execution
 
 Open **設定** (the menu button at the top right). Choose one of the two modes; the choice applies to every AI step.
