@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/category-properties.schema.json",
+  "title": "Category properties — the grounded-theory layer between axial-coding categories and Persona Matrix dimensions",
+  "description": "derive-axis-candidates-from-properties：把主軸編碼的類別看出它有哪些會變化的面（屬性），每個屬性畫成一把兩端可觀察、各自帶設計後果的尺（面向）。一個類別可以有零到多個屬性——不設下限也不設上限，證據撐得起幾個就寫幾個。這是選維度（persona-dimension-candidates）的候選池來源，不是最終選定的軸；候選池本來就該深，篩選是選維度那一關的工作。",
+  "type": "object",
+  "required": ["schema_version", "case_id", "properties"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "properties": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/property"
+      }
+    }
+  },
+  "definitions": {
+    "property": {
+      "type": "object",
+      "required": [
+        "id", "category_id", "name",
+        "pole_low", "pole_low_design", "pole_high", "pole_high_design",
+        "discriminating_basis", "evidence_refs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^PROP-[0-9]+$"
+        },
+        "category_id": {
+          "type": "string",
+          "pattern": "^CAT-[0-9]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16,
+          "description": "屬性名——這個類別的哪一面在變化。字數上限跟 persona-dimension-candidates 的 axis.label 一致，因為選中時會逐字沿用成軸名。禁止名詞化（結尾「度」「性」「感」且 ≤5 字）由 category_properties_errors() 檢查，schema 只管長度。"
+        },
+        "pole_low": {
+          "type": "string",
+          "minLength": 1,
+          "description": "低端：可觀察的行為狀態，不用人格形容詞。"
+        },
+        "pole_low_design": {
+          "type": "string",
+          "minLength": 1,
+          "description": "低端的設計後果：這一端要做什麼。必填——寫不出來就代表兩端沒有分開的設計意義，這條面向不該存在。"
+        },
+        "pole_high": {
+          "type": "string",
+          "minLength": 1,
+          "description": "高端：可觀察的行為狀態，不用人格形容詞。"
+        },
+        "pole_high_design": {
+          "type": "string",
+          "minLength": 1,
+          "description": "高端的設計後果：那一端要做什麼。必填，理由同 pole_low_design。"
+        },
+        "discriminating_basis": {
+          "type": "string",
+          "minLength": 1,
+          "description": "為什麼這條尺真的分得開人。"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^E-[0-9]+$"
+          }
+        }
+      }
+    }
+  }
+}

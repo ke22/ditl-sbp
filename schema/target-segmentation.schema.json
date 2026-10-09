@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/target-segmentation.schema.json",
+  "title": "Target Segmentation — the 2×2 grid formed by crossing the 2 chosen segmentation axes",
+  "description": "add-target-segmentation-designation：把 segmentation_axis_selection.yaml 選定的 2 條軸拿去交叉 persona_matrix.yaml 的真實落點，機械地（不靠模型）把每個受訪者分到 4 格裡的其中一格，或歸類成「無法歸類」（在任一條軸上是 mid 或 no_data）。member_subject_ids 由程式碼直接算出，不是模型的產出——模型只負責替有成員的格子寫族群畫像；沒有成員的格子由程式碼填一句誠實的「沒有證據支持」，不呼叫模型。",
+  "type": "object",
+  "required": ["schema_version", "case_id", "axis_ids", "quadrants", "unclassified_subject_ids"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "axis_ids": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^AXIS-[0-9]+$"
+      },
+      "description": "沿用 segmentation_axis_selection.yaml 選定的兩條軸，逐字複製、順序不變——第一個決定每格 axis_1_pole 對應哪條軸，第二個決定 axis_2_pole。"
+    },
+    "quadrants": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/definitions/quadrant"
+      }
+    },
+    "unclassified_subject_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^P-[0-9]+$"
+      },
+      "description": "在 axis_ids 任一條軸上落點是 mid、no_data，或完全沒有落點的受訪者——不勉強塞進任何一格。"
+    }
+  },
+  "definitions": {
+    "quadrant": {
+      "type": "object",
+      "required": ["id", "axis_1_pole", "axis_2_pole", "portrait"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^QUADRANT-[1-4]$"
+        },
+        "axis_1_pole": {
+          "type": "string",
+          "enum": ["near_low", "near_high"],
+          "description": "這一格在 axis_ids 第一條軸上的極端。"
+        },
+        "axis_2_pole": {
+          "type": "string",
+          "enum": ["near_low", "near_high"],
+          "description": "這一格在 axis_ids 第二條軸上的極端。"
+        },
+        "suggested_subject_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^P-[0-9]+$"
+          },
+          "description": "quadrant-members-are-designer-assigned：系統依落點算出的建議成員，不是最終成員——成員以研究者在 target_segmentation_selection.yaml 的指派為準。可以是空陣列，沒有真人落在這一格是誠實的結果。"
+        },
+        "member_subject_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^P-[0-9]+$"
+          },
+          "description": "已淘汰的舊欄位名，只留著讓 quadrant-members-are-designer-assigned 之前產生的既有 target_segmentation_candidates.yaml 繼續通過驗證——新產出一律寫 suggested_subject_ids，不寫這個名字。"
+        },
+        "portrait": {
+          "type": "string",
+          "minLength": 1,
+          "description": "有建議成員時：根據這些成員的證據寫出的族群畫像，不能只是複述兩條軸的定義。沒有建議成員時：固定的「沒有證據支持」陳述，不是生成的內容。"
+        }
+      },
+      "anyOf": [
+        {"required": ["suggested_subject_ids"]},
+        {"required": ["member_subject_ids"]}
+      ]
+    }
+  }
+}

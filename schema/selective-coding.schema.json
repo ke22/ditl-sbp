@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/selective-coding.schema.json",
+  "title": "Selective coding — the researcher's one core category",
+  "description": "add-selective-coding：研究者從主軸編碼（axial-coding）產出的類別集合裡，挑出唯一一個核心類別並說明理由。這是研究者的判斷，不是模型的產出——沒有欄位表達信心分數或候選排序，因為系統不判斷哪個選擇是對的。",
+  "type": "object",
+  "required": ["schema_version", "case_id", "core_category_id", "rationale"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "core_category_id": {
+      "type": "string",
+      "pattern": "^CAT-[0-9]+$"
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1,
+      "description": "研究者為什麼選這個類別作為核心——不能是空字串或只有空白。"
+    },
+    "secondary_themes": {
+      "type": "array",
+      "description": "selective-coding-produces-a-narrative：依重複性排序的次要主題（不含核心類別）。選填——只有跑過敘事階段的 run 才有。",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "narrative": {
+      "type": "string",
+      "description": "selective-coding-produces-a-narrative：80–200 字的洞察敘事，提煉貫穿核心與次要主題的概念。選填。set-analysis-quality-bar-in-coding-prompts：下限從 150 降到 80——150 是在任何一段敘事被產出之前訂的，而提示詞現在拿來當合格範例的那段本身只有 96 字，舊的下限會把系統自己端出的標準擋掉。",
+      "minLength": 80,
+      "maxLength": 200
+    },
+    "key_insights": {
+      "type": "array",
+      "description": "selective-coding-produces-a-narrative：3–5 條關鍵洞察，每條都要引用得回證據。選填。",
+      "minItems": 3,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["text", "evidence_refs"],
+        "additionalProperties": false,
+        "properties": {
+          "text": {"type": "string", "minLength": 1},
+          "evidence_refs": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string"}
+          }
+        }
+      }
+    },
+    "narrative_composed_by": {
+      "description": "誰寫的這段敘事與洞察——assistant 是模型綜合產出，researcher 是研究者自己寫的account，畫面憑這個欄位標出是哪一種，不是靠猜。跟 core_category_id／rationale（研究者的核心類別判斷）分開存放，寫入敘事不會動到那兩個欄位。",
+      "enum": ["assistant", "researcher"]
+    }
+  }
+}

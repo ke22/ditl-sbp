@@ -1,0 +1,329 @@
+# 分析鏈宣告。這份檔案是資料，不是程式——載入器（tools/sbp_gen/analysis_chain.py）
+# 讀它、跟 tools/sbp_gen/prompts/ 底下的檔案雙向對帳。改這份檔案不需要改程式；
+# 加一個新 stage 一定要在這裡加一筆，否則載入器會報錯（見 openspec/LANGUAGE.md
+# 「六個操作」與「三個類別」兩節）。
+#
+# 三個頂層區塊都必填：operations（六個固定操作，各自掛實例）、principles
+# （八條通則）、support_stages（不屬於任何操作實例、但確實存在的 prompt 檔）。
+#
+# instance 的 status 三選一：implemented / partial / absent。
+# implemented 或 partial 的 instance 可以（不強制）用 prompt_file 指到
+# tools/sbp_gen/prompts/ 底下的一個檔名；absent 的 instance 不准填
+# prompt_file。同一個 prompt_file 不能被兩個 instance 各自宣告——
+# 「critical-moment-marking」implemented 但沒有自己的 prompt_file，因為它
+# 是 service-blueprint 那個 instance 產出的一部分，不是另一個獨立 stage。
+
+schema_version: 1
+
+operations:
+  切:
+    label: "切 — 把原始資料切成可查證的單元"
+    quality_question: "這一刀切得對嗎？（顆粒度、忠實度）"
+    instances:
+      - id: align
+        label: 資料整備
+        category: derivation
+        status: implemented
+        prompt_file: align.md
+        consumes: 原始逐字稿與觀察紀錄
+        produces: 帶 content_type 與 tier 的可查證證據單元
+      - id: semantic-segments
+        label: 語意分段
+        category: derivation
+        status: implemented
+        prompt_file: semantic_segments.md
+        consumes: 原始逐字稿（每份單獨、逐行編號）與 align 產出的證據單元
+        produces: 每份逐字稿依時間序的語意段落——模型只給行號範圍、簡述、訪員行、角色與分析範圍，完整原文由程式依行號原樣切出；段落是開放編碼的分析單位，不是證據（open-coding-on-semantic-segments，2026-10-03）
+      - id: open-coding
+        label: 開放編碼
+        category: derivation
+        status: implemented
+        prompt_file: open_coding.md
+        consumes: semantic-segments 產出的語意段落與段落裡的證據單元
+        produces: 方法論定義的行為概念——十五字內、優先動詞＋名詞、三十字內獨立看得懂的描述；每個語意段落最多兩個概念，一份逐字稿做完回頭合併同義，不跨來源合併
+
+  聚:
+    label: "聚 — 把單元聚成有解釋力的群"
+    quality_question: "這一群是真的，還是我硬套的？（區辨依據）"
+    instances:
+      - id: axial-coding
+        label: 主軸編碼
+        category: derivation
+        status: implemented
+        prompt_file: axial_coding.md
+        consumes: open-coding 產出的行為概念
+        produces: 帶區辨依據與典範模型（條件／行動／結果）的類別
+      - id: category-properties
+        label: 屬性與面向
+        category: derivation
+        status: implemented
+        prompt_file: category_properties.md
+        consumes: axial-coding 產出的類別
+        produces: 每個類別零到多個屬性，每個屬性一個面向——兩端可觀察、各自帶設計後果；是選維度（persona-dimension-candidates）的候選池來源，不是最終選定的軸
+      - id: selective-coding
+        label: 選擇編碼
+        category: researcher_input
+        status: implemented
+        consumes: axial-coding 產出的類別集合
+        produces: 一個核心類別 id 與研究者的選擇理由
+      - id: selective-coding-narrative
+        label: 選擇編碼（洞察敘事）
+        category: derivation
+        status: implemented
+        prompt_file: selective_coding_narrative.md
+        consumes: 研究者已選定的核心類別、axial-coding 的全部類別、conflicts 與證據
+        produces: 次要主題、80–200 字洞察敘事、3–5 條關鍵洞察——研究者選定的核心類別 id 與理由本身不動
+      - id: narrative-job-candidates
+        label: 選擇編碼核心現象導出的顧客任務候選
+        category: derivation
+        status: implemented
+        prompt_file: narrative_job_candidates.md
+        consumes: axial-coding 產出的類別集合與各類別的原話
+        produces: 剛好三組顧客任務候選，每組先寫一段 80–200 字的選擇編碼核心現象（AI 分析層、不上畫面），再由它導出情境／任務／動機／結果的顧客任務；三組地位相同、不排序也不推薦——挑哪一組是研究者的判斷
+      - id: narrative-job-selection
+        label: 顧客任務（研究者選定）
+        category: researcher_input
+        status: implemented
+        consumes: narrative-job-candidates 產出的三組配對候選與 axial-coding 的類別集合
+        produces: 研究者選定的顧客任務完整內容（情境／任務／動機／結果、掛的類別、選擇理由）——存完整內容不是候選編號，自己寫的那一種也一樣；不記敘事與作者（2026-10-01 起，舊檔的這兩欄只供相容讀取）
+      - id: persona-matrix
+        label: Persona Matrix（行為變項矩陣）
+        category: derivation
+        status: implemented
+        prompt_file: persona_matrix.md
+        consumes: axial-coding 產出的類別集合與 align 產出的證據單元
+        produces: 行為變項軸（含區辨依據與所屬類別）與受訪者在各軸上的落點
+      - id: persona-content
+        label: Persona（內容）
+        category: derivation
+        status: implemented
+        prompt_file: persona_content.md
+        consumes: segmentation-axis-designation 選定的兩條軸（從 persona-matrix 讀出它們的 label、兩端、grounded_in
+          類別）、target-segmentation-designation 指定的主要目標象限與其確認過的成員、那些成員在這兩條軸上的落點與落點理由，以及
+          align 產出的證據單元——只有這兩條軸的落點會進提示詞，其餘軸的落點、選定的敘事、選定的 Job、選定的 HMW 都不會（generate-persona-for-target-quadrant
+          change，2026-09-12；之前這裡宣告消費「persona-matrix 產出的行為變項軸與受訪者落點」，但送進提示詞的只有象限
+          id、象限畫像跟成員證據原文，軸與落點兩樣都沒有送——這是一則不實宣告，這次改正）
+        produces: 研究者指定的主要目標象限唯一一份有名字、有理由的 persona，帶動機／情境／行為／困難／需求五個內容欄位與一則附證據出處的代表引言，追溯到組成的受訪者與所依據的軸落點
+      - id: jtbd
+        label: JTBD
+        category: derivation
+        status: implemented
+        prompt_file: jtbd.md
+        consumes: axial-coding 產出的類別集合與 align 產出的證據單元
+        produces: 情境／進展／結果三格的 Job 陳述（不消費 Persona Matrix 的輸出）
+        # multi-jtbd-single-job-source（2026-10-03）：只剩舊 run 相容。顧客任務唯一來源是選擇編碼形成的候選與
+        # 研究者的選擇清單（narrative_job_selection.yaml）；HMW 形成不再跑這一步，也沒有流程呼叫它。
+      - id: job-map
+        label: Job Map（應然旅程）
+        category: derivation
+        status: implemented
+        prompt_file: job_map.md
+        consumes: jtbd 產出的 Job 清單與 align 產出的證據單元
+        produces: 每則 Job 的有序、solution-independent 階段序列，各自扣回該 Job 自己的證據範圍
+        # multi-jtbd-single-job-source（2026-10-03）：只剩舊 run 相容，HMW 形成不再跑這一步。
+
+  排:
+    label: "排 — 把單元沿時間排成一個人的故事"
+    quality_question: "這是他真的走過的路，還是流程圖？"
+    instances:
+      - id: customer-journey
+        label: 顧客旅程（CJM）
+        category: projection
+        status: implemented
+        prompt_file: journey.md
+        deviation: 宣告的類別是 projection，但目前是被生成、確認後存成獨立檔案（journey.yaml），不是從節點集合算出來的視圖
+
+  層:
+    label: "層 — 把單元按「誰做的／看不看得見」攤開"
+    quality_question: "這一格為什麼在這一層？"
+    instances:
+      - id: service-blueprint
+        label: 服務藍圖（SBP）
+        category: projection
+        status: implemented
+        prompt_file: structure.md
+        consumes: 證據單元、確認過的旅程、衝突清單
+        produces: 五泳道節點與關係（service_graph.yaml）
+      - id: to-be-service-blueprint
+        label: To-be 服務藍圖
+        category: projection
+        status: implemented
+        prompt_file: structure_to_be.md
+        consumes: 確認過的旅程（顧客層與步驟固定）、研究者採用的解方、證據單元、衝突清單
+        produces: 讓改善後旅程成立的最少服務機制（service_graph.yaml，blueprint_method to_be_v1）
+
+  標:
+    label: "標 — 指出哪裡卡住"
+    quality_question: "為什麼是這裡而不是別處？"
+    instances:
+      - id: critical-moment-marking
+        label: 關鍵時刻標記（失誤點／等候點／決策點／交接點／放棄點）
+        category: derivation
+        status: implemented
+        note: 由 service-blueprint 同一個 stage（structure.md）產出，不另外宣告 prompt_file
+
+  問:
+    label: "問 — 把卡住的地方變成可設計的問題"
+    quality_question: "拿掉「我們如何」，裡面是不是已經藏了答案？"
+    instances:
+      - id: how-might-we
+        label: How Might We
+        category: derivation
+        status: implemented
+        prompt_file: how_might_we.md
+        consumes: axial-coding 產出的類別集合、category-properties 產出的屬性面向、JTBD 產出的 Job 清單、Job Map 產出的應然階段語意（步驟標籤與描述，依原順序，各自附證據）
+        produces: 以選定顧客任務為範圍、先找張力寫成的三則 HMW（讀主軸關係、三個鏡頭與原話；範圍不是證據白名單；證據撐不起三個不同張力時寫零則加原因）——form-hmw-tension-first，2026-10-01
+
+principles:
+  - id: traceable
+    label: 可追溯
+    statement: 每個元素必須掛得回上游證據，或明標為推論；沒有兩者之一的元素是研究者無法查核的斷言
+    checked_at: any
+    look_upstream_at: 切
+    executor: validator
+    arbiter: machine
+    source_status: corpus_verified
+
+  - id: no-overreach
+    label: 不越權
+    statement: 樣本觀察不得寫成普遍事實；只有來源明確使用普遍量詞時才能標成通則
+    checked_at: 聚
+    look_upstream_at: 切
+    executor: validator
+    arbiter: machine
+    source_status: corpus_verified
+
+  - id: no-embedded-solution
+    label: 不含解法
+    statement: 描述現況或問題的產物（JTBD、Job Map、HMW、issues）不得內含解法或指名技術／產品
+    checked_at: 問
+    look_upstream_at: 問
+    executor: prompt
+    # add-hmw-scene-and-context-conditions, 2026-09-18：原本標
+    # arbiter: machine，但實際落地的只有 stages.py 的 _SOLUTION_LANGUAGE，一個
+    # 認因果動詞句型的 regex，連本專案自己舉的反例「我們如何讓指示牌更明顯」都
+    # 抓不到，抓不到器物名詞洩漏。同一份 how-might-we spec 裡的
+    # hmw-priority-and-convergence（2026-09-09）早就裁定「陳述有沒有藏答案要問
+    # 研究者，不是機器檢查」——兩條規則原本就在打架。機器端仍負責偵測與示警
+    # （regex 命中時擋validation、prompt 列器物名詞自查清單），但最終有沒有藏
+    # 答案，說了算的是研究者。誠實標成 researcher。
+    arbiter: researcher
+    source_status: literature_general
+
+  - id: dimension-independence
+    label: 維度互斥
+    statement: 兩個維度或軸不得是同一個 construct 換句話說；重複的維度要合併，不是各自算一次
+    checked_at: 聚
+    look_upstream_at: 聚
+    executor: researcher
+    arbiter: researcher
+    source_status: literature_general
+
+  - id: distribution-required
+    label: 有分布才算差異
+    statement: 一條用來分群的軸，受訪者落點必須有分布；全部落在同一端的軸是共同 need，不是分群變項
+    checked_at: 聚
+    look_upstream_at: 切
+    executor: validator
+    arbiter: machine
+    source_status: literature_general
+
+  - id: criticality-ranked
+    label: 關鍵性要排序
+    statement: 不是每一步都同等重要，也不是一步都不重要；標記要能區分事件與阻礙目標的判斷
+    checked_at: 標
+    look_upstream_at: 標
+    executor: researcher
+    arbiter: researcher
+    source_status: literature_general
+
+  - id: as-is-to-be-separated
+    label: 應然實然分開
+    statement: 觀察到的事實與設計假設不得是同一個證據層級；現況產出與優化提案要能被明確區分
+    checked_at: 層→問
+    look_upstream_at: 層
+    executor: validator
+    arbiter: machine
+    source_status: corpus_verified
+
+  - id: visibility-not-role
+    label: 可見性決定分層，不是身分決定分層
+    statement: 節點分到前台或後台，取決於這個動作使用者看不看得見，不是取決於做這件事的人是誰；同一個角色可以同時出現在多個泳道
+    checked_at: 層
+    look_upstream_at: 層
+    executor: prompt
+    # correct-false-machine-arbiter-declarations, 2026-09-08：原本標
+    # arbiter: machine，但沒有任何程式碼實作過——真正要驗證的是「這個動作
+    # 使用者看不看得見」，這是研究者對真實服務現場的判斷，不是文字模式，機器
+    # 沒辦法從節點描述的文字判斷一個動作在真實世界是否可見。layer／
+    # visibility 兩個欄位的搭配在所有真實 run 上都完全一致（0 個例外），
+    # 就算真的去查這個一致性，驗證的也是「兩個欄位有沒有互相打架」，不是
+    # 這條通則真正宣告的「分層的理由是不是可見性」。誠實標成 researcher。
+    arbiter: researcher
+    source_status: corpus_verified
+
+# 每個 stage 組完的 system prompt（tools/sbp_gen/stages._system(stage)）字數上限。
+# 超過門檻不代表壞掉——是「新加一條判準之前，先看這一關已經多重」的訊號。
+# 見 ditl_sbp/LEARNINGS.md §18：判準各自決定進不進 prompt，沒有人為總量負責。
+prompt_budgets:
+  structure: 14000
+  journey: 4000
+  align: 4000
+  issues: 4000
+  # 2026-10-01 研究者裁定（HMW method v8 凍結於 afc314a）：去重後組好的 prompt 是 6,648 字；
+  # 5000 是舊方法留下的數字。7200 留約 550 字餘裕，用來擋複雜度回歸，不是越短越好。
+  how_might_we: 7200
+
+support_stages:
+  - file: as_is_recheck.md
+    note: 現況旅程對照後續證據的重查，屬於裁定軸而非鏈上一段
+  - file: brief.md
+    note: 判讀摘要，屬於呈現層
+  - file: compare.md
+    note: 證據衝突偵測；矛盾是張力的來源，但本身不是任何操作的產出，是餵給「聚」的第三條輸入線
+  - file: core_category_candidates.md
+    note: 支援 selective-coding 的候選產生——AI 讀完類別提 3 個候選並各附理由，決定權仍在研究者的
+      selective-coding 選擇，本身不是獨立操作（CLAUDE.md「助理的界線」；propose-core-category-candidates）
+  - file: issue_grounding.md
+    note: 把候選問題的證據引用釘回可達的節點／關係／標記，是 issues.md 的下游檢查
+  - file: issues.md
+    note: 從已確認藍圖框問題，起點與跨鏡頭張力（問的完整形態）不同，見 how-might-we 的 produces 說明
+  - file: selective_themes.md
+    note: 選擇編碼——依研究者寫的研究目的，把主軸主題整合成核心與次要選擇性編碼主題，溯源一路回到主軸主題、開放編碼與原話；研究目的或主軸改了只標過期、不自動重跑（add-selective-coding-layer，2026-10-03）
+  - file: chart_guides.md
+    note: 支援 Persona、顧客旅程、服務藍圖三張圖的導讀草稿——AI 只讀那一站已有的內容、只引用那裡出現過的證據，研究者可改，研究者寫過的段落不被覆蓋；本身不是獨立操作（CLAUDE.md「圖表導讀」例外；add-chart-guides）
+  - file: journey_annotations.md
+    note: 支援顧客旅程圖的註記草稿——AI 依已確認步驟的證據起草情緒、滿意度與解決方式，研究者可改，研究者寫過的格子不被覆蓋；本身不是獨立操作（CLAUDE.md「CJM 的情緒、Solutions、Satisfaction」例外；draft-journey-annotations-with-ai）
+  - file: journey_recheck.md
+    note: 儲存的旅程對照後續證據的重查，屬於裁定軸而非鏈上一段
+  - file: journey_solutions.md
+    note: 支援顧客旅程的解方發展——只對研究者在 CJM 上勾選的時刻，先講問題、為什麼重要、限制，再提多個介入方向與管道；
+      採用權在研究者，只有採用的解方進入 SBP；本身不是獨立操作（cjm-experience-and-moment-solutions）
+  - file: persona_dimension_candidates.md
+    note: 支援 Persona Matrix 維度選擇的候選產生——輸入是 category-properties 產出的屬性與面向（該
+      run 還沒跑過那一關時，退回舊路徑直接讀類別與證據，並在輸出的 dimension_source 註明走的是哪一條
+      路），內部走完候選篩選方法論，只端出篩選後 3 組候選框架並各附理由，決定權仍在研究者的維度選擇，
+      本身不是獨立操作（CLAUDE.md「助理的界線」；propose-persona-dimension-candidates；
+      derive-axis-candidates-from-properties）
+  - file: primary_job_candidates.md
+    note: 支援 JTBD 主要 Job 選擇的候選產生——AI 讀完類別與證據提出 3 組候選主要 Job 框架並各附理由，
+      決定權仍在研究者的主要 Job 選擇，本身不是獨立操作（CLAUDE.md「助理的界線」；
+      propose-primary-job-candidates）
+  - file: reconcile.md
+    note: 調和原型假設與已確認圖之間的衝突
+  - file: reference.md
+    note: 原型假設（見 openspec/LANGUAGE.md「調研」三義），只准問問題，不看本案證據，在鏈外
+  - file: research_support.md
+    note: 外部調研（見 openspec/LANGUAGE.md「調研」三義），只能在定調現況之後執行，只能進提案
+  - file: segmentation_axis_candidates.md
+    note: 支援目標族群軸選擇的簡報產生——AI 讀完 persona_matrix.yaml 對每一條軸寫一份不排序的簡報，並以選定
+      HMW 為設計相關性範圍提出一組預設兩軸（default analytical projection，不是最佳分群；
+      persona-matrix-hmw-scope-default）；研究者可以改選，目標族群由研究者依業務邏輯與商業價值決定，本身不是獨立操作
+      （CLAUDE.md「助理的界線」；add-segmentation-axis-designation）
+  - file: target_segmentation.md
+    note: 支援主要/次要目標選擇的 2×2 族群畫像產生——格子分派是程式碼機械算出來的，不是模型的判斷；
+      模型只對有成員的格子寫畫像，沒有成員的格子由程式碼直接填「沒有證據支持」，不呼叫模型。決定權完全
+      在研究者選定的主要/次要目標，本身不是獨立操作（CLAUDE.md「助理的界線」；
+      add-target-segmentation-designation）
+  - file: to_be_proposals.md
+    note: 優化方案生成，下游消費 issues 的產出，而非 how-might-we——兩者起點不同，見 issues.md 的說明

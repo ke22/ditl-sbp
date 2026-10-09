@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/evidence.schema.json",
+  "title": "evidence.yaml — 證據索引（sbp-align 產出，人審後四組共用；pipeline.md §2.5 第 1 份檔案）",
+  "description": "頂層是一個陣列，每個元素是一條可查證的證據。tier 是實驗的操作變因（§5 靠它決定餵哪些證據給 AI）。",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "tier", "role", "source", "locator", "text"],
+    "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^E-[0-9]+$",
+        "description": "案例內唯一，慣例用 E-001 這種格式"
+      },
+      "tier": {
+        "type": "string",
+        "enum": ["frontstage", "backstage", "interpretation"],
+        "description": "frontstage=顧客那邊；backstage=第一線/後台人員；interpretation=persona/CJM/HMW 等衍生詮釋（§1.3）"
+      },
+      "role": {
+        "type": "string",
+        "minLength": 1,
+        "description": "這條證據是誰講的（ADR-0001 決定二）。開放字串，因為角色隨服務而異——常見值：乘客／顧客、司機、督導、客服行政、系統紀錄、SOP文件、現場觀察。與 data_profile.yaml 的 roles_covered[].role 必須用同一組字面值，否則覆蓋度算不出來。tier 太粗，撐不住「顧客行動層沒有第一手證據」這種角色層級的觀察。"
+      },
+      "source": {
+        "type": "string",
+        "description": "訪談逐字稿 / SOP / CJM / 現場觀察，附檔名或明確來源"
+      },
+      "locator": {
+        "type": "string",
+        "description": "定位方式不強制格式——可以是時間戳（02:14–02:38）、CJM 步驟、或結構化 Q&A 的「檔名 > sheet > 問題」，只要能回頭查證即可"
+      },
+      "text": {
+        "type": "string",
+        "description": "原文摘錄，不是改寫"
+      },
+      "content_type": {
+        "type": "string",
+        "enum": ["action", "artifact", "state", "pain_point", "expectation", "rule", "outcome", "context"],
+        "description": "v2 typed evidence；舊 evidence 可省略，新 align 產出必須提供"
+      },
+      "question_context": {
+        "type": "string",
+        "minLength": 1,
+        "description": "選填。受訪者的回答要配上訪員緊接在前的問題才讀得懂時，那句問題的原文摘錄。只是讀懂回答用的脈絡，不是受訪者的證據；受訪者說的話只在 text。"
+      }
+    },
+    "additionalProperties": true
+  }
+}

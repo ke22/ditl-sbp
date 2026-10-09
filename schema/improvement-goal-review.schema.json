@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/improvement-goal-review.schema.json",
+  "title": "Improvement goal review — station-⑩ confirm/revise gate",
+  "description": "add-improvement-goal-review-stage：研究者確認或改寫的改善目標，取代 case.yaml 的 improvement_goal 成為 as_is_research.py 外部調研前置關卡真正讀的值。original_goal 與 hmw_statements 是確認當下逐字複製的比對用快照，不可由研究者改寫；operative_goal 是往下游流動的真正的值，必填且不可為空白；framing_changed_note 是研究者自己寫的自由文字，回答「研究改變了你的框架嗎」，系統不對這句話評分或分類。",
+  "type": "object",
+  "required": ["schema_version", "case_id", "original_goal", "hmw_statements", "operative_goal"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "original_goal": {
+      "type": "string",
+      "description": "case.yaml 的原始改善目標，逐字複製，供比對用。可以是空字串——代表研究前根本沒填。"
+    },
+    "hmw_statements": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "確認當下 hmw.yaml 的全部陳述，逐字複製，不篩選。可以是空陣列。"
+    },
+    "operative_goal": {
+      "type": "string",
+      "minLength": 1,
+      "description": "研究者確認或改寫後的改善目標——這是 as_is_research.py 實際讀的值，必填，不可為空白或只有空白字元。"
+    },
+    "framing_changed_note": {
+      "type": "string",
+      "description": "研究者自己寫的自由文字，回答研究有沒有改變框架。可選，系統不評分或分類。"
+    }
+  }
+}

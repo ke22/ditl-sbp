@@ -1,0 +1,527 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/desktop-workbench-evaluation.schema.json",
+  "title": "Integrated desktop workbench release evidence",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "evaluation_id",
+    "protocol_version",
+    "contract_version",
+    "fixture_digest",
+    "implementation_digest",
+    "automated_evidence",
+    "visual_review",
+    "accessibility_evidence",
+    "real_case_evidence",
+    "formative_review",
+    "findings",
+    "derived_decision",
+    "generated_at",
+    "disclaimer"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "evaluation_id": {"type": "string", "minLength": 1},
+    "protocol_version": {"type": "string", "minLength": 1},
+    "contract_version": {"type": "string", "minLength": 1},
+    "fixture_digest": {"$ref": "#/definitions/digest"},
+    "implementation_digest": {"$ref": "#/definitions/digest"},
+    "automated_evidence": {"$ref": "#/definitions/automated_evidence"},
+    "visual_review": {"$ref": "#/definitions/visual_review"},
+    "accessibility_evidence": {"$ref": "#/definitions/accessibility_evidence"},
+    "real_case_evidence": {"$ref": "#/definitions/real_case_evidence"},
+    "formative_review": {"$ref": "#/definitions/formative_review"},
+    "findings": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/finding"}
+    },
+    "derived_decision": {"enum": ["not_run", "incomplete", "failed", "passed"]},
+    "generated_at": {"$ref": "#/definitions/timestamp"},
+    "disclaimer": {"type": "string", "minLength": 1}
+  },
+  "definitions": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": ["not_run", "incomplete", "failed", "passed"]
+    },
+    "automated_evidence": {
+      "type": "object",
+      "required": [
+        "status",
+        "fixture_digest",
+        "contract_version",
+        "expected_coordinate_count",
+        "rows"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {"$ref": "#/definitions/status"},
+        "fixture_digest": {"$ref": "#/definitions/digest"},
+        "contract_version": {"type": "string", "minLength": 1},
+        "expected_coordinate_count": {"const": 270},
+        "rows": {
+          "type": "array",
+          "maxItems": 270,
+          "items": {"$ref": "#/definitions/automated_row"}
+        }
+      },
+      "allOf": [{
+        "if": {
+          "properties": {"status": {"enum": ["passed", "failed"]}},
+          "required": ["status"]
+        },
+        "then": {"properties": {"rows": {"minItems": 270}}}
+      }]
+    },
+    "automated_row": {
+      "type": "object",
+      "required": [
+        "profile",
+        "stage",
+        "viewport_css_px",
+        "zoom_percent",
+        "effective_width_css_px",
+        "checkpoint_fingerprint",
+        "assertions",
+        "accessibility_counts",
+        "console_errors",
+        "page_errors",
+        "external_requests",
+        "elapsed_ms"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "profile": {"type": "string", "minLength": 1},
+        "stage": {"type": "string", "minLength": 1},
+        "viewport_css_px": {"type": "integer", "minimum": 1},
+        "zoom_percent": {"type": "integer", "minimum": 1},
+        "effective_width_css_px": {"type": "number", "exclusiveMinimum": 0},
+        "checkpoint_fingerprint": {"$ref": "#/definitions/digest"},
+        "assertions": {"$ref": "#/definitions/automated_assertions"},
+        "accessibility_counts": {"$ref": "#/definitions/severity_counts"},
+        "screenshot_ref": {"type": "string", "minLength": 1},
+        "console_errors": {"type": "array", "items": {"type": "string"}},
+        "page_errors": {"type": "array", "items": {"type": "string"}},
+        "external_requests": {"type": "array", "items": {"type": "string"}},
+        "elapsed_ms": {"type": "integer", "minimum": 0}
+      }
+    },
+    "automated_assertions": {
+      "type": "object",
+      "required": [
+        "case_context",
+        "decision_statement",
+        "primary_action_count",
+        "action_consequence",
+        "review_gate_access",
+        "contained_overflow",
+        "readable_text",
+        "keyboard_reachability",
+        "inspector_focus_restoration",
+        "claim_semantics",
+        "reality_semantics"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "case_context": {"type": "boolean"},
+        "decision_statement": {"type": "boolean"},
+        "primary_action_count": {"type": "integer", "minimum": 0},
+        "action_consequence": {"type": "boolean"},
+        "review_gate_access": {"type": "boolean"},
+        "contained_overflow": {"type": "boolean"},
+        "readable_text": {"type": "boolean"},
+        "keyboard_reachability": {"type": "boolean"},
+        "inspector_focus_restoration": {"type": "boolean"},
+        "claim_semantics": {"type": "boolean"},
+        "reality_semantics": {"type": "boolean"}
+      }
+    },
+    "severity_counts": {
+      "type": "object",
+      "required": ["critical", "serious", "moderate", "minor"],
+      "additionalProperties": false,
+      "properties": {
+        "critical": {"type": "integer", "minimum": 0},
+        "serious": {"type": "integer", "minimum": 0},
+        "moderate": {"type": "integer", "minimum": 0},
+        "minor": {"type": "integer", "minimum": 0}
+      }
+    },
+    "visual_review": {
+      "type": "object",
+      "required": [
+        "status",
+        "baseline_manifest_digest",
+        "environment_match",
+        "required_images",
+        "reviewed_images",
+        "failed_images"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {"$ref": "#/definitions/status"},
+        "baseline_manifest_digest": {"$ref": "#/definitions/digest"},
+        "environment_match": {"type": "boolean"},
+        "required_images": {"type": "integer", "minimum": 0},
+        "reviewed_images": {"type": "integer", "minimum": 0},
+        "failed_images": {"type": "integer", "minimum": 0}
+      }
+    },
+    "accessibility_evidence": {
+      "type": "object",
+      "required": [
+        "status",
+        "axe_version",
+        "axe_asset_digest",
+        "critical",
+        "serious",
+        "moderate",
+        "minor",
+        "keyboard_tasks_required",
+        "keyboard_tasks_passed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {"$ref": "#/definitions/status"},
+        "axe_version": {"type": "string", "minLength": 1},
+        "axe_asset_digest": {"$ref": "#/definitions/digest"},
+        "critical": {"type": "integer", "minimum": 0},
+        "serious": {"type": "integer", "minimum": 0},
+        "moderate": {"type": "integer", "minimum": 0},
+        "minor": {"type": "integer", "minimum": 0},
+        "keyboard_tasks_required": {"type": "integer", "minimum": 0},
+        "keyboard_tasks_passed": {"type": "integer", "minimum": 0}
+      }
+    },
+    "real_case_evidence": {
+      "type": "object",
+      "required": [
+        "status",
+        "case_id",
+        "run_id",
+        "execution_mode",
+        "source_manifest_digest",
+        "authorization_attested",
+        "deidentification_attested",
+        "frozen_worker_results_used",
+        "reused_downstream_artifacts",
+        "held_out",
+        "routing_policy_digest",
+        "required_stage_ids",
+        "stage_runs",
+        "artifact_chain_digest",
+        "lifecycle_valid",
+        "research_sources",
+        "traceability",
+        "human_rubric",
+        "validation_state",
+        "fabricated_pilot_data",
+        "sealed_at",
+        "limitations"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {"$ref": "#/definitions/status"},
+        "case_id": {"const": "muji-cafe-meal-001"},
+        "run_id": {"type": "string", "minLength": 1},
+        "execution_mode": {"const": "live"},
+        "source_manifest_digest": {"$ref": "#/definitions/digest"},
+        "authorization_attested": {"const": true},
+        "deidentification_attested": {"const": true},
+        "frozen_worker_results_used": {"const": false},
+        "reused_downstream_artifacts": {"const": false},
+        "held_out": {"$ref": "#/definitions/held_out"},
+        "routing_policy_digest": {"$ref": "#/definitions/digest"},
+        "required_stage_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "stage_runs": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/stage_run"}
+        },
+        "artifact_chain_digest": {"$ref": "#/definitions/digest"},
+        "lifecycle_valid": {"type": "boolean"},
+        "research_sources": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/research_source"}
+        },
+        "traceability": {"$ref": "#/definitions/traceability"},
+        "human_rubric": {"$ref": "#/definitions/human_rubric"},
+        "validation_state": {"enum": ["not_run", "pilot_evidence_supplied"]},
+        "fabricated_pilot_data": {"const": false},
+        "sealed_at": {"$ref": "#/definitions/timestamp"},
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "held_out": {
+      "type": "object",
+      "required": [
+        "denylist_digest",
+        "access_before_seal_count",
+        "comparison_completed_after_seal",
+        "comparison_digest"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "denylist_digest": {"$ref": "#/definitions/digest"},
+        "access_before_seal_count": {"const": 0},
+        "comparison_completed_after_seal": {"const": true},
+        "comparison_digest": {"$ref": "#/definitions/digest"}
+      }
+    },
+    "stage_run": {
+      "type": "object",
+      "required": [
+        "stage",
+        "provider",
+        "model",
+        "prompt_version",
+        "schema_version",
+        "effort",
+        "started_at",
+        "completed_at",
+        "attempts",
+        "published_output_digest"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "stage": {"type": "string", "minLength": 1},
+        "provider": {"type": "string", "minLength": 1},
+        "model": {"type": "string", "minLength": 1},
+        "prompt_version": {"$ref": "#/definitions/digest"},
+        "schema_version": {"type": "string", "minLength": 1},
+        "effort": {"type": "string", "minLength": 1},
+        "started_at": {"$ref": "#/definitions/timestamp"},
+        "completed_at": {"$ref": "#/definitions/timestamp"},
+        "attempts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/definitions/model_attempt"}
+        },
+        "published_output_digest": {"$ref": "#/definitions/digest"}
+      }
+    },
+    "model_attempt": {
+      "type": "object",
+      "required": ["attempt", "provider", "model", "outcome"],
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {"type": "integer", "minimum": 1},
+        "provider": {"type": "string", "minLength": 1},
+        "model": {"type": "string", "minLength": 1},
+        "outcome": {
+          "enum": [
+            "accepted",
+            "provider_error",
+            "empty_output",
+            "parse_error",
+            "validation_error"
+          ]
+        },
+        "fallback_reason": {"type": "string", "minLength": 1},
+        "output_digest": {"$ref": "#/definitions/digest"},
+        "usage_tokens": {"type": "integer", "minimum": 0}
+      }
+    },
+    "research_source": {
+      "type": "object",
+      "required": [
+        "source_id",
+        "url",
+        "publisher_class",
+        "retrieved_at",
+        "supported_claim_ids",
+        "fetch_outcome"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "source_id": {"type": "string", "minLength": 1},
+        "url": {"type": "string", "pattern": "^https://"},
+        "publisher_class": {
+          "enum": ["academic", "government", "professional", "first-hand-case"]
+        },
+        "retrieved_at": {"$ref": "#/definitions/timestamp"},
+        "supported_claim_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "fetch_outcome": {"enum": ["retrieved", "unavailable"]}
+      }
+    },
+    "traceability": {
+      "type": "object",
+      "required": [
+        "unresolvable_evidence_refs",
+        "unsupported_current_state_claims",
+        "cross_case_items"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "unresolvable_evidence_refs": {"type": "integer", "minimum": 0},
+        "unsupported_current_state_claims": {"type": "integer", "minimum": 0},
+        "cross_case_items": {"type": "integer", "minimum": 0}
+      }
+    },
+    "human_rubric": {
+      "type": "object",
+      "required": ["reviewer_id", "completed", "critical_failures"],
+      "additionalProperties": false,
+      "properties": {
+        "reviewer_id": {"type": "string", "pattern": "^[A-Z]+-[0-9]{3,}$"},
+        "completed": {"type": "boolean"},
+        "critical_failures": {"type": "integer", "minimum": 0}
+      }
+    },
+    "formative_review": {
+      "type": "object",
+      "required": [
+        "status",
+        "protocol_digest",
+        "real_case_digest",
+        "synthetic_fixture_digest",
+        "sessions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {"$ref": "#/definitions/status"},
+        "protocol_digest": {"$ref": "#/definitions/digest"},
+        "real_case_digest": {"$ref": "#/definitions/digest"},
+        "synthetic_fixture_digest": {"$ref": "#/definitions/digest"},
+        "sessions": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {"$ref": "#/definitions/formative_session"}
+        }
+      },
+      "allOf": [{
+        "if": {
+          "properties": {"status": {"enum": ["passed", "failed"]}},
+          "required": ["status"]
+        },
+        "then": {"properties": {"sessions": {"minItems": 3}}}
+      }]
+    },
+    "formative_session": {
+      "type": "object",
+      "required": ["participant_id", "role_cohort", "experience_band", "tasks"],
+      "additionalProperties": false,
+      "properties": {
+        "participant_id": {"type": "string", "pattern": "^P-[0-9]{3,}$"},
+        "role_cohort": {
+          "enum": ["service-design-researcher", "design-researcher", "service-operator-researcher"]
+        },
+        "experience_band": {
+          "enum": ["under-two-years", "two-to-five-years", "over-five-years"]
+        },
+        "tasks": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": {"$ref": "#/definitions/formative_task"}
+        }
+      }
+    },
+    "formative_task": {
+      "type": "object",
+      "required": [
+        "task_id",
+        "case_lane",
+        "outcome",
+        "assistance_count",
+        "elapsed_time_band",
+        "misconception_codes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "task_id": {"pattern": "^task-[1-6]$"},
+        "case_lane": {"enum": ["real-muji", "synthetic-pilot"]},
+        "outcome": {"enum": ["completed-without-operation", "completed-with-operation", "not-completed"]},
+        "assistance_count": {"type": "integer", "minimum": 0},
+        "elapsed_time_band": {
+          "enum": ["under-two-minutes", "two-to-five-minutes", "under-five-minutes", "over-five-minutes"]
+        },
+        "misconception_codes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "case-or-stage-lost",
+              "viewed-treated-as-confirmed",
+              "inference-treated-as-evidence",
+              "research-treated-as-current-evidence",
+              "to-be-treated-as-reality",
+              "synthetic-treated-as-muji",
+              "recommendation-treated-as-final-decision"
+            ]
+          }
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": [
+        "finding_id",
+        "category",
+        "severity",
+        "stage",
+        "profile_or_run",
+        "evidence_refs",
+        "violated_requirement",
+        "release_blocking",
+        "disposition"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "finding_id": {"type": "string", "minLength": 1},
+        "category": {
+          "enum": [
+            "structural",
+            "visual",
+            "accessibility",
+            "privacy",
+            "navigation",
+            "provenance",
+            "decision-state",
+            "real-case-output",
+            "research-source",
+            "held-out-leakage",
+            "comprehension",
+            "semantic"
+          ]
+        },
+        "severity": {"enum": ["minor", "moderate", "serious", "critical"]},
+        "stage": {"type": "string", "minLength": 1},
+        "profile_or_run": {"type": "string", "minLength": 1},
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "violated_requirement": {"type": "string", "minLength": 1},
+        "release_blocking": {"type": "boolean"},
+        "disposition": {
+          "enum": ["unresolved", "corrected", "accepted-non-blocking", "deferred"]
+        }
+      }
+    }
+  }
+}

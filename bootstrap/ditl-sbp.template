@@ -1,0 +1,2 @@
+#!/bin/sh
+exec "@INSTALL_ROOT@/current/.venv/bin/python" "@INSTALL_ROOT@/current/app/tools/sbp_review/launcher.py" "$@"

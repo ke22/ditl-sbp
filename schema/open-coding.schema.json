@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/open-coding.schema.json",
+  "title": "Open coding — behavioural concepts extracted from one source's evidence",
+  "description": "add-open-coding-stage：逐字稿逐句抽出行為概念，主軸編碼之前的一步。每一份 open_coding.yaml 只覆蓋一個 source（一份逐字稿）；多個 source 的結果由呼叫端合併，不在這份 schema 裡合併。",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "case_id",
+    "concepts"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "concepts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/concept"
+      }
+    }
+  },
+  "definitions": {
+    "concept": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "description",
+        "source",
+        "evidence_refs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^OC-[0-9]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 15,
+          "description": "動詞＋名詞，具體行為或需求，不是心理狀態或解釋。"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30,
+          "description": "獨立看得懂，不依賴其他概念或原文上下文。"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "description": "這個概念所屬的證據來源（evidence 記錄的 source 欄位）。"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^E-[0-9]+$"
+          }
+        },
+        "segment_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^SEG-[0-9]+$"
+          },
+          "description": "open-coding-on-semantic-segments（2026-10-03）：這個概念讀自哪些語意段落。新產出必填；舊檔沒有這一欄照舊可讀。"
+        },
+        "quote": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "answer"
+          ],
+          "description": "converge-coding-contracts（2026-10-03）：從這則概念所讀段落整理出的一句引言，只刪贅字與重複、不加字，可以單獨讀懂；回答離開問題讀不懂時附訪員問題。呈現用的摘錄，正式出處仍是 segment_refs 與 evidence_refs。新產出必填。",
+          "properties": {
+            "answer": {
+              "type": "string",
+              "minLength": 1
+            },
+            "question": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    }
+  }
+}

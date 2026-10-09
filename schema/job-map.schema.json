@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/job-map.schema.json",
+  "title": "Job Map — solution-independent step sequences per Job",
+  "description": "add-job-map：把 JTBD（jtbd.yaml）產出的每一則 Job，拆成一組有序、solution-independent 的階段。每個階段一定要能追溯到那則 Job 自己的證據範圍內的證據；引用別的 Job 的證據，或憑空發明階段，都不該存在。",
+  "type": "object",
+  "required": ["schema_version", "case_id", "job_maps"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "job_maps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/job_map"
+      }
+    }
+  },
+  "definitions": {
+    "job_map": {
+      "type": "object",
+      "required": ["job_id", "steps"],
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "pattern": "^JOB-[0-9]+$"
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/step"
+          }
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "required": ["id", "label", "description", "evidence_refs"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^STEP-[0-9]+$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "這個階段在做什麼——不指名任何具體服務、技術或產品。"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^E-[0-9]+$"
+          },
+          "description": "支持這個階段的證據——必須是這則 Job 自己在 jtbd.yaml 裡引用過的證據子集，不能引用別的 Job 的證據。"
+        }
+      }
+    }
+  }
+}

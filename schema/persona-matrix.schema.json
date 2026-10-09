@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/persona-matrix.schema.json",
+  "title": "Persona Matrix — behavioral-variable axes and subject placements",
+  "description": "add-persona-matrix：比較受訪者，把他們之間反覆出現的行為差異寫成一組區辨行為變項軸，並把每個可辨識的受訪者放到這些軸上（persona-segmentation-reasoning-contract，2026-10-01：主軸類別是分析材料，不是造軸單位）。軸一定要能追溯到至少一個類別；require-complete-persona-matrix-placements：每個受訪者在每一條軸上都要有一筆落點，沒有證據支持的軸要明示標成「無資料」（no_data），不能用預設值填，也不能省略。",
+  "type": "object",
+  "required": ["schema_version", "case_id", "axes", "subjects"],
+  "additionalProperties": false,
+  "properties": {
+    "framed_by": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "persona-matrix-hmw-scope-default：產生這份分群時用的 HMW 範圍指紋（tools/hmw_scope.py）。HMW 是設計相關性的背景，不是證據。舊檔沒有這一欄。",
+      "properties": {
+        "primary_hmw_selection": {"type": "string", "minLength": 1}
+      }
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "axes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/axis"
+      }
+    },
+    "subjects": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/subject"
+      }
+    }
+  },
+  "definitions": {
+    "axis": {
+      "type": "object",
+      "required": ["id", "label", "pole_low", "pole_high", "discriminating_basis", "grounded_in"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^AXIS-[0-9]+$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "pole_low": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pole_high": {
+          "type": "string",
+          "minLength": 1
+        },
+        "representation": {
+          "type": "string",
+          "enum": ["continuum", "contrast"],
+          "description": "persona-axis-representation（2026-10-01 裁定）：continuum＝同一個構念的程度差異，兩端有高低、中間有意義；contrast＝兩種對照的取向（例如順路整合型／專程安排型），pole_low 與 pole_high 只是兩種取向，沒有高低，mid 代表兩種都出現。新生成時必填；舊檔沒有這一欄一律當 continuum 讀。三類以上的分類不在這一版。"
+        },
+        "discriminating_basis": {
+          "type": "string",
+          "minLength": 1,
+          "description": "為什麼這是一條能區辨受訪者的軸，不是複述類別定義。"
+        },
+        "grounded_in": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^CAT-[0-9]+$"
+          },
+          "description": "這條軸的差異在哪些主軸編碼類別的證據裡看得到——是出處，不是「翻譯自哪個類別」；一條軸可以跨好幾個類別，一個類別也可以不生出任何軸。不能是一條跟任何類別都無關、憑空發明的維度。"
+        }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "required": ["id", "evidence_refs", "placements"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^P-[0-9]+$"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^E-[0-9]+$"
+          },
+          "description": "被判斷為同一個人的證據單元——身分判斷是模型的判斷，不是這份 schema 或程式碼做字串比對決定的。"
+        },
+        "placements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/placement"
+          },
+          "description": "這個受訪者在各軸上的落點——每一條軸都要恰好出現一次，不能省略也不能重複（referential-integrity 層級的完整性檢查在 stages.py 的 _persona_matrix_errors，schema 本身管不到「跟 axes 陣列比對」這件事）。沒有證據支持的軸要放一筆 position 為 no_data 的落點，不能省略，也不能用 mid 當預設值填滿。"
+        }
+      }
+    },
+    "placement": {
+      "type": "object",
+      "required": ["axis_id", "position", "rationale"],
+      "additionalProperties": false,
+      "properties": {
+        "axis_id": {
+          "type": "string",
+          "pattern": "^AXIS-[0-9]+$"
+        },
+        "position": {
+          "type": "string",
+          "enum": ["near_low", "mid", "near_high", "no_data"]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^E-[0-9]+$"},
+          "description": "persona-segmentation-reasoning-contract（2026-10-01）：撐住這個真實落點的證據 id，只能是這個受訪者自己的證據；no_data 不列。新生成時真實落點必填（由生成驗證檢查），舊檔沒有這一欄照舊可讀。落點理由是給研究者讀的文字，證據 id 只放在這裡。"
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "description": "position 是真實落點時：根據這個受訪者的哪些證據，判斷他落在這個位置——不能是空字串或只重複軸的定義。position 是 no_data 時：查過哪些證據、為什麼判斷這條軸對這個受訪者沒有資料——不能是空字串，也不能只複述軸的定義。"
+        }
+      }
+    }
+  }
+}

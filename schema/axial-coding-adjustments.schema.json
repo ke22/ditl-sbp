@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/axial-coding-adjustments.schema.json",
+  "title": "Axial coding adjustments — researcher exclusions recorded outside axial_coding.yaml",
+  "description": "rebuild-axial-coding-review-screen：研究者在備查區把一則證據標成「不放」時記錄在這裡，不改動 axial_coding.yaml 本身。只記排除，不記指派或新類別——那兩者是 axial_coding.yaml 既有欄位就能表達的既有寫入。",
+  "type": "object",
+  "required": ["schema_version", "excluded_evidence_refs"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "excluded_evidence_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^E-[0-9]+$"
+      }
+    }
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "chart-guides.schema.json",
+  "title": "Chart guides",
+  "description": "A run's chart guides (導讀) for the Persona, customer journey and service blueprint stations. Each guide holds a summary block and a points block; every block records whether its current text is the AI draft or the researcher's, and keeps the AI draft with the evidence ids behind each drafted sentence or point.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "guides"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "guides": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "persona": {"$ref": "#/definitions/guide"},
+        "journey": {"$ref": "#/definitions/guide"},
+        "blueprint": {"$ref": "#/definitions/guide"}
+      }
+    }
+  },
+  "definitions": {
+    "source": {"enum": ["ai-draft", "researcher"]},
+    "guide": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "points", "drafted_from", "drafted_at"],
+      "properties": {
+        "summary": {"$ref": "#/definitions/summary_block"},
+        "points": {"$ref": "#/definitions/points_block"},
+        "drafted_from": {"type": "string", "minLength": 1},
+        "drafted_at": {"type": "string", "minLength": 1}
+      }
+    },
+    "summary_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "source", "updated_at", "ai_draft", "basis"],
+      "properties": {
+        "text": {"type": "string"},
+        "source": {"$ref": "#/definitions/source"},
+        "updated_at": {"type": "string", "minLength": 1},
+        "basis": {"type": "string"},
+        "ai_draft": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sentence", "evidence_refs"],
+            "properties": {
+              "sentence": {"type": "string", "minLength": 1},
+              "evidence_refs": {"type": "array", "items": {"type": "string"}}
+            }
+          }
+        }
+      }
+    },
+    "points_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "source", "updated_at", "ai_draft", "basis"],
+      "properties": {
+        "text": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "source": {"$ref": "#/definitions/source"},
+        "updated_at": {"type": "string", "minLength": 1},
+        "basis": {"type": "string"},
+        "ai_draft": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["point", "evidence_refs"],
+            "properties": {
+              "point": {"type": "string", "minLength": 1},
+              "evidence_refs": {"type": "array", "items": {"type": "string"}}
+            }
+          }
+        }
+      }
+    }
+  }
+}

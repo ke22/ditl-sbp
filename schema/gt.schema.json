@@ -1,0 +1,177 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/gt.schema.json",
+  "title": "gt.yaml — Ground Truth（用全部資料製作，當標尺；pipeline.md §2.5「Ground truth 用同一份 schema，但多兩條約束」）",
+  "description": "跟 sbp-draft 同一個骨架，但：inferred 必須全部為 false（除非整格 gt_unknown）；多出 critical_types[]（§2.2.1）；conflicts[] 多出 status（§2.5a）。",
+  "type": "object",
+  "required": ["meta", "cells"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": { "$ref": "#/definitions/meta" },
+    "cells": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/gt_cell" }
+    },
+    "proposed_steps": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/proposed_step" }
+    },
+    "relations": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/relation" }
+    },
+    "conflicts": {
+      "type": "array",
+      "description": "GT 認定「確實存在」的矛盾清單，用於評 AI 的 D3（§2.3、§2.5a），不是 AI 自己列的那份。",
+      "items": { "$ref": "#/definitions/gt_conflict" }
+    },
+    "known_limitations": {
+      "type": "array",
+      "description": "誠實揭露這份 GT 的已知限制，不要事後才發現（§2.5 附錄慣例）",
+      "items": { "type": "string" }
+    },
+    "action_graph": {
+      "description": "新版 GT 可選的 action-graph 標尺；舊 cell-first GT 維持凍結、不可回寫。",
+      "type": "object",
+      "properties": { "nodes": { "type": "array" }, "relations": { "type": "array" } },
+      "additionalProperties": true
+    },
+    "reference_expectations": {
+      "description": "非規範性參考假設的人工對照，從不作為 GT case claim。",
+      "type": "array",
+      "items": { "type": "object" }
+    }
+  },
+  "definitions": {
+    "meta": {
+      "type": "object",
+      "required": ["case_id"],
+      "properties": {
+        "case_id": { "type": "string" },
+        "source": { "type": "string", "description": "GT 是用全部資料做的，通常是論文、完整報告等——寫清楚來源" },
+        "known_limitation": { "type": "string" },
+        "group": { "type": "string", "enum": ["A", "B", "C", "D"] },
+        "run_no": { "type": "integer" }
+      },
+      "additionalProperties": true
+    },
+    "layer": {
+      "type": "string",
+      "enum": ["實體證據", "顧客行動", "前台行動", "後台行動", "支援流程"]
+    },
+    "critical_type": {
+      "type": "string",
+      "enum": ["handoff", "fail_point", "cross_line"]
+    },
+    "gt_claim": {
+      "type": "object",
+      "required": ["text", "evidence_ref", "inferred"],
+      "properties": {
+        "text": { "type": "string" },
+        "evidence_ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "GT 的來源可以是原始論文/報告本身（不一定是 AI 拿到的那份 evidence.yaml），§2.5 允許"
+        },
+        "inferred": {
+          "const": false,
+          "description": "GT 規則一：必須全部為 false（§1.4、§2.5）"
+        }
+      },
+      "additionalProperties": false
+    },
+    "gt_cell": {
+      "type": "object",
+      "required": ["step", "layer", "critical_types", "claims"],
+      "properties": {
+        "step": { "type": "integer", "minimum": 1 },
+        "layer": { "$ref": "#/definitions/layer" },
+        "is_critical": {
+          "type": "boolean",
+          "description": "舊欄位，可由 critical_types.length > 0 推得，保留供可讀性，非必填"
+        },
+        "critical_types": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/critical_type" },
+          "description": "2026-08-18 由單一 is_critical 布林值改為陣列（§2.2.2）；空陣列＝非關鍵節點"
+        },
+        "claims": { "type": "array", "items": { "$ref": "#/definitions/gt_claim" } },
+        "gt_unknown": {
+          "type": "boolean",
+          "description": "GT 規則二：連全部資料也推不出來才標 true，評分時整格排除（§1.4、§2.5）"
+        },
+        "gt_unknown_reason": {
+          "type": "string",
+          "description": "gt_unknown=true 時必填，一句話說明為什麼連全部資料都推不出來"
+        },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false,
+      "if": {
+        "properties": { "gt_unknown": { "const": true } },
+        "required": ["gt_unknown"]
+      },
+      "then": {
+        "required": ["gt_unknown_reason"],
+        "properties": { "claims": { "maxItems": 0 } }
+      }
+    },
+    "proposed_step": {
+      "type": "object",
+      "required": ["name", "rationale"],
+      "properties": {
+        "name": { "type": "string" },
+        "rationale": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "claim_ref": {
+      "type": "object",
+      "required": ["step", "layer", "claim_idx"],
+      "properties": {
+        "step": { "type": "integer", "minimum": 1 },
+        "layer": { "$ref": "#/definitions/layer" },
+        "claim_idx": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "relation": {
+      "type": "object",
+      "required": ["id", "type", "claim_refs"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["same_fact", "causal", "handoff_pair"] },
+        "claim_refs": { "type": "array", "minItems": 2, "items": { "$ref": "#/definitions/claim_ref" } },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "gt_conflict": {
+      "type": "object",
+      "required": ["id", "status", "evidence_refs", "description"],
+      "properties": {
+        "id": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["confirmed", "plausible_not_confirmed"],
+          "description": "只有 confirmed 算進 D3a 的分母（真矛盾總數）。§2.5a"
+        },
+        "evidence_refs": { "type": "array", "items": { "type": "string" } },
+        "description": { "type": "string" },
+        "affected_cells": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "step": { "type": "integer" },
+              "layer": { "$ref": "#/definitions/layer" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

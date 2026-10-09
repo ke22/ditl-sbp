@@ -1,0 +1,739 @@
+contract_version: 1
+
+shell:
+  document_horizontal_overflow: forbidden-outside-blueprint
+  regions:
+    - id: case-context
+      component: CaseContext
+      placement: top
+      responsibility: 顯示案例、情境、目前 artifact 版本與全域操作
+      must_remain_available: true
+    - id: stage-navigation
+      component: StageNav
+      placement: left
+      responsibility: 顯示五個有順序且受前置條件約束的工作階段
+      must_remain_available: true
+      width_px: {min: 220, max: 240}
+    - id: stage-work-area
+      component: StageWorkArea
+      placement: center
+      responsibility: 只承載目前階段的主要研究工作
+      must_remain_available: true
+    - id: inspector
+      component: Inspector
+      placement: right-contextual
+      responsibility: 按選取內容揭露證據、問題、提案與關聯細節
+      must_remain_available: false
+      width_px: {min: 360, max: 400}
+    - id: review-gate
+      component: ReviewGate
+      placement: bottom
+      responsibility: 說明目前判斷、確認對象與主要動作後果
+      must_remain_available: true
+    # rebuild-stage-two-as-cards-modal-and-pair-picker：第六種區域。inspector
+    # 是「在工作旁邊揭露細節」，這個是「開著的時候把注意力整個接走」——差別
+    # 就在這裡，也是為什麼這一個要吃 Esc 而右側面板不用。凡是蓋在頁面上的
+    # 面板都必須列在這份列舉裡，否則這份合約描述的就不是實際存在的殼。
+    - id: focus-overlay
+      component: FocusOverlay
+      placement: centred-over-page
+      responsibility: 開啟後承載單一物件的完整細節，關閉前佔住研究者的全部注意力
+      must_remain_available: false
+      opened_by: researcher-action-on-surface-beneath
+      dismissible_by: [click-outside, escape-key]
+
+stages:
+  - id: project-home
+    visible_label: 專案首頁
+    page_title: 專案首頁
+    decision_statement: 要接著看哪個專案，還是開一個新的？
+    primary_actions:
+      - id: read-intake
+        label: 建立專案
+        consequence: 把上傳的檔案存成可供後續分析的案例資料
+    prerequisite: case-input-ready
+    blocked_state:
+      missing_prerequisite_message: 還沒有選擇案例資料檔案。
+      next_action: 選擇至少一個案例資料檔案，再按「建立專案」（專案名稱選填，留白依檔名命名）。
+    allowed_statuses: [draft]
+    modes: [intake]
+    identity_preserved_across_modes: true
+    secondary_actions: [save-draft]
+  - id: selective-coding
+    visible_label: 資料與編碼
+    page_title: 主軸編碼與顧客任務選擇
+    # select-jtbd-from-selective-synthesis（2026-10-01 裁定）：選擇編碼是 AI
+    # 分析層，不是研究者關卡；②只問研究者要服務哪個使用者任務。
+    decision_statement: 在這個核心現象裡，人真正想完成什麼？
+    primary_actions:
+      - id: record-narrative-job-pair
+        label: 繼續
+        consequence: 選擇有變時記錄選定的顧客任務，接著前往 HMW 並開始形成 HMW 候選。
+    prerequisite: none
+    blocked_state:
+      missing_prerequisite_message: 案例尚未建立，因此看不到這個框架點的決定狀態。
+      next_action: 先建立案例。
+    allowed_statuses: [decided, undecided]
+    modes: [framework-point]
+    identity_preserved_across_modes: true
+    secondary_actions: []
+  - id: primary-hmw
+    visible_label: HMW
+    page_title: 主要 HMW
+    decision_statement: 這次要追的是哪一則 HMW？
+    primary_actions:
+      - id: record-primary-hmw
+        label: 繼續
+        consequence: 選擇有變時把選定的 HMW 記為這個案例要追的問題框架，接著前往 Persona；Persona 分群還沒有產出時接著分析。
+    prerequisite: none
+    blocked_state:
+      missing_prerequisite_message: 案例尚未建立，因此看不到這個框架點的決定狀態。
+      next_action: 先建立案例。
+    allowed_statuses: [decided, undecided]
+    modes: [framework-point]
+    identity_preserved_across_modes: true
+    secondary_actions: []
+  - id: persona-target-selection
+    visible_label: Persona
+    page_title: Persona
+    decision_statement: 哪一群人是這次要服務的主要對象？
+    primary_actions:
+      - id: confirm-target-users
+        label: 前往顧客旅程
+        consequence: 前往顧客旅程；軸與主要目標族群隨「產出 Persona」一起存下，Persona 確認之後才能按；這顆只導覽、不寫任何檔案，也不啟動旅程。
+    prerequisite: none
+    blocked_state:
+      missing_prerequisite_message: 案例尚未建立，因此看不到這個框架點的決定狀態。
+      next_action: 先建立案例。
+    allowed_statuses: [decided, undecided]
+    modes: [framework-point]
+    identity_preserved_across_modes: true
+    secondary_actions: []
+  - id: journey-map
+    visible_label: 顧客旅程
+    page_title: 顧客旅程
+    decision_statement: 這份完整歷程是否可信，可作為建模依據？
+    primary_actions:
+      - id: confirm-journey-generate-as-is
+        label: 確認歷程，建立服務藍圖
+        consequence: 固定目前完整歷程版本並以它建立服務藍圖
+    prerequisite: journey-draft-ready
+    blocked_state:
+      missing_prerequisite_message: 尚未完成資料分析，因此沒有可確認的完整歷程。
+      next_action: 返回建立案例並完成資料分析。
+    allowed_statuses: [draft, processing, pending-confirmation, confirmed, update-required, generation-failed]
+    modes: [journey-map]
+    identity_preserved_across_modes: true
+    secondary_actions: [adjust-journey]
+  - id: review-as-is
+    visible_label: 服務藍圖
+    page_title: SBP
+    decision_statement: 這份服務藍圖是否已經檢視完成？
+    primary_actions:
+      - id: confirm-as-is-start-to-be
+        label: 確認 SBP 並開始研究
+        consequence: 保存目前檢視過的服務藍圖，接著評估它能不能實際運作
+    prerequisite: confirmed-journey-current
+    blocked_state:
+      missing_prerequisite_message: 顧客旅程與適用 Solution 尚未確認，無法建立服務藍圖。
+      next_action: 回到顧客旅程，確認完整的服務歷程。
+    allowed_statuses: [processing, pending-confirmation, confirmed, update-required, generation-failed]
+    modes: [blueprint]
+    identity_preserved_across_modes: true
+    secondary_actions: [adjust-as-is, choose-version]
+  - id: review-to-be
+    visible_label: 研究
+    page_title: 研究評估
+    decision_statement: 這份 SBP 能不能實際運作？哪裡需要補強？
+    primary_actions:
+      - id: start-research
+        label: 開始評估 SBP
+        consequence: 評估選取的 Solution、管道、後台與支援流程能不能運作，完成後停下等你逐條審查
+    prerequisite: confirmed-as-is-current
+    blocked_state:
+      missing_prerequisite_message: 服務藍圖尚未確認，不能開始研究評估。
+      next_action: 回到服務藍圖並確認目前的版本。
+    allowed_statuses: [draft, processing, pending-confirmation, accepted, rejected, update-required, generation-failed]
+    modes: [to-be-blueprint, proposal-summary, basis-validation]
+    identity_preserved_across_modes: true
+    secondary_actions: [request-to-be-revision, decline-to-be, return-to-as-is]
+
+# confirm-improvement-goal-save-only: the fresh-path Improvement Goal Human
+# Gate. Confirming saves the operative goal and stops; external research is a
+# later separate action.
+improvement_goal_confirmation:
+  decision_statement: 這次要改善的是什麼？
+  confirm_action:
+    id: confirm-improvement-goal
+    label: 確認改善目標
+    consequence: 保存這次採用的改善目標並停下；不開始調研，也不產生方案。
+  start_research_action:
+    id: start-research
+    label: 開始外部調研
+    consequence: 依確認過的現況與改善目標查外部資料，完成後停下等你逐條審查；不會產生方案。
+  save_research_review_action:
+    id: save-research-review
+    label: 保存審查
+    consequence: 保存每一條外部資料的決定與理由，接著形成方案草稿，完成後停下等你決定。
+  form_to_be_action:
+    id: form-to-be
+    label: 形成改善方案
+    consequence: 依確認過的現況、改善目標與採用的外部資料形成方案草稿，完成後停下等你決定；不會替你採用任何方案。
+
+# confirm-as-is-save-only: the fresh-path As-is Human Gate. Confirming saves
+# the review of the current draft and stops; the Improvement Goal and external
+# research come later as separate decisions. The review-as-is primary action
+# above (confirm-as-is-start-to-be) remains only for older runs.
+as_is_candidate_confirmation:
+  decision_statement: 這份 SBP 是否已經檢視完成？
+  # defer-research-evaluation-station (2026-10-08): the Public Preview has no
+  # research station; confirming saves and stays.
+  confirm_action:
+    id: confirm-as-is
+    label: 確認 SBP
+    consequence: 保存目前檢視過的服務藍圖並停下；不會開始任何 AI 工作。
+  continue_action:
+    id: continue-to-to-be
+    label: 繼續
+    consequence: 前往研究。
+
+# confirm-journey-candidate-save-only: the fresh-path Journey Human Gate.
+# Confirming saves the reviewed candidate and stops; the As-is Blueprint is a
+# separate explicit action on the next station.
+journey_candidate_confirmation:
+  decision_statement: 這份 CJM 與選取的 Solution 是否可以作為服務藍圖輸入？
+  confirm_action:
+    id: confirm-journey
+    label: 確認 CJM 與解方
+    consequence: 保存已檢視的 CJM 與研究者採用的解方，前往服務藍圖；還沒有服務藍圖時，由研究者在那裡按「建立 SBP」。確認不會啟動任何 AI 工作（2026-10-02 研究者裁定）。
+  continue_action:
+    id: continue-to-as-is
+    label: 查看 SBP
+    consequence: 前往服務藍圖。
+
+journey_confirmation:
+  decision_statement: 這份完整歷程是否可信，可作為建模依據？
+  # Compatibility-only: the confirm-and-generate table below governs only runs
+  # that already carry a Blueprint draft (SUPERSEDED for new Journeys).
+  scope: legacy_runs_with_blueprint_draft
+  states:
+    - id: unchanged
+      status: pending-confirmation
+      primary_action:
+        id: confirm-journey-generate-as-is
+        label: 確認歷程，建立服務藍圖
+        consequence: 以目前保存且未修改的完整歷程建立服務藍圖
+      action_available: true
+      as_is_blocked: true
+    - id: edited
+      status: update-required
+      primary_action:
+        id: confirm-edits-recheck
+        label: 確認修改並重新檢查
+        consequence: 依所選案例原始資料補查證據並檢查完整歷程，不建立服務藍圖
+      action_available: true
+      as_is_blocked: true
+    - id: rechecking
+      status: processing
+      primary_action:
+        id: recheck-in-progress
+        label: 正在檢查歷程資料
+        consequence: 保留目前修改並等待完整歷程檢查完成
+      action_available: false
+      as_is_blocked: true
+    - id: recheck-failed
+      status: generation-failed
+      primary_action:
+        id: retry-journey-recheck
+        label: 重新檢查歷程
+        consequence: 使用目前保留的完整歷程與研究者說明重新檢查
+      action_available: true
+      as_is_blocked: true
+    - id: rechecked
+      status: pending-confirmation
+      primary_action:
+        id: confirm-rechecked-generate-as-is
+        label: 確認歷程，建立服務藍圖
+        consequence: 以畫面上這份完整、已補查證據的歷程建立服務藍圖
+      action_available: true
+      as_is_blocked: true
+    - id: edited-again
+      status: update-required
+      primary_action:
+        id: confirm-edits-recheck
+        label: 確認修改並重新檢查
+        consequence: 先依最新修改重新檢查，舊的檢查結果不再可用
+      action_available: true
+      as_is_blocked: true
+  transitions:
+    - {from: unchanged, event: final-confirmation, to: generation-started}
+    - {from: edited, event: start-recheck, to: rechecking}
+    - {from: rechecking, event: recheck-succeeded, to: rechecked}
+    - {from: rechecking, event: recheck-failed, to: recheck-failed}
+    - {from: recheck-failed, event: retry-recheck, to: rechecking}
+    - {from: rechecked, event: edit, to: edited-again}
+    - {from: rechecked, event: final-confirmation, to: generation-started}
+    - {from: edited-again, event: start-recheck, to: rechecking}
+
+as_is_research:
+  states:
+    - id: research_processing
+      status: processing
+      heading: 研究進行中
+    - id: research_failed
+      status: generation-failed
+      heading: 調研未完成
+    - id: no_grounded_issues
+      status: confirmed
+      heading: 未找到有資料支持的現況問題
+    - id: research_ready
+      status: confirmed
+      heading: 調研資料已準備好
+    - id: research_stale
+      status: update-required
+      heading: 調研基線需要更新
+  retry_action:
+    id: retry-as-is-research
+    label: 重新進行調研
+    consequence: 以目前已確認的現況重新執行問題分析與受限外部調研
+  phase_labels:
+    deriving_issues: 正在從現況資料辨識問題
+    checking_privacy: 正在移除不可送往外部調研的案例資訊
+    researching: 正在查找符合來源標準的外部資料
+    validating: 正在檢查來源與主張是否互相支持
+    publishing: 正在保存可追溯的調研結果
+  proposal_eligibility: false
+
+to_be:
+  states:
+    - {id: research_processing, status: processing, heading: 研究進行中}
+    - {id: research_failed, status: generation-failed, heading: 調研未完成}
+    - {id: no_grounded_issues, status: confirmed, heading: 未找到有資料支持的現況問題}
+    - {id: to_be_processing, status: processing, heading: 方案產生中}
+    - {id: to_be_failed, status: generation-failed, heading: 方案未完成}
+    - {id: to_be_draft_ready, status: pending-confirmation, heading: 提案待判斷}
+    - {id: to_be_revision_processing, status: processing, heading: 方案調整中}
+    - {id: to_be_accepted, status: accepted, heading: 已採納}
+    - {id: to_be_declined, status: rejected, heading: 不採用}
+    - {id: to_be_stale, status: update-required, heading: 提案基線需要更新}
+  phase_labels:
+    deriving_issues: 正在從現況資料辨識問題
+    checking_privacy: 正在移除不可送往外部調研的案例資訊
+    researching: 正在查找符合來源標準的外部資料
+    validating: 正在檢查方案依據與完整性
+    publishing: 正在保存完整方案
+    synthesizing: 正在整合一個建議方向
+  views:
+    - {id: to-be-blueprint, label: 提案藍圖, default: true}
+    - {id: proposal-summary, label: 方案摘要, default: false}
+    - {id: basis-validation, label: 依據與驗證, default: false}
+  actions:
+    accept:
+      id: accept-to-be
+      label: 採納這套方案
+      consequence: 記為研究者採納的結論，不代表核准或實施
+    revise:
+      id: request-to-be-revision
+      label: 要求調整方案
+      consequence: 產生一份完整替代方案；成功前保留目前版本
+    decline:
+      id: decline-to-be
+      label: 保留現況，不採用提案
+      consequence: 記錄為不採用；現況與版本歷史仍保留
+
+
+attention_budget:
+  page_titles: 1
+  decision_statements: 1
+  primary_actions: 1
+  visible_statuses: 3
+  visible_utilities: 3
+  warning_summaries: 1
+  overflow_policy: replace-merge-or-disclose
+
+breakpoints:
+  - id: constrained-desktop
+    min_effective_css_px: 0
+    max_effective_css_px: 1023
+    stage_navigation: collapsible
+    inspector: viewport-overlay
+    utility_presentation: overflow-excess
+    preserve_regions: [case-context, stage-navigation, review-gate]
+    overlay_focus_return: true
+    blueprint_controls: [pan, zoom, fit, reset]
+  - id: standard-desktop
+    min_effective_css_px: 1024
+    max_effective_css_px: 1599
+    stage_navigation: expanded
+    inspector: collapsed-overlay
+    utility_presentation: three-visible
+    preserve_regions: [case-context, stage-navigation, review-gate]
+    overlay_focus_return: true
+    blueprint_controls: [pan, zoom, fit, reset]
+  - id: wide-desktop
+    min_effective_css_px: 1600
+    max_effective_css_px: null
+    stage_navigation: expanded
+    inspector: docked-or-collapsed
+    utility_presentation: three-visible
+    preserve_regions: [case-context, stage-navigation, review-gate]
+    overlay_focus_return: true
+    blueprint_controls: [pan, zoom, fit, reset]
+
+tokens:
+  # converge-workbench-shell-and-visual-grammar（2026-09-26）：v2 暖灰中性色。
+  # 數值只寫在這裡；介面檔不得保留任何一份寫死的副本。
+  surface:
+    app: '#f4f2ef'
+    work: '#fafaf9'
+    raised: '#ffffff'
+    overlay: '#ffffff'
+    selected: '#efeae4'
+    hover: '#f5f2ee'
+  text:
+    primary: '#1f2530'
+    secondary: '#596170'
+    muted: '#626b78'
+    inverse: '#ffffff'
+    # 連結用主要文字色加粗，不另給藍色，也不用強調色。
+    link: '#1f2530'
+  border:
+    subtle: '#e6e3df'
+    strong: '#c9c5bf'
+    # 選中框屬於「目前位置」，用強調色（與 accent.bg 同值）。
+    selected: '#cc4e0a'
+    # 提醒框線跟待確認同一色，避免和強調色同屬暖橘。
+    warning: '#8e3b5e'
+  action:
+    # 主要動作＝強調色，必須與 accent.bg 同值（契約測試檢查）。
+    primary-bg: '#cc4e0a'
+    primary-text: '#ffffff'
+    secondary-bg: '#ffffff'
+    secondary-text: '#1f2530'
+    destructive: '#a33a3a'
+    # 需要實心但不是主要動作的按鈕（例如建立專案）。
+    dark-bg: '#1f2530'
+    dark-hover: '#33476a'
+  # 強調色只給：每頁唯一的主要動作、側欄目前這站的編號、選中框、焦點框。
+  # 白字在 bg 上的對比是 4.5:1，不能再調亮。
+  accent:
+    bg: '#cc4e0a'
+    hover: '#b84508'
+    tint: '#fbede4'
+    text: '#ffffff'
+  status:
+    neutral: '#69717f'
+    processing: '#526b95'
+    # 原 #9a671a（土黃）；改成深莓紅，和強調色分開。
+    pending: '#8e3b5e'
+    confirmed: '#3e6558'
+    failed: '#a33a3a'
+    # 提示列的淡底，只從上面兩個狀態色調淡取得。
+    pending-surface: '#f6ecf1'
+    failed-surface: '#fbefef'
+  as_is:
+    accent: '#586681'
+    surface: '#eef0f5'
+    border: '#7b879d'
+    pattern: solid
+  to_be:
+    accent: '#176c69'
+    surface: '#eaf5f3'
+    border: '#438b87'
+    pattern: double
+  claim_source:
+    evidence: '#435c7d'
+    # evidence-aware-persona-provenance：綜合落在證據與推論之間——它重新整理
+    # 了幾筆已記錄的事實，沒有新增機制或原因，所以顏色偏向 evidence 那一側，
+    # 不跟 inference 的琥珀色混在一起。
+    synthesis: '#4f7a86'
+    # 原 #8c641e（琥珀）；改成灰褐，和強調色分開，仍與 synthesis、illustrative 可區分。
+    inference: '#7a6a58'
+    # 完全不作研究主張的人物化設定。刻意是中性暖灰：它不該看起來像任何一種
+    # 證據強度，也要跟 hypothesis 的冷灰分得開。
+    illustrative: '#7a7570'
+    researcher: '#674d86'
+    proposal: '#176c69'
+    hypothesis: '#68717d'
+    # converge-blueprint-presentation：藍圖上 AI 推的卡片與關係線的不透明度（畫布與匯出共用）。
+    inference-opacity: 0.45
+  freshness:
+    current: '#365f53'
+    stale: '#8a6a32'
+    unconfirmed: '#737b87'
+  blueprint_lane:
+    evidence: '#f2f3f6'
+    customer-actions: '#f7f8fb'
+    frontstage-actions: '#f3f6fa'
+    backstage-actions: '#f7f7f8'
+    supporting-processes: '#f4f5f7'
+  density:
+    compact-row: 32
+    control-height: 44
+    tag-height: 28
+    blueprint-card-min: 168
+    # 內文行高；typography 的 body 層沿用這個值，不另外宣告。
+    readable-line-height: 1.8
+  typography:
+    ui-family: system-sans-serif
+    source-family: research-serif
+    mono-family: ui-monospace
+    # 七層字級（頁標題、區塊標題、卡片標題、內文、原文引言、說明、標籤）。
+    # 只用 400／600／700（研究者 2026-09-27：頁標題改粗體 700）；不用半級；最小 12。
+    title-size: 30
+    title-weight: 700
+    title-line-height: 1.3
+    section-size: 20
+    section-weight: 700
+    section-line-height: 1.4
+    card-size: 16
+    card-weight: 600
+    card-line-height: 1.5
+    body-size: 15
+    body-weight: 400
+    quote-size: 16
+    quote-weight: 400
+    quote-line-height: 1.8
+    small-size: 13
+    small-weight: 400
+    small-line-height: 1.6
+    tag-size: 12
+    tag-weight: 600
+    tag-line-height: 1.4
+    # CJM 英文列名（TOPIC、PAIN POINTS⋯）的字距；中文不加字距。
+    label-tracking: 0.06em
+  radius:
+    component: 12
+    floating: 18
+    card: 14
+    pill: 999
+  spacing:
+    base: 4
+    s2: 8
+    s3: 12
+    s4: 16
+    s5: 20
+    s6: 24
+    s8: 32
+    s10: 40
+    s12: 48
+    s14: 56
+    s16: 64
+  shadow:
+    none: none
+    overlay: 0-12-32-rgba-31-37-48-018
+  focus:
+    ring-color: '#cc4e0a'
+    ring-width: 2
+    ring-offset: 2
+  motion:
+    duration-fast-ms: 120
+    duration-standard-ms: 180
+    reduced-duration-ms: 0
+    easing: ease-out
+
+components:
+  - id: AppShell
+    purpose: 固定五個語意區域並隔離 blueprint overflow
+    allowed_content: [semantic-regions, breakpoint-behavior]
+    prohibited_content: [stage-specific-detail, arbitrary-layout-values]
+    states: [default, constrained]
+    interactions: [preserve-regions]
+    accessibility: [landmark-order, skip-to-work]
+    tokens: [surface.app, border.subtle, spacing.s4]
+  - id: CaseContext
+    purpose: 持續顯示案例、情境與 artifact 版本
+    allowed_content: [case-name, scenario-name, version-label, global-operations]
+    prohibited_content: [raw-run-path, internal-id-only]
+    states: [current, stale]
+    interactions: [choose-case, choose-scenario]
+    accessibility: [named-region, readable-order]
+    tokens: [surface.raised, text.primary, border.subtle]
+  - id: StageNav
+    purpose: 顯示四階段順序、目前位置與阻擋原因
+    allowed_content: [stage-label, stage-status, blocked-reason]
+    prohibited_content: [model-stage, provider-name]
+    states: [complete, current, available, blocked, collapsed]
+    interactions: [navigate-available, disclose-blocked, collapse]
+    accessibility: [current-step, disabled-explanation, keyboard-navigation]
+    tokens: [surface.app, text.secondary, action.secondary-bg]
+  - id: PageHeader
+    purpose: 命名目前研究物件並承載最多三個 utility
+    allowed_content: [page-title, high-value-statuses, utilities]
+    prohibited_content: [second-primary-action, full-evidence]
+    states: [default, processing, blocked]
+    interactions: [open-overflow]
+    accessibility: [single-h1, named-actions]
+    tokens: [text.primary, spacing.s6, border.subtle]
+  - id: DecisionStatement
+    purpose: 清楚陳述目前唯一研究判斷
+    allowed_content: [decision-question, concise-context]
+    prohibited_content: [technical-diagnostic, competing-decision]
+    states: [ready, blocked]
+    interactions: [none]
+    accessibility: [programmatic-description]
+    tokens: [text.primary, typography.body-size, spacing.s3]
+  - id: StatusSummary
+    purpose: 集中最多三個高價值狀態與一個待處理摘要
+    allowed_content: [status-label, pending-count, warning-summary]
+    prohibited_content: [raw-enum, duplicate-warning-list]
+    states: [neutral, pending, confirmed, failed]
+    interactions: [open-pending-detail]
+    accessibility: [non-color-state, live-processing]
+    tokens: [status.neutral, status.pending, border.subtle]
+  - id: EvidenceRef
+    purpose: 提供可回到人類可讀原始證據的入口
+    allowed_content: [source-title, participant-role, locator, excerpt]
+    prohibited_content: [evidence-id-only, invented-locator]
+    states: [available, incomplete, conflicting]
+    interactions: [open-in-inspector, focus-source]
+    accessibility: [descriptive-link, readable-excerpt]
+    tokens: [claim_source.evidence, typography.source-family, border.subtle]
+  - id: ClaimBadge
+    purpose: 以非純色標示 claim 來源與知識狀態
+    allowed_content: [source-label, state-symbol]
+    prohibited_content: [color-only-meaning, unsupported-certainty]
+    states: [evidence, synthesis, inference, illustrative, researcher, proposal, hypothesis]
+    interactions: [open-basis]
+    accessibility: [accessible-name, non-color-state]
+    tokens: [claim_source.evidence, claim_source.synthesis, claim_source.inference,
+             claim_source.illustrative, focus.ring-color]
+  - id: IssueCard
+    purpose: 先呈現現況問題結論再連回影響與證據
+    allowed_content: [issue-statement, impact, compact-basis]
+    prohibited_content: [proposal-as-observation, full-source-dump]
+    states: [evidence-backed, inferred, disputed]
+    interactions: [open-in-inspector, focus-blueprint-record]
+    accessibility: [descriptive-control, non-color-state]
+    tokens: [as_is.surface, as_is.border, text.primary]
+  - id: ProposalCard
+    purpose: 呈現待驗證 To-be 建議、依據與風險
+    allowed_content: [proposal-statement, expected-change, validation-state]
+    prohibited_content: [implemented-claim, observed-as-is-style]
+    states: [draft, pending-validation, accepted, rejected]
+    interactions: [open-in-inspector, compare-as-is]
+    accessibility: [proposal-prefix, non-color-change-state]
+    tokens: [to_be.surface, to_be.border, claim_source.proposal]
+  - id: ReviewGate
+    purpose: 固定目前決策後果與唯一主要動作
+    allowed_content: [decision-consequence, artifact-version, primary-action, pending-summary]
+    prohibited_content: [multiple-primary-actions, silent-confirmation]
+    states: [blocked, ready, processing, complete, failed]
+    interactions: [activate-primary-action, retry]
+    accessibility: [persistent-access, processing-announcement, error-focus]
+    tokens: [surface.raised, action.primary-bg, border.strong]
+  - id: Inspector
+    purpose: 依目前選取內容揭露結構化細節而不改變 artifact identity
+    allowed_content: [evidence-detail, issue-detail, proposal-basis, relations]
+    prohibited_content: [unrelated-dashboard, hidden-close-path]
+    states: [closed, docked, overlay]
+    interactions: [open, close, escape-close, return-focus]
+    accessibility: [focus-trap-overlay, focus-return, named-region]
+    tokens: [surface.overlay, shadow.overlay, radius.floating]
+  - id: CanvasToolbar
+    purpose: 提供 blueprint 必要視圖操作並遵守 utility 預算
+    allowed_content: [pan, zoom, fit, reset, overflow]
+    prohibited_content: [fourth-visible-utility, duplicate-primary-action]
+    states: [default, constrained]
+    interactions: [pan, zoom, fit, reset, open-overflow]
+    accessibility: [named-buttons, keyboard-operation]
+    tokens: [surface.raised, action.secondary-bg, focus.ring-color]
+  - id: VersionPicker
+    purpose: 讓研究者辨識並選取人類可讀 artifact 版本
+    allowed_content: [version-label, created-time, freshness]
+    prohibited_content: [run-directory, digest-only]
+    states: [current, stale, superseded]
+    interactions: [choose-version]
+    accessibility: [selected-state, named-list]
+    tokens: [freshness.current, freshness.stale, text.secondary]
+  - id: BlueprintCell
+    purpose: 在 journey 與 lane 交會處呈現主要 flow 與 compact semantic indicators
+    allowed_content: [action-label, marker, claim-badge, issue-indicator]
+    prohibited_content: [full-evidence, full-issue-card, internal-id-only]
+    states: [observed, inferred, pending-validation, empty]
+    interactions: [select, open-in-inspector, focus-relation]
+    accessibility: [keyboard-operable, human-label, non-color-markers]
+    tokens: [surface.work, blueprint_lane.customer-actions, border.subtle]
+  - id: EmptyState
+    purpose: 說明目前沒有內容的可判斷原因與下一步
+    allowed_content: [state-explanation, next-action]
+    prohibited_content: [generic-empty-message, invented-data]
+    states: [valid-empty, no-evidence]
+    interactions: [activate-next-action]
+    accessibility: [heading, named-action]
+    tokens: [surface.work, text.secondary, spacing.s6]
+  - id: ProcessingState
+    purpose: 說明目前研究者可理解的處理階段並防止重複送出
+    allowed_content: [phase-label, retained-input-message]
+    prohibited_content: [provider-name, model-name]
+    states: [processing]
+    interactions: [prevent-duplicate-submit]
+    accessibility: [live-status, no-motion-dependency]
+    tokens: [status.processing, motion.duration-standard-ms, text.secondary]
+  - id: BlockedState
+    purpose: 說明缺少的前置決定與返回路徑
+    allowed_content: [missing-prerequisite, next-action]
+    prohibited_content: [unavailable-primary-action, internal-error]
+    states: [blocked]
+    interactions: [return-to-prerequisite]
+    accessibility: [reason-associated, named-action]
+    tokens: [surface.work, status.pending, border.warning]
+  - id: ErrorState
+    purpose: 依序說明發生什麼、影響與下一步
+    allowed_content: [what-happened, why-it-matters, next-action]
+    prohibited_content: [stack-trace, provider-error-only]
+    states: [recoverable, retryable, blocked]
+    interactions: [retry, return-to-valid-state]
+    accessibility: [error-summary-focus, live-assertive]
+    tokens: [status.failed, border.warning, focus.ring-color]
+
+content_language:
+  locale: zh-Hant
+  statuses:
+    - {id: draft, label: 草稿}
+    - {id: processing, label: 處理中}
+    - {id: pending-confirmation, label: 待確認}
+    - {id: confirmed, label: 已確認}
+    - {id: update-required, label: 需更新}
+    - {id: generation-failed, label: 產出失敗}
+    - {id: accepted, label: '已採納'}
+    - {id: rejected, label: 不採用}
+    - {id: decided, label: 已決定}
+    - {id: undecided, label: 尚未決定}
+  prohibited_normal_ui_terms: [provider, model, schema, run, registry, digest, internal-id]
+  warning_structure: [what-happened, why-it-matters, next-action]
+  viewing_does_not_confirm: true
+  to_be_reality_rule: external-hypotheses-not-observed
+  comparison_states:
+    - {id: retained, label: 保留, non_color_indicator: 等號}
+    - {id: modified, label: 修改, non_color_indicator: 波浪線}
+    - {id: added, label: 新增, non_color_indicator: 加號}
+    - {id: removed, label: 移除, non_color_indicator: 刪除線}
+    - {id: pending-validation, label: 待驗證, non_color_indicator: 問號}
+  source_basis: [current-case-evidence, external-research, analogous-case, model-inference]
+
+acceptance:
+  viewport_widths_css_px: [1280, 1440, 1920]
+  zoom_percentages: [100, 125, 200]
+  required_fixture_profiles: [shortest-valid, ordinary, densest-valid, longest-text, evidence-gaps, conflicting-evidence]
+  dimensions: [hierarchy, overflow, focus, readability, accessibility, semantic-ambiguity]
+  formative_review_researchers: {min: 3, max: 5}
+  deterministic_lane:
+    required: true
+    corpus: frozen-synthetic-production-path
+    interfaces: normal-server-and-browser
+  live_case_lane:
+    required: true
+    case_id: muji-cafe-meal-001
+    execution: authorized-live-model-and-restricted-research
+    validation_entry_without_pilot: not_run
+  formative_lane:
+    required: true
+    live_case_use: sealed-muji-pre-pilot-decisions
+    synthetic_case_use: pilot-evidence-interpretation-only
+  automated_gates: [per-coordinate-structural-interaction, reviewed-visual-baselines, local-wcag-2.2-aa, exact-keyboard-tasks]
+  release_gate:
+    evaluation_artifact: desktop-workbench-evaluation
+    missing_required_evidence: incomplete
+    pass_requires: [deterministic-lane, authorized-live-case-lane, formative-researcher-lane]
+    non_substitutable: [automation-for-live-case, automation-for-formative-review, frozen-worker-for-live-case, ai-evaluator-for-researcher]

@@ -1,0 +1,10 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/event-dispositions.schema.json",
+  "title": "Evidence disposition ledger",
+  "type": "object",
+  "required": ["schema_version", "case_id", "dispositions"],
+  "additionalProperties": false,
+  "properties": {"schema_version": {"const": 2}, "case_id": {"type": "string"}, "dispositions": {"type": "array", "items": {"$ref": "#/definitions/disposition"}}},
+  "definitions": {"disposition": {"type": "object", "required": ["evidence_ref", "status", "reason"], "additionalProperties": false, "properties": {"evidence_ref": {"type": "string"}, "status": {"enum": ["used", "annotation", "duplicate", "out_of_scope", "context_only"]}, "reason": {"type": "string", "minLength": 1}, "candidate_refs": {"type": "array", "items": {"type": "string"}}}}}
+}

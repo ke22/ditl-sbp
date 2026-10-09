@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/research-catalog-review.schema.json",
+  "title": "Research catalog review — researcher gate over external research claims",
+  "description": "Structure only. Researcher select/hold/reject decisions over research_catalog claims, plus mechanisms, design conditions and design questions derived from them. Refers to claims by id and never copies claim or source text. Cross-artifact rules live in tools/sbp_gen/research_catalog_review.py.",
+  "type": "object",
+  "required": ["schema_version", "case_id", "scenario_id", "reviewed_catalog", "claim_decisions"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "case_id": {"type": "string", "minLength": 1},
+    "scenario_id": {"type": "string", "minLength": 1},
+    "note": {"type": "string"},
+    "reviewed_at": {"type": "string", "minLength": 1},
+    "reviewed_catalog": {
+      "type": "object",
+      "required": ["request_digest", "catalog_digest", "catalog_path"],
+      "additionalProperties": false,
+      "properties": {
+        "request_digest": {"type": "string", "minLength": 1},
+        "catalog_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "catalog_path": {"type": "string", "minLength": 1}
+      }
+    },
+    "claim_decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["claim_ref", "decision", "researcher_rationale"],
+        "additionalProperties": false,
+        "properties": {
+          "claim_ref": {"$ref": "content-provenance.schema.json#/definitions/research_claim_id"},
+          "decision": {"enum": ["select", "hold", "reject"]},
+          "researcher_rationale": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "design_mechanisms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "status", "description", "derived_from"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "status": {"const": "researcher_approved"},
+          "description": {"type": "string", "minLength": 1},
+          "derived_from": {"$ref": "#/definitions/claim_ref_list"}
+        }
+      }
+    },
+    "mechanism_derivation_note": {"type": "string"},
+    "design_conditions": {"type": "array", "items": {"$ref": "#/definitions/hold_only_item"}},
+    "design_questions": {"type": "array", "items": {"$ref": "#/definitions/hold_only_item"}}
+  },
+  "definitions": {
+    "claim_ref_list": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "content-provenance.schema.json#/definitions/research_claim_id"}
+    },
+    "hold_only_item": {
+      "type": "object",
+      "required": ["id", "status", "text", "derived_from"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "status": {"const": "hold_only"},
+        "text": {"type": "string", "minLength": 1},
+        "derived_from": {"$ref": "#/definitions/claim_ref_list"}
+      }
+    }
+  }
+}

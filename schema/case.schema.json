@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/case.schema.json",
+  "title": "Case boundary contract",
+  "type": "object",
+  "required": [
+    "case_id",
+    "journey_start",
+    "journey_end",
+    "steps",
+    "external_partners"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20,
+      "description": "研究者看得懂的案例名稱，單位＋服務，例如「恆隆行濾網回收」。畫面一律顯示它而不是 case_id。"
+    },
+    "service_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "customers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "primary_provider": {
+      "type": "string",
+      "minLength": 1
+    },
+    "journey_start": {
+      "type": "string",
+      "minLength": 1
+    },
+    "journey_end": {
+      "type": "string",
+      "minLength": 1
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "external_partners": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "role",
+          "treatment"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "role": {
+            "type": "string",
+            "minLength": 1
+          },
+          "treatment": {
+            "enum": [
+              "included_support",
+              "external_dependency",
+              "out_of_scope"
+            ]
+          }
+        }
+      }
+    },
+    "improvement_goal": {
+      "type": "string",
+      "minLength": 1
+    },
+    "raw_sources": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "原始資料放在哪裡（相對於這份 case.yaml 的資料夾，只能指向資料夾裡面）。沒有 raw/ 的案例用它列出逐字稿所在的檔案或資料夾；不要列入期末報告、ground truth 之類會污染研究的檔案。"
+    }
+  }
+}

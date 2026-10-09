@@ -1,0 +1,196 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/hmw.schema.json",
+  "title": "How Might We — cross-lens tensions framed as designable questions",
+  "description": "add-how-might-we：把 Persona Matrix（行為模式）、JTBD（目標模式）、顧客旅程（經驗模式）三個鏡頭拿到同一個類別下對照，找出真的有拉扯的地方，寫成一則「我們如何」陳述。不是每個類別都會有一則——沒有真的張力就不產，空的 entries 是合法結果，不是沒做完。",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "case_id",
+    "entries"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "$ref": "#/definitions/entry"
+      }
+    },
+    "final_questions": {
+      "x-compatibility-only": true,
+      "type": "array",
+      "description": "COMPATIBILITY_ONLY（form-hmw-tension-first，2026-10-01 起新生成不再產出，只供讀舊檔）：hmw-priority-and-convergence：把 entries 收斂成的最終 HMW——聚合語意相近的、提煉共同張力，1 到 3 則，有幾個本質不同的方向就幾則，不湊數（hmw-lenses-diversify-confirmed-framing）。選填；只有跑過收斂的 run 才有，空的 entries 不會有收斂結果。",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/definitions/final_question"
+      }
+    },
+    "final_questions_rationale": {
+      "x-compatibility-only": true,
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "description": "COMPATIBILITY_ONLY（form-hmw-tension-first，2026-10-01 起新生成不再產出，只供讀舊檔）：hmw-priority-and-convergence：100 字內，為什麼選這三則收斂成最終 HMW——跟 final_questions 成對出現。"
+    },
+    "framed_by": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "narrative_job_selection"
+      ],
+      "description": "frame-hmw-from-narrative：這份產出是用第 2 站選定的顧客任務當框架產生的（選定內容的摘要雜湊；2026-10-01 之前的舊選定也含敘事）。顧客任務只是框架，不是證據；研究者換了顧客任務之後，工作台用這個值判斷候選是不是依舊的選定產生的。",
+      "properties": {
+        "narrative_job_selection": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "insufficient_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason"
+      ],
+      "description": "hmw-lenses-diversify-confirmed-framing：只有在不發明新的目標、需求、限制、張力或解法，就無法從確認敘事背後的類別與證據形成任何有根據的設計問題時，才寫這一欄並說明原因。缺某個鏡頭（例如屬性與面向是空的）本身不算。",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  },
+  "definitions": {
+    "entry": {
+      "type": "object",
+      "required": [
+        "id",
+        "grounded_in",
+        "statement",
+        "evidence_refs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^HMW-[0-9]+$"
+        },
+        "grounded_in": {
+          "description": "hmw-framings-from-problem-structures（2026-10-01）：新生成是類別 id 陣列（一則框法可以綜合多個類別）；單一字串只出現在舊檔（COMPATIBILITY_ONLY）。",
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^CAT-[0-9]+$"
+            },
+            {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^CAT-[0-9]+$"
+              }
+            }
+          ]
+        },
+        "problem_structure": {
+          "type": "string",
+          "minLength": 1,
+          "description": "hmw-framings-from-problem-structures（2026-10-01）：這則 HMW 綜合後要處理的設計問題結構（可以綜合好幾個張力），不是單一張力的改寫。"
+        },
+        "tension": {
+          "x-compatibility-only": true,
+          "type": "string",
+          "minLength": 1,
+          "description": "COMPATIBILITY_ONLY（hmw-framings-from-problem-structures，2026-10-01 起新生成改寫 problem_structure，只供讀舊檔）：行為模式、目標模式、經驗模式三者之間，什麼在跟什麼拉扯。"
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 1,
+          "description": "「我們如何⋯」的問題陳述，不指名任何具體服務、技術或產品。"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^E-[0-9]+$"
+          },
+          "description": "支持這則張力的證據，來自促成它的那些鏡頭。"
+        },
+        "priority": {
+          "x-compatibility-only": true,
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ],
+          "description": "COMPATIBILITY_ONLY（form-hmw-tension-first，2026-10-01 起新生成不再產出，只供讀舊檔）：hmw-priority-and-convergence：依重複性、涵蓋範圍、是否卡住研究者選定的主要 Job 判斷——不是依證據則數。選填，跟 priority_basis 成對出現。"
+        },
+        "priority_basis": {
+          "x-compatibility-only": true,
+          "type": "string",
+          "minLength": 1,
+          "description": "COMPATIBILITY_ONLY（form-hmw-tension-first，2026-10-01 起新生成不再產出，只供讀舊檔）：為什麼是這個優先度——不能只複述 priority 的定義，也不能是證據則數。"
+        },
+        "framing_role": {
+          "x-compatibility-only": true,
+          "enum": [
+            "situation",
+            "progress",
+            "outcome"
+          ],
+          "description": "COMPATIBILITY_ONLY（form-hmw-tension-first，2026-10-01 起新生成不再產出，只供讀舊檔）：hmw-exactly-three-framing-roles：這則是從確認的 JTBD 哪一個角色切入——situation（情境／脈絡）、progress（進展／卡點）、outcome（結果／達成）。成功形成時三種各一則；舊檔可以沒有這一欄。"
+        },
+        "supporting_jtbd_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^JTBD-[0-9]+$"
+          },
+          "description": "這則框法是從哪幾則研究者選定的顧客任務歸納而來（JTBD-n＝選定清單的第 n 則）。是歸納來源，不是優先度或排序。新產出必填（2026-10-03 研究者裁定）。"
+        }
+      }
+    },
+    "final_question": {
+      "type": "object",
+      "required": [
+        "statement",
+        "aggregates"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "statement": {
+          "type": "string",
+          "minLength": 1,
+          "description": "最終 HMW 陳述——可以是聚合幾則 entries 之後提煉出的新說法，不必是任何一則原文的照抄。"
+        },
+        "aggregates": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^HMW-[0-9]+$"
+          },
+          "description": "這則最終 HMW 聚合了哪些原始 entries。"
+        }
+      }
+    }
+  }
+}

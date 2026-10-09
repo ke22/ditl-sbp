@@ -1,0 +1,190 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/narrative-job-selection.schema.json",
+  "title": "JTBD selection — the researcher's chosen user tasks",
+  "description": "研究者選定的顧客任務。2026-10-03 起（multi-jtbd-single-job-source）是 schema_version 2 的清單：一則以上，候選與自寫同形，不記來自哪則候選、不區分自寫。schema_version 1 的單一物件（含 2026-10-01 前帶 narrative 的檔）照舊可讀，讀成一則的清單。",
+  "oneOf": [
+    {
+      "$ref": "#/definitions/legacy"
+    },
+    {
+      "$ref": "#/definitions/v2"
+    }
+  ],
+  "definitions": {
+    "legacy": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "case_id",
+        "rationale",
+        "situation",
+        "progress",
+        "outcome",
+        "grounded_in"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "case_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rationale": {
+          "type": "string",
+          "description": "研究者為什麼選這一組（可留白，2026-09-27 研究者依版面稿裁定不強制；候選那一組帶候選自己的理由）。"
+        },
+        "narrative": {
+          "type": "string",
+          "minLength": 80,
+          "maxLength": 200,
+          "description": "COMPATIBILITY_ONLY：2026-10-01 之前研究者選定的敘事，只供讀舊檔。字數界線跟 narrative-job-candidates.schema.json 與 selective-coding.schema.json 的 narrative 一致（80–200），三邊有測試綁在一起。"
+        },
+        "narrative_composed_by": {
+          "enum": [
+            "assistant",
+            "researcher"
+          ],
+          "description": "COMPATIBILITY_ONLY：舊選定檔記錄的敘事作者。跟 selective-coding.schema.json 同一組列舉值。"
+        },
+        "situation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "什麼處境下，這件事會被觸發。"
+        },
+        "progress": {
+          "type": "string",
+          "minLength": 1,
+          "description": "這個人想完成什麼——不指名任何具體服務、技術或產品。"
+        },
+        "motivation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "為什麼這件事對他重要——他正在面對或在意的事。2026-09-29 研究者裁定站②的 JTBD 改成情境→任務→動機→結果四段；新產出一律要有，舊檔可以沒有這一欄（讀舊檔時不補、不推）。"
+        },
+        "outcome": {
+          "type": "string",
+          "minLength": 1,
+          "description": "他怎麼判斷這件事算做到了。"
+        },
+        "grounded_in": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^CAT-[0-9]+$"
+          },
+          "description": "這個顧客任務是從哪幾個主軸編碼類別讀出來的。"
+        }
+      }
+    },
+    "v2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "case_id",
+        "selections",
+        "framed_by"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 2
+        },
+        "case_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selections": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/selection"
+          }
+        },
+        "framed_by": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "selective_themes"
+          ],
+          "properties": {
+            "selective_themes": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rationale",
+        "situation",
+        "progress",
+        "motivation",
+        "outcome",
+        "selective_refs",
+        "origin"
+      ],
+      "properties": {
+        "rationale": {
+          "type": "string",
+          "description": "研究者為什麼選這一組（可留白，2026-09-27 研究者依版面稿裁定不強制；候選那一組帶候選自己的理由）。"
+        },
+        "situation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "什麼處境下，這件事會被觸發。"
+        },
+        "progress": {
+          "type": "string",
+          "minLength": 1,
+          "description": "這個人想完成什麼——不指名任何具體服務、技術或產品。"
+        },
+        "motivation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "為什麼這件事對他重要——他正在面對或在意的事。2026-09-29 研究者裁定站②的 JTBD 改成情境→任務→動機→結果四段；新產出一律要有，舊檔可以沒有這一欄（讀舊檔時不補、不推）。"
+        },
+        "outcome": {
+          "type": "string",
+          "minLength": 1,
+          "description": "他怎麼判斷這件事算做到了。"
+        },
+        "grounded_in": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^CAT-[0-9]+$"
+          },
+          "description": "這個顧客任務是從哪幾個主軸編碼類別讀出來的。"
+        },
+        "selective_refs": {
+          "type": "array",
+          "minItems": 0,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^ST-[0-9]+$"
+          },
+          "description": "形成這則顧客任務的選擇編碼主題。AI 候選帶它真正依據的主題（至少一個）；研究者自己寫的是空陣列，不替它宣稱任何主題支持（2026-10-03 研究者裁定）。"
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "ai_candidate",
+            "researcher"
+          ],
+          "description": "這則顧客任務是 AI 候選還是研究者自己寫的框法。只記在底層，畫面上不顯示（2026-10-03 研究者裁定）。"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,1518 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/desktop-workbench-interface.schema.json",
+  "title": "Canonical desktop SBP workbench interface contract",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "shell",
+    "stages",
+    "journey_confirmation",
+    "as_is_research",
+    "to_be",
+    "attention_budget",
+    "breakpoints",
+    "tokens",
+    "components",
+    "content_language",
+    "acceptance"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": 1
+    },
+    "shell": {
+      "type": "object",
+      "required": [
+        "regions",
+        "document_horizontal_overflow"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "regions": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/definitions/shell_region"
+          }
+        },
+        "document_horizontal_overflow": {
+          "const": "forbidden-outside-blueprint"
+        }
+      }
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/stage"
+      }
+    },
+    "journey_confirmation": {
+      "$ref": "#/definitions/journey_confirmation"
+    },
+    "as_is_research": {
+      "$ref": "#/definitions/as_is_research"
+    },
+    "to_be": {
+      "$ref": "#/definitions/to_be"
+    },
+    "attention_budget": {
+      "type": "object",
+      "required": [
+        "page_titles",
+        "decision_statements",
+        "primary_actions",
+        "visible_statuses",
+        "visible_utilities",
+        "warning_summaries",
+        "overflow_policy"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "page_titles": {
+          "const": 1
+        },
+        "decision_statements": {
+          "const": 1
+        },
+        "primary_actions": {
+          "const": 1
+        },
+        "visible_statuses": {
+          "const": 3
+        },
+        "visible_utilities": {
+          "const": 3
+        },
+        "warning_summaries": {
+          "const": 1
+        },
+        "overflow_policy": {
+          "enum": [
+            "replace-merge-or-disclose"
+          ]
+        }
+      }
+    },
+    "breakpoints": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/definitions/breakpoint"
+      }
+    },
+    "tokens": {
+      "$ref": "#/definitions/tokens"
+    },
+    "components": {
+      "type": "array",
+      "minItems": 19,
+      "maxItems": 19,
+      "items": {
+        "$ref": "#/definitions/component"
+      }
+    },
+    "content_language": {
+      "$ref": "#/definitions/content_language"
+    },
+    "acceptance": {
+      "$ref": "#/definitions/acceptance"
+    },
+    "journey_candidate_confirmation": {
+      "$ref": "#/definitions/journey_candidate_confirmation"
+    },
+    "as_is_candidate_confirmation": {
+      "$ref": "#/definitions/as_is_candidate_confirmation"
+    },
+    "improvement_goal_confirmation": {
+      "$ref": "#/definitions/improvement_goal_confirmation"
+    }
+  },
+  "definitions": {
+    "non_empty_string": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stable_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "token_ref": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_-]*$"
+    },
+    "shell_region": {
+      "type": "object",
+      "required": [
+        "id",
+        "component",
+        "placement",
+        "responsibility",
+        "must_remain_available"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "case-context",
+            "stage-navigation",
+            "stage-work-area",
+            "inspector",
+            "review-gate",
+            "focus-overlay"
+          ]
+        },
+        "component": {
+          "enum": [
+            "CaseContext",
+            "StageNav",
+            "StageWorkArea",
+            "Inspector",
+            "ReviewGate",
+            "FocusOverlay"
+          ]
+        },
+        "placement": {
+          "enum": [
+            "top",
+            "left",
+            "center",
+            "right-contextual",
+            "bottom",
+            "centred-over-page"
+          ]
+        },
+        "responsibility": {
+          "$ref": "#/definitions/non_empty_string"
+        },
+        "must_remain_available": {
+          "type": "boolean"
+        },
+        "width_px": {
+          "type": "object",
+          "required": [
+            "min",
+            "max"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "min": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "opened_by": {
+          "enum": [
+            "researcher-action-on-surface-beneath"
+          ]
+        },
+        "dismissible_by": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "click-outside",
+              "escape-key"
+            ]
+          },
+          "description": "rebuild-stage-two-as-cards-modal-and-pair-picker：蓋住整頁的面板要兩種關法都宣告——點面板外面，以及 Esc。右側的 inspector 只有前者。"
+        }
+      }
+    },
+    "primary_action": {
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "consequence"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/stable_id"
+        },
+        "label": {
+          "$ref": "#/definitions/non_empty_string"
+        },
+        "consequence": {
+          "$ref": "#/definitions/non_empty_string"
+        }
+      }
+    },
+    "blocked_state": {
+      "type": "object",
+      "required": [
+        "missing_prerequisite_message",
+        "next_action"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "missing_prerequisite_message": {
+          "$ref": "#/definitions/non_empty_string"
+        },
+        "next_action": {
+          "$ref": "#/definitions/non_empty_string"
+        }
+      }
+    },
+    "stage": {
+      "type": "object",
+      "required": [
+        "id",
+        "visible_label",
+        "page_title",
+        "decision_statement",
+        "primary_actions",
+        "prerequisite",
+        "blocked_state",
+        "allowed_statuses",
+        "modes",
+        "identity_preserved_across_modes",
+        "secondary_actions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "project-home",
+            "selective-coding",
+            "primary-hmw",
+            "persona-dimensions",
+            "persona-target-selection",
+            "confirm-journey",
+            "journey-map",
+            "review-as-is",
+            "review-to-be",
+            "validate-to-be"
+          ]
+        },
+        "visible_label": {
+          "$ref": "#/definitions/non_empty_string"
+        },
+        "page_title": {
+          "$ref": "#/definitions/non_empty_string"
+        },
+        "decision_statement": {
+          "$ref": "#/definitions/non_empty_string"
+        },
+        "primary_actions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "$ref": "#/definitions/primary_action"
+          }
+        },
+        "prerequisite": {
+          "enum": [
+            "case-input-ready",
+            "none",
+            "journey-draft-ready",
+            "confirmed-journey-current",
+            "confirmed-as-is-current",
+            "accepted-to-be-current"
+          ]
+        },
+        "blocked_state": {
+          "$ref": "#/definitions/blocked_state"
+        },
+        "allowed_statuses": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "draft",
+              "processing",
+              "pending-confirmation",
+              "confirmed",
+              "update-required",
+              "generation-failed",
+              "accepted",
+              "rejected",
+              "decided",
+              "undecided"
+            ]
+          }
+        },
+        "modes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "intake",
+              "journey",
+              "blueprint",
+              "summary",
+              "evidence-validation",
+              "to-be-blueprint",
+              "proposal-summary",
+              "basis-validation",
+              "pilot-plan",
+              "pilot-observations",
+              "validation-outcome",
+              "framework-point",
+              "journey-map"
+            ]
+          }
+        },
+        "identity_preserved_across_modes": {
+          "const": true
+        },
+        "secondary_actions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/stable_id"
+          }
+        }
+      }
+    },
+    "journey_confirmation": {
+      "type": "object",
+      "required": [
+        "decision_statement",
+        "states",
+        "transitions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "decision_statement": {
+          "$ref": "#/definitions/non_empty_string"
+        },
+        "states": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/definitions/journey_confirmation_state"
+          }
+        },
+        "transitions": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/definitions/journey_confirmation_transition"
+          }
+        },
+        "scope": {
+          "$ref": "#/definitions/non_empty_string"
+        }
+      }
+    },
+    "journey_confirmation_state": {
+      "type": "object",
+      "required": [
+        "id",
+        "status",
+        "primary_action",
+        "action_available",
+        "as_is_blocked"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "unchanged",
+            "edited",
+            "rechecking",
+            "recheck-failed",
+            "rechecked",
+            "edited-again"
+          ]
+        },
+        "status": {
+          "enum": [
+            "processing",
+            "pending-confirmation",
+            "update-required",
+            "generation-failed"
+          ]
+        },
+        "primary_action": {
+          "$ref": "#/definitions/primary_action"
+        },
+        "action_available": {
+          "type": "boolean"
+        },
+        "as_is_blocked": {
+          "const": true
+        }
+      }
+    },
+    "journey_confirmation_transition": {
+      "type": "object",
+      "required": [
+        "from",
+        "event",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "enum": [
+            "unchanged",
+            "edited",
+            "rechecking",
+            "recheck-failed",
+            "rechecked",
+            "edited-again"
+          ]
+        },
+        "event": {
+          "enum": [
+            "final-confirmation",
+            "start-recheck",
+            "recheck-succeeded",
+            "recheck-failed",
+            "retry-recheck",
+            "edit"
+          ]
+        },
+        "to": {
+          "enum": [
+            "rechecking",
+            "recheck-failed",
+            "rechecked",
+            "edited-again",
+            "generation-started"
+          ]
+        }
+      }
+    },
+    "as_is_research": {
+      "type": "object",
+      "required": [
+        "states",
+        "retry_action",
+        "phase_labels",
+        "proposal_eligibility"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "states": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/definitions/as_is_research_state"
+          }
+        },
+        "retry_action": {
+          "$ref": "#/definitions/primary_action"
+        },
+        "phase_labels": {
+          "type": "object",
+          "required": [
+            "deriving_issues",
+            "checking_privacy",
+            "researching",
+            "validating",
+            "publishing"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "deriving_issues": {
+              "$ref": "#/definitions/non_empty_string"
+            },
+            "checking_privacy": {
+              "$ref": "#/definitions/non_empty_string"
+            },
+            "researching": {
+              "$ref": "#/definitions/non_empty_string"
+            },
+            "validating": {
+              "$ref": "#/definitions/non_empty_string"
+            },
+            "publishing": {
+              "$ref": "#/definitions/non_empty_string"
+            }
+          }
+        },
+        "proposal_eligibility": {
+          "const": false
+        }
+      }
+    },
+    "as_is_research_state": {
+      "type": "object",
+      "required": [
+        "id",
+        "status",
+        "heading"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "research_processing",
+            "research_failed",
+            "no_grounded_issues",
+            "research_ready",
+            "research_stale"
+          ]
+        },
+        "status": {
+          "enum": [
+            "processing",
+            "confirmed",
+            "update-required",
+            "generation-failed"
+          ]
+        },
+        "heading": {
+          "$ref": "#/definitions/non_empty_string"
+        }
+      }
+    },
+    "to_be": {
+      "type": "object",
+      "required": [
+        "states",
+        "phase_labels",
+        "views",
+        "actions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "states": {
+          "type": "array",
+          "minItems": 10,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/definitions/to_be_state"
+          }
+        },
+        "phase_labels": {
+          "type": "object",
+          "required": [
+            "deriving_issues",
+            "checking_privacy",
+            "researching",
+            "validating",
+            "publishing",
+            "synthesizing"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "deriving_issues": {
+              "$ref": "#/definitions/non_empty_string"
+            },
+            "checking_privacy": {
+              "$ref": "#/definitions/non_empty_string"
+            },
+            "researching": {
+              "$ref": "#/definitions/non_empty_string"
+            },
+            "validating": {
+              "$ref": "#/definitions/non_empty_string"
+            },
+            "publishing": {
+              "$ref": "#/definitions/non_empty_string"
+            },
+            "synthesizing": {
+              "$ref": "#/definitions/non_empty_string"
+            }
+          }
+        },
+        "views": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/definitions/to_be_view"
+          }
+        },
+        "actions": {
+          "type": "object",
+          "required": [
+            "accept",
+            "revise",
+            "decline"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "accept": {
+              "$ref": "#/definitions/primary_action"
+            },
+            "revise": {
+              "$ref": "#/definitions/primary_action"
+            },
+            "decline": {
+              "$ref": "#/definitions/primary_action"
+            }
+          }
+        }
+      }
+    },
+    "to_be_state": {
+      "type": "object",
+      "required": [
+        "id",
+        "status",
+        "heading"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "research_processing",
+            "research_failed",
+            "no_grounded_issues",
+            "to_be_processing",
+            "to_be_failed",
+            "to_be_draft_ready",
+            "to_be_revision_processing",
+            "to_be_accepted",
+            "to_be_declined",
+            "to_be_stale"
+          ]
+        },
+        "status": {
+          "enum": [
+            "processing",
+            "confirmed",
+            "pending-confirmation",
+            "accepted",
+            "rejected",
+            "update-required",
+            "generation-failed"
+          ]
+        },
+        "heading": {
+          "$ref": "#/definitions/non_empty_string"
+        }
+      }
+    },
+    "to_be_view": {
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "default"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "to-be-blueprint",
+            "proposal-summary",
+            "basis-validation"
+          ]
+        },
+        "label": {
+          "enum": [
+            "提案藍圖",
+            "方案摘要",
+            "依據與驗證"
+          ]
+        },
+        "default": {
+          "type": "boolean"
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "required": [
+        "states",
+        "views",
+        "actions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "states": {
+          "type": "array",
+          "minItems": 10,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/definitions/validation_state"
+          }
+        },
+        "views": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/definitions/validation_view"
+          }
+        },
+        "actions": {
+          "type": "object",
+          "required": [
+            "start",
+            "append",
+            "complete",
+            "decide"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "start": {
+              "$ref": "#/definitions/primary_action"
+            },
+            "append": {
+              "$ref": "#/definitions/primary_action"
+            },
+            "complete": {
+              "$ref": "#/definitions/primary_action"
+            },
+            "decide": {
+              "$ref": "#/definitions/primary_action"
+            }
+          }
+        }
+      }
+    },
+    "validation_state": {
+      "type": "object",
+      "required": [
+        "id",
+        "status",
+        "heading",
+        "default_view"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "validation_locked",
+            "pilot_ready",
+            "pilot_in_progress",
+            "pilot_evidence_incomplete",
+            "pilot_ready_for_decision",
+            "validation_continue",
+            "validation_revise",
+            "validation_stop",
+            "validation_stale",
+            "validation_failed"
+          ]
+        },
+        "status": {
+          "enum": [
+            "draft",
+            "processing",
+            "pending-confirmation",
+            "confirmed",
+            "update-required",
+            "generation-failed",
+            "rejected"
+          ]
+        },
+        "heading": {
+          "$ref": "#/definitions/non_empty_string"
+        },
+        "default_view": {
+          "enum": [
+            "pilot-plan",
+            "pilot-observations",
+            "validation-outcome"
+          ]
+        }
+      }
+    },
+    "validation_view": {
+      "type": "object",
+      "required": [
+        "id",
+        "label"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "pilot-plan",
+            "pilot-observations",
+            "validation-outcome"
+          ]
+        },
+        "label": {
+          "enum": [
+            "試行計畫",
+            "觀測紀錄",
+            "結果判斷"
+          ]
+        }
+      }
+    },
+    "breakpoint": {
+      "type": "object",
+      "required": [
+        "id",
+        "min_effective_css_px",
+        "max_effective_css_px",
+        "stage_navigation",
+        "inspector",
+        "utility_presentation",
+        "preserve_regions",
+        "overlay_focus_return",
+        "blueprint_controls"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "constrained-desktop",
+            "standard-desktop",
+            "wide-desktop"
+          ]
+        },
+        "min_effective_css_px": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_effective_css_px": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "stage_navigation": {
+          "enum": [
+            "expanded",
+            "collapsible"
+          ]
+        },
+        "inspector": {
+          "enum": [
+            "docked-or-collapsed",
+            "collapsed-overlay",
+            "viewport-overlay"
+          ]
+        },
+        "utility_presentation": {
+          "enum": [
+            "three-visible",
+            "overflow-excess"
+          ]
+        },
+        "preserve_regions": {
+          "type": "array",
+          "minItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "case-context",
+              "stage-navigation",
+              "review-gate"
+            ]
+          }
+        },
+        "overlay_focus_return": {
+          "const": true
+        },
+        "blueprint_controls": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "pan",
+              "zoom",
+              "fit",
+              "reset"
+            ]
+          }
+        }
+      }
+    },
+    "token_map": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          }
+        ]
+      }
+    },
+    "tokens": {
+      "type": "object",
+      "required": [
+        "surface",
+        "text",
+        "border",
+        "action",
+        "accent",
+        "status",
+        "as_is",
+        "to_be",
+        "claim_source",
+        "freshness",
+        "blueprint_lane",
+        "density",
+        "typography",
+        "radius",
+        "spacing",
+        "shadow",
+        "focus",
+        "motion"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "surface": {
+          "$ref": "#/definitions/token_map"
+        },
+        "text": {
+          "$ref": "#/definitions/token_map"
+        },
+        "border": {
+          "$ref": "#/definitions/token_map"
+        },
+        "action": {
+          "$ref": "#/definitions/token_map"
+        },
+        "accent": {
+          "$ref": "#/definitions/token_map"
+        },
+        "status": {
+          "$ref": "#/definitions/token_map"
+        },
+        "as_is": {
+          "$ref": "#/definitions/token_map"
+        },
+        "to_be": {
+          "$ref": "#/definitions/token_map"
+        },
+        "claim_source": {
+          "$ref": "#/definitions/token_map"
+        },
+        "freshness": {
+          "$ref": "#/definitions/token_map"
+        },
+        "blueprint_lane": {
+          "$ref": "#/definitions/token_map"
+        },
+        "density": {
+          "$ref": "#/definitions/token_map"
+        },
+        "typography": {
+          "$ref": "#/definitions/token_map"
+        },
+        "radius": {
+          "type": "object",
+          "required": [
+            "component",
+            "floating",
+            "card",
+            "pill"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "component": {
+              "const": 12
+            },
+            "floating": {
+              "const": 18
+            },
+            "card": {
+              "const": 14
+            },
+            "pill": {
+              "const": 999
+            }
+          }
+        },
+        "spacing": {
+          "type": "object",
+          "required": [
+            "base",
+            "s2",
+            "s3",
+            "s4",
+            "s5",
+            "s6",
+            "s8",
+            "s10",
+            "s12",
+            "s14",
+            "s16"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "base": {
+              "const": 4
+            },
+            "s2": {
+              "const": 8
+            },
+            "s3": {
+              "const": 12
+            },
+            "s4": {
+              "const": 16
+            },
+            "s5": {
+              "const": 20
+            },
+            "s6": {
+              "const": 24
+            },
+            "s8": {
+              "const": 32
+            },
+            "s10": {
+              "const": 40
+            },
+            "s12": {
+              "const": 48
+            },
+            "s14": {
+              "const": 56
+            },
+            "s16": {
+              "const": 64
+            }
+          }
+        },
+        "shadow": {
+          "$ref": "#/definitions/token_map"
+        },
+        "focus": {
+          "$ref": "#/definitions/token_map"
+        },
+        "motion": {
+          "$ref": "#/definitions/token_map"
+        }
+      }
+    },
+    "component": {
+      "type": "object",
+      "required": [
+        "id",
+        "purpose",
+        "allowed_content",
+        "prohibited_content",
+        "states",
+        "interactions",
+        "accessibility",
+        "tokens"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "AppShell",
+            "CaseContext",
+            "StageNav",
+            "PageHeader",
+            "DecisionStatement",
+            "StatusSummary",
+            "EvidenceRef",
+            "ClaimBadge",
+            "IssueCard",
+            "ProposalCard",
+            "ReviewGate",
+            "Inspector",
+            "CanvasToolbar",
+            "VersionPicker",
+            "BlueprintCell",
+            "EmptyState",
+            "ProcessingState",
+            "BlockedState",
+            "ErrorState"
+          ]
+        },
+        "purpose": {
+          "$ref": "#/definitions/non_empty_string"
+        },
+        "allowed_content": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/non_empty_string"
+          }
+        },
+        "prohibited_content": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/non_empty_string"
+          }
+        },
+        "states": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/stable_id"
+          }
+        },
+        "interactions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/stable_id"
+          }
+        },
+        "accessibility": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/stable_id"
+          }
+        },
+        "tokens": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/token_ref"
+          }
+        }
+      }
+    },
+    "status": {
+      "type": "object",
+      "required": [
+        "id",
+        "label"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "draft",
+            "processing",
+            "pending-confirmation",
+            "confirmed",
+            "update-required",
+            "generation-failed",
+            "accepted",
+            "rejected",
+            "decided",
+            "undecided"
+          ]
+        },
+        "label": {
+          "enum": [
+            "草稿",
+            "處理中",
+            "待確認",
+            "已確認",
+            "需更新",
+            "產出失敗",
+            "已採納",
+            "不採用",
+            "已決定",
+            "尚未決定"
+          ]
+        }
+      }
+    },
+    "comparison_state": {
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "non_color_indicator"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "retained",
+            "modified",
+            "added",
+            "removed",
+            "pending-validation"
+          ]
+        },
+        "label": {
+          "enum": [
+            "保留",
+            "修改",
+            "新增",
+            "移除",
+            "待驗證"
+          ]
+        },
+        "non_color_indicator": {
+          "$ref": "#/definitions/non_empty_string"
+        }
+      }
+    },
+    "content_language": {
+      "type": "object",
+      "required": [
+        "locale",
+        "statuses",
+        "prohibited_normal_ui_terms",
+        "warning_structure",
+        "viewing_does_not_confirm",
+        "to_be_reality_rule",
+        "comparison_states",
+        "source_basis"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "locale": {
+          "const": "zh-Hant"
+        },
+        "statuses": {
+          "type": "array",
+          "minItems": 10,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/definitions/status"
+          }
+        },
+        "prohibited_normal_ui_terms": {
+          "type": "array",
+          "minItems": 7,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "provider",
+              "model",
+              "schema",
+              "run",
+              "registry",
+              "digest",
+              "internal-id"
+            ]
+          }
+        },
+        "warning_structure": {
+          "const": [
+            "what-happened",
+            "why-it-matters",
+            "next-action"
+          ]
+        },
+        "viewing_does_not_confirm": {
+          "const": true
+        },
+        "to_be_reality_rule": {
+          "const": "external-hypotheses-not-observed"
+        },
+        "comparison_states": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/definitions/comparison_state"
+          }
+        },
+        "source_basis": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "current-case-evidence",
+              "external-research",
+              "analogous-case",
+              "model-inference"
+            ]
+          }
+        }
+      }
+    },
+    "acceptance": {
+      "type": "object",
+      "required": [
+        "viewport_widths_css_px",
+        "zoom_percentages",
+        "required_fixture_profiles",
+        "dimensions",
+        "formative_review_researchers",
+        "deterministic_lane",
+        "live_case_lane",
+        "formative_lane",
+        "automated_gates",
+        "release_gate"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "viewport_widths_css_px": {
+          "const": [
+            1280,
+            1440,
+            1920
+          ]
+        },
+        "zoom_percentages": {
+          "const": [
+            100,
+            125,
+            200
+          ]
+        },
+        "required_fixture_profiles": {
+          "const": [
+            "shortest-valid",
+            "ordinary",
+            "densest-valid",
+            "longest-text",
+            "evidence-gaps",
+            "conflicting-evidence"
+          ]
+        },
+        "dimensions": {
+          "const": [
+            "hierarchy",
+            "overflow",
+            "focus",
+            "readability",
+            "accessibility",
+            "semantic-ambiguity"
+          ]
+        },
+        "formative_review_researchers": {
+          "type": "object",
+          "required": [
+            "min",
+            "max"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "min": {
+              "const": 3
+            },
+            "max": {
+              "const": 5
+            }
+          }
+        },
+        "deterministic_lane": {
+          "const": {
+            "required": true,
+            "corpus": "frozen-synthetic-production-path",
+            "interfaces": "normal-server-and-browser"
+          }
+        },
+        "live_case_lane": {
+          "const": {
+            "required": true,
+            "case_id": "muji-cafe-meal-001",
+            "execution": "authorized-live-model-and-restricted-research",
+            "validation_entry_without_pilot": "not_run"
+          }
+        },
+        "formative_lane": {
+          "const": {
+            "required": true,
+            "live_case_use": "sealed-muji-pre-pilot-decisions",
+            "synthetic_case_use": "pilot-evidence-interpretation-only"
+          }
+        },
+        "automated_gates": {
+          "const": [
+            "per-coordinate-structural-interaction",
+            "reviewed-visual-baselines",
+            "local-wcag-2.2-aa",
+            "exact-keyboard-tasks"
+          ]
+        },
+        "release_gate": {
+          "const": {
+            "evaluation_artifact": "desktop-workbench-evaluation",
+            "missing_required_evidence": "incomplete",
+            "pass_requires": [
+              "deterministic-lane",
+              "authorized-live-case-lane",
+              "formative-researcher-lane"
+            ],
+            "non_substitutable": [
+              "automation-for-live-case",
+              "automation-for-formative-review",
+              "frozen-worker-for-live-case",
+              "ai-evaluator-for-researcher"
+            ]
+          }
+        }
+      }
+    },
+    "journey_candidate_confirmation": {
+      "type": "object",
+      "required": [
+        "decision_statement",
+        "confirm_action",
+        "continue_action"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "decision_statement": {
+          "$ref": "#/definitions/non_empty_string"
+        },
+        "confirm_action": {
+          "$ref": "#/definitions/primary_action"
+        },
+        "continue_action": {
+          "$ref": "#/definitions/primary_action"
+        }
+      }
+    },
+    "as_is_candidate_confirmation": {
+      "type": "object",
+      "required": [
+        "decision_statement",
+        "confirm_action",
+        "continue_action"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "decision_statement": {
+          "$ref": "#/definitions/non_empty_string"
+        },
+        "confirm_action": {
+          "$ref": "#/definitions/primary_action"
+        },
+        "continue_action": {
+          "$ref": "#/definitions/primary_action"
+        }
+      }
+    },
+    "improvement_goal_confirmation": {
+      "type": "object",
+      "required": [
+        "decision_statement",
+        "confirm_action"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "decision_statement": {
+          "$ref": "#/definitions/non_empty_string"
+        },
+        "confirm_action": {
+          "$ref": "#/definitions/primary_action"
+        },
+        "start_research_action": {
+          "$ref": "#/definitions/primary_action"
+        },
+        "save_research_review_action": {
+          "$ref": "#/definitions/primary_action"
+        },
+        "form_to_be_action": {
+          "$ref": "#/definitions/primary_action"
+        }
+      }
+    }
+  }
+}

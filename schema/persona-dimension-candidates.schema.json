@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/persona-dimension-candidates.schema.json",
+  "title": "Persona dimension candidates — 3 AI-proposed dimension framings for the researcher to weigh",
+  "description": "propose-persona-dimension-candidates：AI 讀完主軸編碼類別與證據，內部走完候選池→受訪者映射→找 pattern→5 條標準篩選這套方法論，只端出篩選後剛好 3 組候選維度框架，每組附一段理由與 1 條以上的軸——軸數由篩選後站得住腳的差異決定，不設上限（restore-differentiation-dimension-axis-count：這些是區辨維度，不是恰好 2 條的目標族群軸，兩者是 TARGET-ARCHITECTURE.md 決定十一分開的兩組軸）。理由要講「選這個框架，研究會往哪個方向走」，不能複述軸自己的 discriminating_basis。不推薦任何一組為預設答案，決定權在研究者（CLAUDE.md「助理的界線」）。",
+  "type": "object",
+  "required": ["schema_version", "case_id", "candidates"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/definitions/candidate"
+      }
+    },
+    "dimension_source": {
+      "type": "string",
+      "enum": ["category_properties", "categories_fallback"],
+      "description": "derive-axis-candidates-from-properties：這批候選是從 category_properties.yaml 的屬性池挑出來的（category_properties），還是這個 run 還沒有屬性檔、退回直接從類別造軸的舊路徑（categories_fallback）。選填——既有 run 產生的候選文件沒有這個欄位，不代表資料有問題。"
+    }
+  },
+  "definitions": {
+    "candidate": {
+      "type": "object",
+      "required": ["framing_label", "rationale", "axes"],
+      "additionalProperties": false,
+      "properties": {
+        "framing_label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "這組維度代表哪種研究方向的簡短名稱。"
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "description": "選這組框架，研究會往哪個方向走——不能只是複述軸自己的 discriminating_basis。"
+        },
+        "axes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/axis"
+          }
+        }
+      }
+    },
+    "axis": {
+      "type": "object",
+      "required": ["label", "pole_low", "pole_high", "discriminating_basis", "grounded_in"],
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "pole_low": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pole_low_design": {
+          "type": "string",
+          "minLength": 1,
+          "description": "derive-axis-candidates-from-properties：低端的設計後果，逐字沿用選中的屬性面向。選填——舊路徑（categories_fallback）與既有 run 沒有這個欄位。"
+        },
+        "pole_high": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pole_high_design": {
+          "type": "string",
+          "minLength": 1,
+          "description": "derive-axis-candidates-from-properties：高端的設計後果，逐字沿用選中的屬性面向。選填，理由同 pole_low_design。"
+        },
+        "discriminating_basis": {
+          "type": "string",
+          "minLength": 1,
+          "description": "為什麼這是一條能區辨受訪者的軸，不是複述類別定義。"
+        },
+        "grounded_in": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^CAT-[0-9]+$"
+          },
+          "description": "這條軸是從哪個或哪些主軸編碼類別讀出來的。候選階段還沒有 AXIS-N id——id 要等研究者選定、真的產出 persona_matrix.yaml 時才指派。"
+        }
+      }
+    }
+  }
+}

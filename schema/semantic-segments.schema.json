@@ -1,0 +1,141 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "semantic-segments.schema.json",
+  "title": "Semantic segments",
+  "description": "open-coding-on-semantic-segments（2026-10-03 研究者裁定）：每份逐字稿依時間序切成的語意段落，是開放編碼的分析單位，不是證據。證據單位與所有下游引用不變；簡述與訪員行判斷只是分析用的資訊，不得當成證據引用。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "case_id",
+    "transcripts"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "transcripts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/transcript"
+      }
+    }
+  },
+  "definitions": {
+    "transcript": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "line_count",
+        "segments"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "line_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/segment"
+          }
+        }
+      }
+    },
+    "segment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "start_line",
+        "end_line",
+        "locator",
+        "summary",
+        "question_lines",
+        "role",
+        "in_scope",
+        "passage",
+        "respondent_passage",
+        "question_passage",
+        "evidence_refs"
+      ],
+      "properties": {
+        "start_line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "end_line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "這一段在談什麼，一百字以內。分析用的閱讀輔助，不是證據。"
+        },
+        "question_lines": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "這一段裡屬於訪員問題或提示的行號。分析用的判斷，不是證據。"
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "description": "這一段的受訪者角色。"
+        },
+        "in_scope": {
+          "type": "boolean"
+        },
+        "out_of_scope_reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "不在分析範圍時的原因（開場、同意受訪、道謝等）。"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^E-[0-9]+$"
+          },
+          "description": "這一段包含的證據單位。"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^SEG-[0-9]+$"
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1,
+          "description": "字幕檔是第一與最後一則字幕的時間；沒有時間的逐字稿是行號範圍。由程式產生，不推算時間。"
+        },
+        "passage": {
+          "type": "string",
+          "description": "這一段的完整原文，由程式依行號從逐字稿原樣切出。"
+        },
+        "respondent_passage": {
+          "type": "string",
+          "description": "passage 去掉訪員行之後的原文。"
+        },
+        "question_passage": {
+          "type": "string",
+          "description": "訪員行的原文。"
+        }
+      }
+    }
+  }
+}

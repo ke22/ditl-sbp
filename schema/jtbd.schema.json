@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/jtbd.schema.json",
+  "title": "JTBD — situation/progress/outcome job statements",
+  "description": "add-jtbd：把主軸編碼（axial-coding）的類別與 align 的證據讀成情境／進展／結果三格的 Job 陳述。每則 Job 一定要能追溯到至少一個類別與至少一筆證據；不夠格的 Job 就不要產，不能為了湊數量硬寫。",
+  "type": "object",
+  "required": ["schema_version", "case_id", "jobs"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "jobs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/job"
+      }
+    }
+  },
+  "definitions": {
+    "job": {
+      "type": "object",
+      "required": ["id", "label", "situation", "progress", "outcome", "grounded_in", "evidence_refs"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^JOB-[0-9]+$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "situation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "什麼處境下這件事會被觸發。"
+        },
+        "progress": {
+          "type": "string",
+          "minLength": 1,
+          "description": "這個人想完成什麼——不指名任何具體服務、技術或產品。"
+        },
+        "outcome": {
+          "type": "string",
+          "minLength": 1,
+          "description": "他怎麼判斷這件事算做到了。"
+        },
+        "grounded_in": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^CAT-[0-9]+$"
+          },
+          "description": "這則 Job 是從哪個或哪些主軸編碼類別讀出來的——不能是一則跟任何類別無關、憑空發明的陳述。"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^E-[0-9]+$"
+          },
+          "description": "支持這則 Job 的證據單元。"
+        },
+        "emotional_layer": {
+          "$ref": "#/definitions/layer_or_absence",
+          "description": "jtbd-carries-forces-and-layers：他希望自己感覺如何。選填，證據撐得起才寫；撐不起要明講查過哪些證據、為什麼判斷沒有資料，不能留空也不能編。"
+        },
+        "social_layer": {
+          "$ref": "#/definitions/layer_or_absence",
+          "description": "jtbd-carries-forces-and-layers：他希望別人怎麼看他、想維持什麼角色。選填，同 emotional_layer 的規則。"
+        },
+        "forces": {
+          "type": "object",
+          "description": "jtbd-carries-forces-and-layers：促使他在這個時刻去找不同做法的力——為什麼是現在。選填；`status: not_supported` 時要用 rationale 講清楚查過什麼、為什麼判斷沒有資料。",
+          "required": ["status"],
+          "additionalProperties": false,
+          "properties": {
+            "status": {"type": "string", "enum": ["supported", "not_supported"]},
+            "rationale": {"type": "string", "minLength": 1},
+            "push": {"type": "string", "minLength": 1, "description": "目前處境哪裡已經讓他受不了。"},
+            "pull": {"type": "string", "minLength": 1, "description": "新做法吸引他的地方。"},
+            "anxiety": {"type": "string", "minLength": 1, "description": "他為什麼還不敢換。"},
+            "habit": {"type": "string", "minLength": 1, "description": "舊做法為什麼還拉著他。"}
+          }
+        },
+        "strength": {
+          "type": "string",
+          "enum": ["high", "medium", "low"],
+          "description": "jtbd-carries-forces-and-layers：這則 Job 相對其他 Job 的強度，依重複性、影響範圍、證據裡表達的急迫程度判斷——不是依證據則數（LANGUAGE.md：不要拿證據厚薄當判準）。選填，跟 strength_basis 成對出現。"
+        },
+        "strength_basis": {
+          "type": "string",
+          "minLength": 1,
+          "description": "為什麼判斷是這個強度——不能只複述 strength 的定義，也不能是證據則數。"
+        }
+      }
+    },
+    "layer_or_absence": {
+      "type": "object",
+      "required": ["status", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {"type": "string", "enum": ["supported", "not_supported"]},
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "description": "status 是 supported 時：這一層的內容。status 是 not_supported 時：查過哪些證據、為什麼判斷沒有資料——不能是空字串，也不能只複述這一層在問什麼。"
+        }
+      }
+    }
+  }
+}

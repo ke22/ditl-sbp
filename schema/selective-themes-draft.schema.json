@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "selective-themes-draft.schema.json",
+  "title": "Selective themes draft",
+  "description": "The model's Selective Coding output: core and secondary selective themes formed from the run's axial themes in relation to the research purpose.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "themes"
+  ],
+  "properties": {
+    "themes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/theme"
+      }
+    }
+  },
+  "definitions": {
+    "theme": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tier",
+        "name",
+        "core_sentence",
+        "insight",
+        "axial_refs",
+        "concept_refs",
+        "key_insights"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tier": {
+          "enum": [
+            "core",
+            "secondary"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 15
+        },
+        "core_sentence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "insight": {
+          "type": "string",
+          "minLength": 1
+        },
+        "axial_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "concept_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "representative_evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "key_insights": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 5,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          }
+        },
+        "representative_quote_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^OC-[0-9]+$"
+          },
+          "description": "converge-coding-contracts（2026-10-03）：代表語句——從這個主題 concept_refs 裡挑出的開放編碼，原樣顯示它們的整理後引言；優先 3–5 則、不同受訪者，不湊數。開放編碼帶引言時必填，取代 representative_evidence_refs。"
+        },
+        "support_summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 150,
+          "description": "coding-support-summary（2026-10-05）：支持摘要——1–3 句、150 字以內，整理多筆資料共同呈現的具體情況；不新增資料沒有支持的心理、原因或因果。新產出必填；舊檔沒有照樣有效。"
+        }
+      }
+    }
+  }
+}

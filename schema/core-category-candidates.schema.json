@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/core-category-candidates.schema.json",
+  "title": "Core category candidates — 3 AI-proposed framings for the researcher to weigh",
+  "description": "propose-core-category-candidates：AI 讀完主軸編碼的全部類別與既有判準發現，提出剛好 3 個核心類別候選，每個附一段理由——理由要講「選這個當核心，研究會往哪個方向走」，不能只是複述類別自己的 discriminating_basis。不推薦任何一個為預設答案，決定權在研究者（CLAUDE.md「助理的界線」）。",
+  "type": "object",
+  "required": ["schema_version", "case_id", "candidates"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/definitions/candidate"
+      }
+    }
+  },
+  "definitions": {
+    "candidate": {
+      "type": "object",
+      "required": ["category_id", "rationale"],
+      "additionalProperties": false,
+      "properties": {
+        "category_id": {
+          "type": "string",
+          "pattern": "^CAT-[0-9]+$"
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "description": "選這個類別當核心，研究會往哪個方向走——不能只是複述類別自己的 discriminating_basis。"
+        }
+      }
+    }
+  }
+}

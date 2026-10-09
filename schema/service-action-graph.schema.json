@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/service-action-graph.schema.json",
+  "title": "Service action graph",
+  "type": "object",
+  "required": ["meta", "nodes", "relations", "markers"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 2},
+    "meta": {
+      "type": "object",
+      "required": ["case_id"],
+      "properties": {
+        "artifact_type": {"const": "as_is_graph"},
+        "case_id": {"type": "string", "minLength": 1},
+        "scenario_id": {"type": "string", "minLength": 1},
+        "journey_ref": {"type": "string", "minLength": 1},
+        "blueprint_method": {"enum": ["to_be_v1"]}
+      },
+      "additionalProperties": true
+    },
+    "nodes": {"type": "array", "items": {"$ref": "#/definitions/node"}},
+    "relations": {"type": "array", "items": {"$ref": "#/definitions/relation"}},
+    "markers": {"type": "array", "items": {"$ref": "#/definitions/marker"}},
+    "dispositions": {"type": "array", "items": {"$ref": "event-dispositions.schema.json#/definitions/disposition"}},
+    "annotations": {"type": "array", "items": {"$ref": "experience-annotations.schema.json#/definitions/annotation"}},
+    "topology_flags": {"type": "array", "items": {"type": "object", "required": ["solution_ref", "step_ref", "reason"], "additionalProperties": false, "properties": {"solution_ref": {"type": "string", "minLength": 1}, "step_ref": {"type": "string", "minLength": 1}, "reason": {"type": "string", "minLength": 1}}}},
+    "external_references": {"type": "array", "items": {"type": "object", "required": ["id", "text"], "additionalProperties": false, "properties": {"id": {"type": "string", "pattern": "^XR-[0-9]+$"}, "text": {"type": "string", "minLength": 1}, "applicability_context": {"type": ["string", "null"]}, "uncertainty": {"type": ["object", "null"]}, "supports": {"type": "array", "items": {"type": "object"}}, "limits": {"type": "array", "items": {"type": "object"}}, "research_question_refs": {"type": "array", "items": {"type": "string"}}, "related_solution_refs": {"type": "array", "items": {"type": "string"}}}}}
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["schema_version"],
+        "properties": {"schema_version": {"const": 2}}
+      },
+      "then": {
+        "properties": {
+          "meta": {
+            "required": ["artifact_type", "case_id", "scenario_id", "journey_ref"]
+          }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "layer": {"enum": ["實體證據", "顧客行動", "前台行動", "後台行動", "支援流程"]},
+    "channel": {"enum": ["physical_product", "physical_environment", "physical_service", "physical_communication", "digital_product", "digital_environment", "digital_service", "digital_communication"]},
+    "source": {"enum": ["evidence", "inference", "researcher"]},
+    "claim": {
+      "type": "object", "required": ["text", "source", "inferred", "scope"], "additionalProperties": false,
+      "properties": {"text": {"type": "string", "minLength": 1}, "source": {"$ref": "#/definitions/source"}, "inferred": {"type": "boolean"}, "scope": {"enum": ["individual_case", "general_pattern"]}, "evidence_ref": {"$ref": "content-provenance.schema.json#/definitions/evidence_id"}, "speaker": {"type": "string"}},
+      "allOf": [
+        {"if": {"properties": {"source": {"const": "evidence"}}, "required": ["source"]}, "then": {"required": ["evidence_ref"], "properties": {"inferred": {"const": false}}}},
+        {"if": {"properties": {"source": {"enum": ["inference", "researcher"]}}, "required": ["source"]}, "then": {"properties": {"inferred": {"const": true}}}},
+        {"if": {"properties": {"source": {"const": "researcher"}}, "required": ["source"]}, "then": {"not": {"required": ["evidence_ref"]}}}
+      ]
+    },
+    "node": {
+      "type": "object", "required": ["id", "kind", "label", "step", "layer", "claims"], "x-generation-required": ["description"], "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^(A|P)-[A-Za-z0-9_-]+$"}, "kind": {"enum": ["action", "artifact"]}, "label": {"type": "string", "minLength": 1, "maxLength": 16}, "description": {"type": "string", "minLength": 1}, "step": {"type": "integer", "minimum": 1}, "layer": {"$ref": "#/definitions/layer"}, "channel": {"$ref": "#/definitions/channel"}, "claims": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/claim"}},
+        "actor": {"type": "string", "minLength": 1}, "actor_boundary": {"enum": ["customer", "provider", "included_support", "external_dependency", "out_of_scope"]}, "visibility": {"enum": ["customer_visible", "customer_invisible", "not_applicable"]},
+        "service_role": {"enum": ["customer", "frontstage_delivery", "backstage_delivery", "internal_support", "external_dependency", "out_of_scope"]},
+        "scenario_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "object_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "selected_solution_ref": {"type": "string", "minLength": 1},
+        "future_state": {"enum": ["maintained", "changed", "added"]},
+        "journey_step_ref": {"type": "string", "minLength": 1},
+        "anchors": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["kind", "ref"], "additionalProperties": false, "properties": {"kind": {"enum": ["selected_solution", "journey_step", "service_node"]}, "ref": {"type": "string", "minLength": 1}}}},
+        "necessity": {"type": "string", "minLength": 1},
+        "external_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^XR-[0-9]+$"}},
+        "muted_inference_flag": {"type": "boolean"},
+        "status": {"enum": ["observed", "planned"]},
+        "committed_actor": {"type": "string", "minLength": 1},
+        "effective": {"type": "object", "additionalProperties": false, "properties": {"date": {"type": "string"}, "scope": {"type": "string"}}}
+      },
+      "allOf": [
+        {"if": {"properties": {"kind": {"const": "action"}}, "required": ["kind"]}, "then": {"required": ["actor_boundary", "visibility"], "properties": {"id": {"pattern": "^A-"}}}},
+        {"if": {"properties": {"kind": {"const": "action"}, "status": {"const": "planned"}}, "required": ["kind", "status"]}, "then": {"required": ["committed_actor"], "not": {"required": ["actor"]}}},
+        {"if": {"properties": {"kind": {"const": "action"}}, "required": ["kind"], "not": {"required": ["status"], "properties": {"status": {"const": "planned"}}}}, "then": {"required": ["actor"], "not": {"required": ["committed_actor"]}}},
+        {"if": {"properties": {"kind": {"const": "artifact"}}, "required": ["kind"]}, "then": {"properties": {"id": {"pattern": "^P-"}}, "not": {"anyOf": [{"required": ["actor"]}, {"required": ["actor_boundary"]}, {"required": ["visibility"]}, {"required": ["status"]}, {"required": ["committed_actor"]}, {"required": ["effective"]}]}}}
+      ]
+    },
+    "relation": {
+      "type": "object", "required": ["id", "type", "source"], "additionalProperties": false,
+      "properties": {"id": {"type": "string", "minLength": 1}, "type": {"enum": ["sequence", "handoff", "supports", "causal", "same_event"]}, "source": {"$ref": "#/definitions/source"}, "from": {"type": "string"}, "to": {"type": "string"}, "endpoints": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"type": "string"}}, "evidence_refs": {"type": "array", "minItems": 1, "items": {"$ref": "content-provenance.schema.json#/definitions/evidence_id"}}, "selected_solution_ref": {"type": "string", "minLength": 1}, "note": {"type": "string"}, "muted": {"type": "boolean"}},
+      "allOf": [
+        {"if": {"properties": {"type": {"const": "same_event"}}, "required": ["type"]}, "then": {"required": ["endpoints"], "not": {"anyOf": [{"required": ["from"]}, {"required": ["to"]}]}}},
+        {"if": {"properties": {"type": {"enum": ["sequence", "handoff", "supports", "causal"]}}, "required": ["type"]}, "then": {"required": ["from", "to"], "not": {"required": ["endpoints"]}}},
+        {"if": {"properties": {"source": {"const": "evidence"}}, "required": ["source"]}, "then": {"required": ["evidence_refs"]}}
+      ]
+    },
+    "marker": {"type": "object", "required": ["id", "type", "node_ref", "evidence_ref"], "additionalProperties": false, "properties": {"id": {"type": "string"}, "type": {"enum": ["失誤點", "等候點", "決策點", "交接點", "放棄點"]}, "node_ref": {"type": "string", "pattern": "^A-"}, "evidence_ref": {"$ref": "content-provenance.schema.json#/definitions/evidence_id"}, "note": {"type": "string", "minLength": 1}}}
+  }
+}

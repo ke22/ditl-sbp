@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/content-provenance.schema.json",
+  "title": "Canonical SBP content and provenance vocabulary",
+  "$ref": "#/definitions/artifact_identity",
+  "definitions": {
+    "artifact_identity": {
+      "type": "object",
+      "required": ["schema_version", "artifact_type", "case_id", "scenario_id"],
+      "properties": {
+        "schema_version": {"type": "integer", "minimum": 1},
+        "artifact_type": {
+          "enum": [
+            "as_is_graph",
+            "issue_package",
+            "research_catalog",
+            "to_be_bundle",
+            "pilot_record",
+            "validation_outcome"
+          ]
+        },
+        "case_id": {"type": "string", "minLength": 1},
+        "scenario_id": {"type": "string", "minLength": 1}
+      }
+    },
+    "claim_state": {
+      "enum": ["evidence", "inference", "researcher", "proposal", "hypothesis"]
+    },
+    "as_is_claim_state": {"enum": ["evidence", "inference", "researcher"]},
+    "issue_claim_state": {"enum": ["inference", "researcher"]},
+    "proposal_claim_state": {"const": "proposal"},
+    "hypothesis_claim_state": {"const": "hypothesis"},
+    "evidence_id": {"type": "string", "pattern": "^E-[0-9]+$"},
+    "action_id": {"type": "string", "pattern": "^A-[A-Za-z0-9_-]+$"},
+    "artifact_id": {"type": "string", "pattern": "^P-[A-Za-z0-9_-]+$"},
+    "as_is_element_id": {"type": "string", "pattern": "^(A|P)-[A-Za-z0-9_-]+$"},
+    "issue_id": {"type": "string", "pattern": "^I-[A-Za-z0-9_-]+$"},
+    "research_source_id": {"type": "string", "pattern": "^R-[A-Za-z0-9_-]+$"},
+    "research_claim_id": {"type": "string", "pattern": "^RC-[A-Za-z0-9_-]+$"},
+    "proposal_id": {"type": "string", "pattern": "^T-[A-Za-z0-9_-]+$"},
+    "to_be_element_id": {"type": "string", "pattern": "^TB-[A-Za-z0-9_-]+$"},
+    "pilot_cycle_id": {"type": "string", "pattern": "^PV-[A-Za-z0-9_-]+$"},
+    "observation_id": {"type": "string", "pattern": "^O-[A-Za-z0-9_-]+$"},
+    "validation_outcome_id": {"type": "string", "pattern": "^VO-[A-Za-z0-9_-]+$"},
+    "evidence_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/definitions/evidence_id"}
+    },
+    "as_is_element_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/definitions/as_is_element_id"}
+    },
+    "issue_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/definitions/issue_id"}
+    },
+    "research_source_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/definitions/research_source_id"}
+    },
+    "research_claim_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/definitions/research_claim_id"}
+    },
+    "proposal_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/definitions/proposal_id"}
+    },
+    "uncertainty": {
+      "type": "object",
+      "required": ["state"],
+      "additionalProperties": false,
+      "properties": {
+        "state": {"enum": ["bounded", "uncertain", "disputed"]},
+        "explanation": {"type": "string", "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["state"],
+            "properties": {"state": {"enum": ["uncertain", "disputed"]}}
+          },
+          "then": {"required": ["explanation"]}
+        }
+      ]
+    },
+    "source_class": {
+      "enum": ["academic", "government", "professional_body", "first_party_case"]
+    },
+    "source_admission": {"enum": ["admitted", "rejected"]}
+  }
+}

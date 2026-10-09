@@ -1,0 +1,647 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/journey.schema.json",
+  "title": "Scenario-specific customer journey",
+  "oneOf": [
+    {
+      "$ref": "#/definitions/journey_v2"
+    },
+    {
+      "$ref": "#/definitions/journey_v3"
+    }
+  ],
+  "definitions": {
+    "journey_v2": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "case_id",
+        "primary_scenario",
+        "scenarios"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 2
+        },
+        "case_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "primary_scenario": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scenarios": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/scenario"
+          }
+        }
+      }
+    },
+    "journey_v3": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "case_id",
+        "primary_scenario",
+        "scenarios",
+        "branches"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 3
+        },
+        "case_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "primary_scenario": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scenarios": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/scenario_v3"
+          }
+        },
+        "branches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/branch"
+          }
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "evidence_refs"
+      ],
+      "x-generation-required": [
+        "description"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "stage_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "customer_actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/customer_action"
+          }
+        },
+        "as_is_solutions": {
+          "x-compatibility-only": true,
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/as_is_solution"
+          }
+        },
+        "experience": {
+          "$ref": "#/definitions/step_experience"
+        },
+        "pain_points": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "emotion": {
+          "$ref": "#/definitions/experience_level"
+        },
+        "satisfaction": {
+          "$ref": "#/definitions/step_satisfaction"
+        },
+        "develop_solution": {
+          "description": "研究者是否選這一刻發展解方。由研究者在 CJM 上勾選，不由生成寫入。",
+          "x-not-generated": true,
+          "type": "boolean"
+        },
+        "solution_analysis": {
+          "x-not-generated": true,
+          "$ref": "#/definitions/solution_analysis"
+        },
+        "solution_basis": {
+          "description": "產出解方當下這一步內容的 digest；與目前內容不同即為過期。",
+          "x-not-generated": true,
+          "type": "string",
+          "minLength": 1
+        },
+        "solution_candidates": {
+          "x-not-generated": true,
+          "type": "array",
+          "items": {"$ref": "#/definitions/solution_candidate"}
+        },
+        "selected_solution_ids": {
+          "x-not-generated": true,
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "scenario": {
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "customer_goal",
+        "object_types",
+        "status",
+        "steps"
+      ],
+      "x-generation-required": [
+        "description"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "customer_goal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "object_types": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "enum": [
+            "proposed",
+            "confirmed"
+          ]
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/step"
+          }
+        },
+        "stages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/stage"
+          }
+        }
+      }
+    },
+    "step_v3": {
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "evidence_refs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "provenance": {
+          "enum": [
+            "observed",
+            "inferred",
+            "mixed"
+          ]
+        },
+        "stage_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "customer_actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/customer_action"
+          }
+        },
+        "as_is_solutions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/as_is_solution"
+          }
+        },
+        "pain_points": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "emotion": {
+          "$ref": "#/definitions/experience_level"
+        },
+        "satisfaction": {
+          "$ref": "#/definitions/experience_level"
+        },
+        "solution_candidates": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/solution_candidate"}
+        },
+        "selected_solution_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "scenario_v3": {
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "customer_goal",
+        "object_types",
+        "status",
+        "steps"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "customer_goal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "object_types": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "enum": [
+            "proposed",
+            "confirmed"
+          ]
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/step_v3"
+          }
+        },
+        "stages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/stage"
+          }
+        }
+      }
+    },
+    "branch": {
+      "type": "object",
+      "required": [
+        "branch_id",
+        "label",
+        "divergence_step_id",
+        "steps",
+        "topology_provenance"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "branch_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "divergence_step_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "merge_step_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/step_v3"
+          }
+        },
+        "topology_provenance": {
+          "enum": [
+            "observed",
+            "inferred",
+            "mixed"
+          ]
+        }
+      }
+    },
+    "customer_action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "evidence_refs"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16
+        }
+      }
+    },
+    "as_is_solution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "evidence_refs"
+      ],
+      "anyOf": [
+        {"required": ["channel"]},
+        {"required": ["delivery"]}
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "channel": {
+          "description": "舊格式：把整個做法歸成一類管道。2026-09-29 起新產出改寫 delivery；讀舊檔時照舊呈現。",
+          "enum": [
+            "people",
+            "physical_environment",
+            "digital_tools",
+            "digital_environments"
+          ]
+        },
+        "delivery": {
+          "description": "這個做法在這一步的情境裡，各管道各自扮演什麼角色。只寫真的有參與的管道；沒有參與的不寫，不為了填滿而推。",
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "people": {"$ref": "#/definitions/channel_delivery"},
+            "physical_environment": {"$ref": "#/definitions/channel_delivery"},
+            "digital_tools": {"$ref": "#/definitions/channel_delivery"},
+            "digital_environments": {"$ref": "#/definitions/channel_delivery"}
+          }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "touchpoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/touchpoint"
+          }
+        }
+      }
+    },
+    "experience_level": {
+      "oneOf": [
+        {"type": "integer", "minimum": 1, "maximum": 5},
+        {"x-compatibility-only": true, "type": "object", "additionalProperties": false, "required": ["level"],
+         "properties": {"level": {"type": "integer", "minimum": 1, "maximum": 5}}}
+      ]
+    },
+    "step_experience": {
+      "description": "這一步的經驗線：處境、發生什麼、使用者的判斷與行動、卡住的地方、反應。痛點、情緒、滿意度都從這裡投影。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["what_happened", "evidence_refs"],
+      "properties": {
+        "situation": {"type": "string", "minLength": 1},
+        "what_happened": {"type": "string", "minLength": 1},
+        "judgment_action": {"type": "string", "minLength": 1},
+        "friction": {"type": "string", "minLength": 1},
+        "reaction": {"type": "string", "minLength": 1},
+        "evidence_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "inferred_parts": {
+          "description": "哪幾段是由證據推論、而非證據直接講到。",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"enum": ["situation", "what_happened", "judgment_action", "friction", "reaction"]}
+        }
+      }
+    },
+    "step_satisfaction": {
+      "oneOf": [
+        {"x-compatibility-only": true, "$ref": "#/definitions/experience_level"},
+        {"x-compatibility-only": true, "$ref": "#/definitions/satisfaction_evaluation"},
+        {"description": "0..N 則質性評價；幾則由證據決定（2026-10-02）。",
+         "type": "array", "items": {"$ref": "#/definitions/satisfaction_evaluation"}}
+      ]
+    },
+    "satisfaction_evaluation": {
+      "description": "使用者對這一步的質性評價與理由，不是分數。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evaluation", "reason"],
+      "properties": {
+        "evaluation": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "evidence_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "source": {"x-not-generated": true, "enum": ["ai-draft", "researcher"]}
+      }
+    },
+    "solution_analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["problem", "why_it_matters", "constraints"],
+      "properties": {
+        "problem": {"type": "string", "minLength": 1},
+        "why_it_matters": {"type": "string", "minLength": 1},
+        "constraints": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "solution_candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "text", "evidence_refs", "basis", "delivery"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "text": {"type": "string", "minLength": 1},
+        "evidence_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "basis": {"enum": ["evidence", "inference", "researcher"]},
+        "delivery": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "people": {"$ref": "#/definitions/channel_delivery_elements"},
+            "physical_environment": {"$ref": "#/definitions/channel_delivery_elements"},
+            "digital_tools": {"$ref": "#/definitions/channel_delivery_elements"},
+            "digital_environments": {"$ref": "#/definitions/channel_delivery_elements"}
+          }
+        }
+      }
+    },
+    "channel_delivery_elements": {
+      "oneOf": [
+        {"$ref": "#/definitions/channel_delivery"},
+        {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/channel_delivery"}}
+      ]
+    },
+    "channel_delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "basis"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "basis": {
+          "description": "evidence＝證據直接講到；inference＝依已有證據的情境推出這個管道的最少必要角色；researcher＝研究者改寫。",
+          "enum": [
+            "evidence",
+            "inference",
+            "researcher"
+          ]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "if": {
+        "properties": {"basis": {"const": "evidence"}}
+      },
+      "then": {
+        "required": ["evidence_refs"],
+        "properties": {"evidence_refs": {"minItems": 1}}
+      }
+    },
+    "touchpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "evidence_refs"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

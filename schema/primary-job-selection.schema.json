@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/primary-job-selection.schema.json",
+  "title": "Primary job selection — the researcher's chosen primary Job",
+  "description": "propose-primary-job-candidates：研究者選定的主要 Job——不管是照抄某個候選、還是完全自己寫的新 Job，一律存完整的情境／進展／結果內容，不是存一個候選編號的參照（自填的 Job 沒有候選編號可以參照）。這是研究者的判斷，不是模型的產出——沒有欄位表達這則 Job 來自哪個候選，因為系統不判斷哪個選擇是對的。",
+  "type": "object",
+  "required": ["schema_version", "case_id", "rationale", "situation", "progress", "outcome", "grounded_in"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1,
+      "description": "研究者為什麼選這則 Job 當主要框架——不能是空字串或只有空白。"
+    },
+    "situation": {
+      "type": "string",
+      "minLength": 1,
+      "description": "什麼處境下，這件事會被觸發。"
+    },
+    "progress": {
+      "type": "string",
+      "minLength": 1,
+      "description": "這個人想完成什麼——不指名任何具體服務、技術或產品。"
+    },
+    "outcome": {
+      "type": "string",
+      "minLength": 1,
+      "description": "他怎麼判斷這件事算做到了。"
+    },
+    "grounded_in": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^CAT-[0-9]+$"
+      },
+      "description": "這則 Job 是從哪個或哪些主軸編碼類別讀出來的。這裡還沒有 JOB-N id——id 要等真的產出 jtbd.yaml 時才指派。"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/experience-annotations.schema.json",
+  "title": "Experience annotations",
+  "type": "object",
+  "required": ["schema_version", "case_id", "annotations"],
+  "additionalProperties": false,
+  "properties": {"schema_version": {"const": 2}, "case_id": {"type": "string"}, "annotations": {"type": "array", "items": {"$ref": "#/definitions/annotation"}}},
+  "definitions": {
+    "annotation": {
+      "type": "object", "required": ["id", "type", "text", "scenario_ref", "step_ref", "evidence_refs"], "additionalProperties": false,
+      "properties": {"id": {"type": "string", "pattern": "^N-"}, "type": {"enum": ["pain_point", "expectation", "state", "outcome", "channel_absence"]}, "text": {"type": "string", "minLength": 1}, "scenario_ref": {"type": "string", "minLength": 1}, "step_ref": {"type": "string", "minLength": 1}, "node_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^(A|P)-"}}, "evidence_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}}, "channel": {"$ref": "service-action-graph.schema.json#/definitions/channel"}},
+      "allOf": [
+        {"if": {"properties": {"type": {"const": "channel_absence"}}, "required": ["type"]}, "then": {"required": ["channel"]}}
+      ]
+    }
+  }
+}

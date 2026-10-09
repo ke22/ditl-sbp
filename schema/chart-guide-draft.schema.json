@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "chart-guide-draft.schema.json",
+  "title": "Chart guide draft",
+  "description": "The AI's draft of one chart guide (Persona, customer journey or service blueprint): a summary split into sentences and a list of points, each citing evidence ids from that station's input. Merged into chart_guides.yaml with source ai-draft.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary_sentences", "points", "basis"],
+  "properties": {
+    "summary_sentences": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/definitions/cited_sentence"}
+    },
+    "points": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/definitions/cited_point"}
+    },
+    "basis": {"type": "string", "minLength": 1}
+  },
+  "definitions": {
+    "cited_sentence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sentence", "evidence_refs"],
+      "properties": {
+        "sentence": {"type": "string", "minLength": 1},
+        "evidence_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      }
+    },
+    "cited_point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["point", "evidence_refs"],
+      "properties": {
+        "point": {"type": "string", "minLength": 1},
+        "evidence_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      }
+    }
+  }
+}

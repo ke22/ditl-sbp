@@ -1,0 +1,186 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/artifact-lifecycle.schema.json",
+  "title": "Canonical artifact lifecycle registry",
+  "type": "object",
+  "required": ["schema_version", "case_id", "versions", "current"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "case_id": {"type": "string", "minLength": 1},
+    "versions": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/version_record"}
+    },
+    "current": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/current_pointer"}
+    },
+    "journey_history": {
+      "type": "object",
+      "patternProperties": {
+        "^AV-[a-f0-9]{64}$": {"type": "object"}
+      },
+      "additionalProperties": false
+    },
+    "journey_changes": {
+      "type": "object",
+      "patternProperties": {
+        "^AV-[a-f0-9]{64}$": {"$ref": "#/definitions/journey_change"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "definitions": {
+    "artifact_type": {
+      "enum": [
+        "evidence",
+        "confirmed_journey",
+        "as_is_graph",
+        "issue_package",
+        "research_catalog",
+        "to_be_bundle",
+        "pilot_record",
+        "validation_outcome"
+      ]
+    },
+    "case_artifact_type": {
+      "enum": ["evidence", "confirmed_journey"]
+    },
+    "scenario_artifact_type": {
+      "enum": [
+        "as_is_graph",
+        "issue_package",
+        "research_catalog",
+        "to_be_bundle",
+        "pilot_record",
+        "validation_outcome"
+      ]
+    },
+    "scope": {"enum": ["case", "scenario"]},
+    "version_id": {
+      "type": "string",
+      "pattern": "^AV-[a-f0-9]{64}$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "dependency": {
+      "type": "object",
+      "required": ["role", "version_ref", "content_digest"],
+      "additionalProperties": false,
+      "properties": {
+        "role": {"$ref": "#/definitions/artifact_type"},
+        "version_ref": {"$ref": "#/definitions/version_id"},
+        "content_digest": {"$ref": "#/definitions/digest"}
+      }
+    },
+    "version_record": {
+      "type": "object",
+      "required": [
+        "version_id",
+        "artifact_type",
+        "scope",
+        "case_id",
+        "content_digest",
+        "created_at",
+        "dependencies"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "version_id": {"$ref": "#/definitions/version_id"},
+        "artifact_type": {"$ref": "#/definitions/artifact_type"},
+        "scope": {"$ref": "#/definitions/scope"},
+        "case_id": {"type": "string", "minLength": 1},
+        "scenario_id": {"type": "string", "minLength": 1},
+        "content_digest": {"$ref": "#/definitions/digest"},
+        "as_is_input_projection_digest": {"$ref": "#/definitions/digest"},
+        "created_at": {"type": "string", "minLength": 1},
+        "dependencies": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/dependency"}
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["artifact_type"],
+            "properties": {"artifact_type": {"$ref": "#/definitions/case_artifact_type"}}
+          },
+          "then": {
+            "properties": {"scope": {"const": "case"}},
+            "not": {"required": ["scenario_id"]}
+          }
+        },
+        {
+          "if": {
+            "required": ["artifact_type"],
+            "properties": {"artifact_type": {"$ref": "#/definitions/scenario_artifact_type"}}
+          },
+          "then": {
+            "required": ["scenario_id"],
+            "properties": {"scope": {"const": "scenario"}}
+          }
+        }
+      ]
+    },
+    "current_pointer": {
+      "type": "object",
+      "required": ["artifact_type", "scope", "case_id", "version_ref"],
+      "additionalProperties": false,
+      "properties": {
+        "artifact_type": {"$ref": "#/definitions/artifact_type"},
+        "scope": {"$ref": "#/definitions/scope"},
+        "case_id": {"type": "string", "minLength": 1},
+        "scenario_id": {"type": "string", "minLength": 1},
+        "version_ref": {"$ref": "#/definitions/version_id"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["artifact_type"],
+            "properties": {"artifact_type": {"$ref": "#/definitions/case_artifact_type"}}
+          },
+          "then": {
+            "properties": {"scope": {"const": "case"}},
+            "not": {"required": ["scenario_id"]}
+          }
+        },
+        {
+          "if": {
+            "required": ["artifact_type"],
+            "properties": {"artifact_type": {"$ref": "#/definitions/scenario_artifact_type"}}
+          },
+          "then": {
+            "required": ["scenario_id"],
+            "properties": {"scope": {"const": "scenario"}}
+          }
+        }
+      ]
+    },
+    "journey_change": {
+      "type": "object",
+      "required": ["operation"],
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "enum": [
+            "create_branch",
+            "rename_branch",
+            "set_divergence",
+            "set_merge",
+            "add_branch_step",
+            "rename_branch_step",
+            "reorder_branch_steps",
+            "remove_branch_step",
+            "delete_branch",
+            "scenario_to_branch",
+            "branch_to_scenario"
+          ]
+        },
+        "rationale": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

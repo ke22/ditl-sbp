@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#", "$id": "ditl_sbp/schema/sbp-draft.schema.json", "title": "Projected service blueprint draft", "type": "object",
+  "required": ["meta", "cells", "graph", "relations", "markers"], "additionalProperties": false,
+  "properties": {
+    "meta": {"type": "object", "required": ["case_id"], "properties": {"case_id": {"type": "string"}}, "additionalProperties": true},
+    "graph": {"type": "object", "required": ["nodes"], "properties": {"nodes": {"type": "array", "items": {"$ref": "service-action-graph.schema.json#/definitions/node"}}}, "additionalProperties": true},
+    "expectations": {"type": "array", "items": {"$ref": "reference-hypotheses.schema.json#/definitions/expectation"}},
+    "relations": {"type": "array", "items": {"$ref": "service-action-graph.schema.json#/definitions/relation"}},
+    "markers": {"type": "array", "items": {"$ref": "service-action-graph.schema.json#/definitions/marker"}},
+    "schema_version": {"const": 2},
+    "journey": {"$ref": "journey.schema.json"},
+    "annotations": {"type": "array", "items": {"$ref": "experience-annotations.schema.json#/definitions/annotation"}},
+    "research_gaps": {"type": "array", "items": {"type": "object"}},
+    "conflicts": {"type": "array", "items": {"type": "object"}},
+    "cells": {"type": "array", "items": {"$ref": "#/definitions/cell"}},
+    "other_scenarios": {"type": "array", "items": {"$ref": "#/definitions/other_scenario"}},
+    "topology_flags": {"type": "array", "items": {"type": "object", "required": ["solution_ref", "step_ref", "reason"], "additionalProperties": false, "properties": {"solution_ref": {"type": "string", "minLength": 1}, "step_ref": {"type": "string", "minLength": 1}, "reason": {"type": "string", "minLength": 1}}}},
+    "external_references": {"type": "array", "items": {"type": "object", "required": ["id", "text"], "additionalProperties": false, "properties": {"id": {"type": "string", "pattern": "^XR-[0-9]+$"}, "text": {"type": "string", "minLength": 1}, "applicability_context": {"type": ["string", "null"]}, "uncertainty": {"type": ["object", "null"]}, "supports": {"type": "array", "items": {"type": "object"}}, "limits": {"type": "array", "items": {"type": "object"}}, "research_question_refs": {"type": "array", "items": {"type": "string"}}, "related_solution_refs": {"type": "array", "items": {"type": "string"}}}}}
+  },
+  "definitions": {
+    "layer": {"enum": ["實體證據", "顧客行動", "前台行動", "後台行動", "支援流程"]},
+    "other_scenario": {"type": "object", "required": ["scenario_id", "label", "nodes"], "additionalProperties": false, "properties": {"scenario_id": {"type": "string"}, "label": {"type": "string"}, "customer_goal": {"type": "string"}, "nodes": {"type": "array", "items": {"$ref": "service-action-graph.schema.json#/definitions/node"}}}},
+    "cell": {"type": "object", "required": ["step", "layer", "node_refs", "expectation_refs"], "additionalProperties": false, "properties": {"step": {"type": "integer", "minimum": 1}, "layer": {"$ref": "#/definitions/layer"}, "node_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^(A|P)-"}}, "expectation_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^X-"}}, "blank": {"enum": ["confirmed_absent", "no_evidence"]}, "coverage_state": {"enum": ["has_evidence", "confirmed_absent", "unobserved", "expected_unverified", "not_applicable"]}, "blank_note": {"type": "string", "minLength": 1}, "absence_evidence_ref": {"type": "string"}, "expected_unverified_cause": {"enum": ["elsewhere", "hypothesis"]}}, "allOf": [{"if": {"properties": {"node_refs": {"maxItems": 0}}, "required": ["node_refs"]}, "then": {"anyOf": [{"required": ["blank", "blank_note"]}, {"properties": {"coverage_state": {"const": "expected_unverified"}}, "required": ["coverage_state", "blank_note"]}, {"properties": {"coverage_state": {"const": "not_applicable"}}, "required": ["coverage_state", "blank_note"]}]}}, {"if": {"properties": {"node_refs": {"minItems": 1}}, "required": ["node_refs"]}, "then": {"not": {"anyOf": [{"required": ["blank"]}, {"required": ["blank_note"]}]}}}, {"if": {"properties": {"blank": {"const": "confirmed_absent"}}, "required": ["blank"]}, "then": {"required": ["absence_evidence_ref"]}}, {"if": {"properties": {"coverage_state": {"const": "expected_unverified"}}, "required": ["coverage_state"]}, "then": {"required": ["expected_unverified_cause"]}}]}
+  }
+}

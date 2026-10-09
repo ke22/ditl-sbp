@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "implementation-research-operation.schema.json",
+  "title": "Pre-blueprint implementation research operation",
+  "description": "pre-blueprint-implementation-research: one research operation bound to the snapshot of adopted Solutions and ticked questions it was started for. The digest of the snapshot identifies the operation; an operation whose snapshot differs from the run's present one is no longer current.",
+  "type": "object",
+  "required": ["schema_version", "digest", "snapshot", "state", "started_at"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "digest": {"type": "string", "minLength": 1},
+    "snapshot": {
+      "type": "object",
+      "required": ["schema_version", "case_id", "scenario_id", "adopted_solutions", "ticked_question_ids", "questions", "source_policy_version"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "case_id": {"type": "string"},
+        "scenario_id": {"type": "string"},
+        "adopted_solutions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["solution_id", "step_ref", "text"],
+            "properties": {"solution_id": {"type": "string"}, "step_ref": {"type": "string"}, "text": {"type": "string"}}
+          }
+        },
+        "ticked_question_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "questions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "text"],
+            "properties": {"id": {"type": "string"}, "text": {"type": "string", "minLength": 1}}
+          }
+        },
+        "source_policy_version": {"type": "string", "minLength": 1}
+      }
+    },
+    "state": {"enum": ["running", "complete", "no_admissible", "failed"]},
+    "started_at": {"type": "string"},
+    "finished_at": {"type": ["string", "null"]},
+    "error": {"type": ["object", "null"]},
+    "counts": {"type": "object"}
+  }
+}

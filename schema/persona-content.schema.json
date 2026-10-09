@@ -1,0 +1,402 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/persona-content.schema.json",
+  "title": "Persona Content — the named persona generated for the designated target quadrant",
+  "description": "generate-persona-for-target-quadrant：把研究者指定的主要象限，依確認過的成員與他們在選定兩條軸上的落點，寫成一份有名字、有理由、有內容的 persona。member_subject_ids 只放受訪者 id，不複製受訪者的 evidence_refs——追溯證據永遠回到同一次 run 的 persona_matrix.yaml，這條規則有兩個例外，理由相同——畫面上顯示卻追不回原文的內容，比不顯示還糟。一個是 representative_quote 的那句引言；另一個是 mark-and-show-inferred-persona-fields 新增的 inferred_fields，被標成推論的內容一樣會顯示在畫面上，研究者要查得回它是從哪幾則證據推出來的。這份 schema 仍然接受舊版（四象限各一份、沒有 quadrant_id、沒有五個內容欄位）已經產出的文件繼續通過驗證——新產出一律只有一份、帶 quadrant_id 與五個內容欄位，這是產生端的規則，不是這份 schema 唯一允許的形狀。",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "case_id",
+    "personas"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "personas": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "$ref": "#/definitions/persona"
+      }
+    },
+    "quadrant_outcomes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "quadrant_id",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "quadrant_id": {
+            "type": "string",
+            "pattern": "^QUADRANT-[1-4]$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "persona_generated",
+              "insufficient_evidence",
+              "researcher_deferred"
+            ]
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "if": {
+    "properties": {
+      "personas": {
+        "maxItems": 0
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "quadrant_outcomes"
+    ],
+    "properties": {
+      "quadrant_outcomes": {
+        "minItems": 1
+      }
+    }
+  },
+  "definitions": {
+    "persona": {
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "member_subject_ids",
+        "rationale",
+        "description"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^PERSONA-[0-9]+$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "member_subject_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^P-[0-9]+$"
+          },
+          "description": "同一次 run 的 persona_matrix.yaml 裡的受訪者 id——只放 id，不複製那些受訪者的 evidence_refs 或 placements。可以是空陣列，讀給舊版文件（四象限各一份，含沒有成員的那格）用；generate-persona-for-target-quadrant 之後，指定為主要目標的格子不能沒有確認過的成員（見 target-segmentation-designation），所以新產出的這一份不會是空的。"
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "description": "為什麼這幾位算同一群——要指出共通的軸與落點，不能只是複述成員名單。"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "一句第一人稱的決策原則（2026-09-30 研究者裁定），不是這一群的完整敘述，也不是 motivation 換句話說——完整內容改放 motivation／context／behavior／challenge／need 五個欄位。這個欄位保留是因為既有的讀取端（例如 tools/workbench）拿它跟 label 一起顯示；舊版文件（這個欄位曾經承載整段敘述）繼續通過驗證。"
+        },
+        "quadrant_id": {
+          "type": "string",
+          "pattern": "^QUADRANT-[1-4]$",
+          "description": "quadrant-members-are-designer-assigned：這份 persona 對應 target_segmentation_selection.yaml 的哪一格。選填——這個 change 之前產生的 persona_content.yaml（六份、整個矩陣聚出來的）沒有這個欄位，讀取端照常顯示，不強制它變成四份。generate-persona-for-target-quadrant 之後，新產出一律帶這個欄位，且一定是研究者指定的主要象限。"
+        },
+        "motivation_goal": {
+          "type": "string",
+          "description": "persona-nine-canonical-fields（2026-10-01）：第一人稱——我真正想得到或完成什麼（動機／目標）。只寫底層目標，不寫判斷方式或做法。"
+        },
+        "decision_pattern": {
+          "type": "string",
+          "description": "persona-nine-canonical-fields（2026-10-01）：第一人稱——我怎麼判斷、看哪些訊號、怎麼權衡、什麼條件會讓我改變決定。決策順序寫在這裡。"
+        },
+        "behavior_strategy": {
+          "type": "string",
+          "description": "persona-nine-canonical-fields（2026-10-01）：第一人稱——判斷之後我實際怎麼做、採取什麼行動或因應方式。不重複 decision_pattern。"
+        },
+        "motivation": {
+          "x-compatibility-only": true,
+          "type": "string",
+          "description": "COMPATIBILITY_ONLY（persona-nine-canonical-fields，2026-10-01 起新生成不再產出，只供讀舊檔）：mark-and-show-inferred-persona-fields：這群人為什麼會做這件事。五個內容欄位每一個都有三種合法結果——證據直接支持就照證據寫；證據沒有直接講到、但從成員自己的證據推得出來，就寫下來並在 inferred_fields 記一筆（標明推的是哪一欄、從哪裡推的、根據哪幾則證據）；兩者都做不到才留空字串。把推論寫進欄位卻沒有在 inferred_fields 記一筆，會被擋下來。選填，讀給沒有這個欄位的舊版文件用。"
+        },
+        "context": {
+          "type": "string",
+          "description": "什麼情境下發生——三種合法結果與 inferred_fields 的規則同 motivation。選填，理由同上。"
+        },
+        "behavior": {
+          "x-compatibility-only": true,
+          "type": "string",
+          "description": "COMPATIBILITY_ONLY（persona-nine-canonical-fields，2026-10-01 起新生成不再產出，只供讀舊檔）：這群人實際做了什麼（行動與先後，一次證據充分的經驗就夠；重複出現的策略屬於 behavioral_patterns）——三種合法結果與 inferred_fields 的規則同 motivation。選填，理由同上。"
+        },
+        "challenge": {
+          "type": "string",
+          "description": "阻礙、痛點、矛盾——三種合法結果與 inferred_fields 的規則同 motivation。選填，理由同上。"
+        },
+        "need": {
+          "type": "string",
+          "description": "這群人真正期待什麼——三種合法結果與 inferred_fields 的規則同 motivation。選填，理由同上。"
+        },
+        "user_story": {
+          "type": "string",
+          "description": "第一人稱的使用者故事：把這一格成員自己的證據整理成「我⋯⋯」的一段話，是證據綜合，不是角色創作——不得出現證據沒有的姓名、年齡、職業、家庭、生活型態、動機、情緒或事件。來源型別同五個內容欄位。選填，舊版文件沒有這個欄位。"
+        },
+        "worldview": {
+          "x-compatibility-only": true,
+          "type": "string",
+          "description": "COMPATIBILITY_ONLY（persona-nine-canonical-fields，2026-10-01 起新生成不再產出，只供讀舊檔）：世界觀：成員自己的話裡透露的、看待這件事的一貫立場。只在證據撐得住時才寫，否則留白。選填。"
+        },
+        "emotional_tendencies": {
+          "x-compatibility-only": true,
+          "type": "string",
+          "description": "COMPATIBILITY_ONLY（persona-nine-canonical-fields，2026-10-01 起新生成不再產出，只供讀舊檔）：情緒傾向：證據裡實際表現出來的情緒反應傾向，不得補寫證據沒有的情緒。只在證據撐得住時才寫。選填。"
+        },
+        "behavioral_patterns": {
+          "x-compatibility-only": true,
+          "type": "string",
+          "description": "COMPATIBILITY_ONLY（persona-nine-canonical-fields，2026-10-01 起新生成不再產出，只供讀舊檔）：行為模式：跨情境重複出現的做事方式，跟 behavior（這次實際做了什麼）不同。只在證據撐得住時才寫。選填。"
+        },
+        "linguistic_style": {
+          "x-compatibility-only": true,
+          "type": "string",
+          "description": "COMPATIBILITY_ONLY（persona-nine-canonical-fields，2026-10-01 起新生成不再產出，只供讀舊檔）：語言風格：成員實際說話的方式（用詞、語氣、句式）。只在證據撐得住時才寫。選填。"
+        },
+        "representative_quote": {
+          "type": "object",
+          "required": [
+            "text",
+            "evidence_ref"
+          ],
+          "additionalProperties": false,
+          "description": "畫面上顯示的那一句代表性引言，連同它的出處——顯示在畫面上卻追不回原文的一句話，比不顯示還糟。這是這份文件裡兩個複製 evidence_ref 的地方之一（另一個是 inferred_fields，理由相同）。evidence_ref 必須屬於這份 persona 自己的某個成員。選填，讀給沒有這個欄位的舊版文件用。",
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1
+            },
+            "evidence_ref": {
+              "type": "string",
+              "pattern": "^E-[0-9]+$"
+            }
+          }
+        },
+        "person_name": {
+          "type": "string",
+          "maxLength": 12,
+          "description": "evidence-aware-persona-provenance：一個好記的稱呼（例如「林小姐」），**跟 `label` 不是同一件事**，不代表任何一位受訪者，只能標成 `illustrative_identity`，它帶的性別、年齡感、階級暗示不得被當成這一群的研究屬性。2026-09-30 走查精修起，生成端不再寫這一欄、畫面也不自動顯示 AI 取的稱呼（取名會讓讀的人自己補出證據沒有的人物設定）；只保留給舊文件，以及研究者自己在工作台上取的稱呼。選填。"
+        },
+        "age": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "年齡，寫成字串不是數字——因為證據支持得到的通常是「三十五歲上下」這種範圍，不是一個確切數字。**不得比證據更精確**：證據寫「約 35 歲」就不能寫成「34 歲」，多出來的那一位數是憑空生的。只能標成 `research_evidence` 或 `evidence_synthesis`（見欄位政策）。選填。"
+        },
+        "avatar": {
+          "type": "string",
+          "enum": [
+            "silhouette-1",
+            "silhouette-2",
+            "silhouette-3",
+            "silhouette-4"
+          ],
+          "description": "頭像佔位圖：一組固定剪影裡的哪一張，依 quadrant_id 決定性地選（QUADRANT-N → silhouette-N），只能標成 `illustrative_identity`。2026-09-30 走查精修起，生成端不再寫這一欄、畫面也不顯示剪影；只為了讓舊文件繼續通過驗證而留著。選填。"
+        },
+        "profession": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "職業。**證據沒記錄就整個欄位不要寫**，不要為了讓卡片看起來完整而補——職業會直接改變後面的人怎麼讀這群人的行為（看到「上班族」就會自己接出「午休時間有限所以偏好快速」，而原始資料一個字都沒講過）。只能標成 `research_evidence` 或 `evidence_synthesis`，不得推論、不得虛構。選填。"
+        },
+        "income": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "收入。理由與限制同 `profession`——不得從「對價格敏感」推論成「收入較低」。選填。"
+        },
+        "household_structure": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "家庭結構。理由與限制同 `profession`——不得從「與伴侶同行」推論成「已婚」。選填。"
+        },
+        "inferred_fields": {
+          "x-compatibility-only": true,
+          "type": "array",
+          "uniqueItems": true,
+          "description": "**已被 `field_provenance` 取代，只為了讓 mark-and-show-inferred-persona-fields 期間產出的文件繼續通過驗證而留著。** 新產出不要寫這個欄位。讀取端把它的每一筆讀成 `field_provenance` 裡的 `evidence_inference`（`derivation` 對應 `reasoning_summary`），那份文件其餘有內容的欄位讀成 `research_evidence`。同一份文件不得同時寫這個欄位與 `field_provenance`——兩份來源會對同一個欄位給出不同的型別，而沒有任何規則決定該信哪一個。",
+          "items": {
+            "type": "object",
+            "required": [
+              "field",
+              "derivation",
+              "evidence_refs"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "field": {
+                "type": "string",
+                "enum": [
+                  "motivation",
+                  "context",
+                  "behavior",
+                  "challenge",
+                  "need"
+                ]
+              },
+              "derivation": {
+                "type": "string",
+                "minLength": 1
+              },
+              "evidence_refs": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^E-[0-9]+$"
+                }
+              }
+            }
+          }
+        },
+        "field_provenance": {
+          "type": "array",
+          "uniqueItems": true,
+          "description": "evidence-aware-persona-provenance：這份 persona 每一個有內容的欄位，各自屬於四種裡的哪一種。取代 mark-and-show-inferred-persona-fields 的 `inferred_fields`——那個欄位只分得出「推論」與「其他」，於是把『三十五歲上下』這種把幾筆記錄收斂起來的整理，跟『這家店沒有非來不可的理由』這種超出任何人講過的話的解釋，標成同一種，等於告訴讀的人它們證據強度一樣。哪個欄位能標哪些種，由 schema/service-design-judgment.criteria.yaml 的欄位政策決定，不寫在這裡。沒有這個欄位的舊版文件照常通過驗證，讀取端當成整份都是 research_evidence（它若有舊的 inferred_fields，那些讀成 evidence_inference）。",
+          "items": {
+            "type": "object",
+            "required": [
+              "field",
+              "type"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "field": {
+                "type": "string",
+                "enum": [
+                  "description",
+                  "motivation_goal",
+                  "decision_pattern",
+                  "behavior_strategy",
+                  "motivation",
+                  "context",
+                  "behavior",
+                  "challenge",
+                  "need",
+                  "user_story",
+                  "worldview",
+                  "emotional_tendencies",
+                  "behavioral_patterns",
+                  "linguistic_style",
+                  "person_name",
+                  "age",
+                  "avatar",
+                  "profession",
+                  "income",
+                  "household_structure"
+                ],
+                "description": "這一筆講的是哪一個欄位。同一個欄位只能記一筆。",
+                "x-compatibility-only-values": [
+                  "motivation",
+                  "behavior",
+                  "worldview",
+                  "emotional_tendencies",
+                  "behavioral_patterns",
+                  "linguistic_style"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "research_evidence",
+                  "evidence_synthesis",
+                  "evidence_inference",
+                  "illustrative_identity",
+                  "researcher"
+                ],
+                "description": "research_evidence：受訪者講過的、或紀錄裡寫著的。evidence_synthesis：把好幾筆這種記錄重新整理，沒有新增機制、原因或意義。evidence_inference：證據撐得住、但沒有人講過，因此是一個會被後面的人拿去用的研究主張。illustrative_identity：完全不作研究主張，存在只是為了讓這份 persona 讀起來像個人。分界不是「是不是 AI 產的」（幾乎全部都是），是這句話有沒有超出證據直接支持的範圍、往哪個方向超出。 researcher：研究者在工作台上改寫過這一欄（2026-09-27 裁定 Persona 卡片可編輯）；只有伺服器的編輯端點寫得進去，生成時不得使用。"
+              },
+              "reasoning_summary": {
+                "type": "string",
+                "minLength": 1,
+                "description": "只有 `evidence_inference` 需要：一句話的推導橋接，讓研究者可以針對這一步表示不同意。要講得出「這幾個人做了什麼、所以推測什麼」，不是把結論換句話說，也不是模型的思考過程逐字稿。`evidence_synthesis` 不需要（它的橋接就是那個整理本身），`illustrative_identity` 更不需要——逼它生一套理由，只會得到一段看起來跟真的一樣的假理由。"
+              },
+              "evidence_refs": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^E-[0-9]+$"
+                },
+                "description": "`evidence_inference` 與 `evidence_synthesis` 要寫：讀的是哪幾則證據。每一則都必須屬於這份 persona 自己的成員。`illustrative_identity` 不得寫——它本來就不是從證據來的。"
+              },
+              "not_a_research_claim": {
+                "const": true,
+                "description": "只有 `illustrative_identity` 要寫，而且只能是 true：明講這一欄不是研究發現。它欠的就只有這一句，不欠證據也不欠理由。"
+              },
+              "edited_at": {
+                "type": "string",
+                "minLength": 1,
+                "description": "研究者改寫這一欄的時間（只配 researcher）。"
+              }
+            }
+          }
+        },
+        "researcher_edits": {
+          "type": "object",
+          "description": "研究者在工作台上改寫過的欄位（2026-09-27 裁定 Persona 卡片可編輯）。每一欄第一次被改寫時，把 AI 起草的原文與它原本的來源記在這裡，之後再改也不覆蓋，下游引用時仍翻得回 AI 草稿讀了哪些證據。只有伺服器的編輯端點寫得進去。",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "edited_at"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "edited_at": {
+                "type": "string",
+                "minLength": 1
+              },
+              "ai_value": {
+                "type": "string",
+                "description": "AI 起草時這一欄的內容；起草時是空的就不寫。"
+              },
+              "ai_provenance": {
+                "type": "object",
+                "description": "AI 起草時這一欄的 field_provenance 那一筆，原樣保留。"
+              }
+            }
+          },
+          "propertyNames": {
+            "enum": [
+              "person_name",
+              "age",
+              "profession",
+              "description",
+              "motivation",
+              "context",
+              "behavior",
+              "challenge",
+              "need",
+              "rationale",
+              "user_story",
+              "worldview",
+              "emotional_tendencies",
+              "behavioral_patterns",
+              "linguistic_style"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

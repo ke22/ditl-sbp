@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/source-manifest.schema.json",
+  "title": "Source extraction manifest",
+  "type": "object",
+  "required": ["schema_version", "sources", "summary"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 2},
+    "sources": {"type": "array", "items": {"$ref": "#/definitions/source"}},
+    "summary": {"type": "object", "required": ["files_total", "files_extracted", "units_total", "units_extracted"], "additionalProperties": false, "properties": {"files_total": {"type": "integer", "minimum": 0}, "files_extracted": {"type": "integer", "minimum": 0}, "units_total": {"type": "integer", "minimum": 0}, "units_extracted": {"type": "integer", "minimum": 0}}}
+  },
+  "definitions": {
+    "source": {"type": "object", "required": ["id", "filename", "media_type", "status", "units_total", "units_extracted", "errors"], "additionalProperties": false, "properties": {"id": {"type": "string", "pattern": "^SRC-"}, "filename": {"type": "string", "minLength": 1}, "media_type": {"type": "string", "minLength": 1}, "status": {"enum": ["extracted", "partial", "empty", "unsupported", "error", "reader_unavailable"]}, "units_total": {"type": "integer", "minimum": 0}, "units_extracted": {"type": "integer", "minimum": 0}, "errors": {"type": "array", "items": {"type": "string"}}}}
+  }
+}

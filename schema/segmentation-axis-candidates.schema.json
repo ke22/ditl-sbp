@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/segmentation-axis-candidates.schema.json",
+  "title": "Segmentation axis briefs — every Persona Matrix axis briefed, plus one default axis pair",
+  "description": "AI 讀完一次 run 的 persona_matrix.yaml，對每一條軸寫一份簡報（不排序、不打分），另外提出一組預設兩軸（persona-matrix-hmw-scope-default，2026-10-01 裁定：default analytical projection，不是最佳分群），寫清楚證據上（只算真實落點，no_data 不算）哪些受訪者落在哪一端、以及選定這條軸當目標族群軸後下游會往哪個方向走。決定權完全在研究者（CLAUDE.md「助理的界線」）。",
+  "type": "object",
+  "required": ["schema_version", "case_id", "briefs"],
+  "additionalProperties": false,
+  "properties": {
+    "framed_by": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "persona-matrix-hmw-scope-default：產生這份分群時用的 HMW 範圍指紋（tools/hmw_scope.py）。HMW 是設計相關性的背景，不是證據。舊檔沒有這一欄。",
+      "properties": {
+        "primary_hmw_selection": {"type": "string", "minLength": 1}
+      }
+    },
+    "no_default_pair_reason": {
+      "type": "string",
+      "minLength": 1,
+      "description": "persona-segmentation-reasoning-contract（2026-10-01 裁定）：沒有任何兩條軸能在足夠多的同一批受訪者上交叉出有意義的分群時，不提 default_pair，改在這裡用一兩句話講原因；不能為了 2×2 硬選。跟 default_pair 互斥。"
+    },
+    "default_pair": {
+      "type": "object",
+      "required": ["axis_ids", "basis"],
+      "additionalProperties": false,
+      "description": "persona-matrix-hmw-scope-default（2026-10-01 裁定）：AI 提出的預設兩軸——default analytical projection，不是最佳分群；其他軸都是替代候選，目標族群仍由研究者選。舊檔沒有這一欄。",
+      "properties": {
+        "axis_ids": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "basis": {"type": "string", "minLength": 1, "description": "一句話：這兩軸對目前 HMW 的設計相關性與彼此獨立；不寫最佳。"}
+      }
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "briefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/brief"
+      }
+    }
+  },
+  "definitions": {
+    "brief": {
+      "type": "object",
+      "required": ["axis_id", "evidence_summary", "downstream_consequence"],
+      "additionalProperties": false,
+      "properties": {
+        "axis_id": {
+          "type": "string",
+          "pattern": "^AXIS-[0-9]+$",
+          "description": "參照同一次 run 的 persona_matrix.yaml 裡既有的軸 id——不重寫該軸的 label／pole_low／pole_high。"
+        },
+        "evidence_summary": {
+          "type": "string",
+          "minLength": 1,
+          "description": "只根據這條軸的真實落點（position 不是 no_data 的那些）：哪些受訪者落在哪一端——不能只是複述軸的 discriminating_basis。"
+        },
+        "downstream_consequence": {
+          "type": "string",
+          "minLength": 1,
+          "description": "如果選這條軸當目標族群軸，目標族群切分會往哪個方向走——這是簡報存在的理由，沒有這句話就只是重複軸定義已經講過的事。"
+        }
+      }
+    }
+  }
+}

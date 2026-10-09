@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/briefing.schema.json",
+  "title": "Research briefing",
+  "type": "object",
+  "required": ["schema_version", "case_id", "summary", "findings"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"enum": [1, 2]},
+    "case_id": {"type": "string", "minLength": 1},
+    "summary": {"type": "string", "minLength": 1},
+    "findings": {"type": "array", "items": {"$ref": "#/definitions/finding"}},
+    "interpretation": {"$ref": "#/definitions/interpretation"}
+  },
+  "definitions": {
+    "interpretation": {
+      "type": "object", "required": ["operation_summary", "items"], "additionalProperties": false,
+      "properties": {
+        "operation_summary": {"type": "string", "minLength": 1},
+        "items": {"type": "array", "items": {"$ref": "#/definitions/interpretation_item"}}
+      }
+    },
+    "interpretation_item": {
+      "type": "object", "required": ["id", "kind", "text", "basis"], "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["customer_pain_or_need", "handoff_or_operational_risk", "key_moment", "design_opportunity", "next_research_question"]},
+        "text": {"type": "string", "minLength": 1},
+        "basis": {"enum": ["evidence_synthesis", "model_hypothesis", "researcher"]},
+        "evidence_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "node_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "relation_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "marker_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "annotation_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "conflict_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "step_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": ["id", "kind", "headline", "explanation"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["role_gap", "unaddressed_experience", "conflict", "coverage_gap"]},
+        "headline": {"type": "string", "minLength": 1, "maxLength": 60},
+        "explanation": {"type": "string", "minLength": 1},
+        "evidence_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "node_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "conflict_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "step_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    }
+  }
+}

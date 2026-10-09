@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/target-segmentation-selection.schema.json",
+  "title": "Target Segmentation selection — the researcher's primary and optional secondary target quadrant",
+  "description": "add-target-segmentation-designation：研究者在 2×2 格子上指定的主要目標（必填，附商業理由）與次要目標（選填，附了 quadrant 就一定要附理由）。次要目標只記錄，不接進任何下游產出（決定十一第 4 點）。主要或次要目標可以指到一個沒有真人落在裡面的格子——鎖定「還沒服務到的人」是合法的商業判斷，只是那一格的畫像必須誠實標成「沒有證據支持」。",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "case_id",
+    "primary_quadrant_id",
+    "primary_rationale"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "primary_quadrant_id": {
+      "type": "string",
+      "pattern": "^QUADRANT-[1-4]$",
+      "description": "參照同一次 run 的 target_segmentation.yaml 裡既有的格子 id。"
+    },
+    "primary_rationale": {
+      "type": "string",
+      "description": "為什麼指定這一格當主要目標（可留白，2026-09-15 研究者決定不強制要求；有填的話要講商業邏輯與商業價值）。"
+    },
+    "secondary_quadrant_id": {
+      "type": "string",
+      "pattern": "^QUADRANT-[1-4]$",
+      "description": "參照同一次 run 的 target_segmentation.yaml 裡既有的格子 id。選填——只記錄，不接進任何下游產出。"
+    },
+    "secondary_rationale": {
+      "type": "string",
+      "description": "為什麼指定這一格當次要目標。有 secondary_quadrant_id 就一定要有這個欄位，反之亦然。"
+    },
+    "quadrant_members": {
+      "type": "array",
+      "description": "quadrant-members-are-designer-assigned：研究者確認過的每一格真正成員——這是成員的唯一真相，下游一律讀這裡，不讀候選檔的建議。可以只列有變動或需要記錄的格子；沒被列出的格子視為沒有確認過的成員。",
+      "items": {
+        "type": "object",
+        "required": [
+          "quadrant_id",
+          "subject_ids"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "quadrant_id": {
+            "type": "string",
+            "pattern": "^QUADRANT-[1-4]$"
+          },
+          "subject_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^P-[0-9]+$"
+            }
+          }
+        }
+      }
+    },
+    "unplaced_dispositions": {
+      "type": "array",
+      "description": "quadrant-members-are-designer-assigned：落點缺資料、系統無法建議進任何一格的受訪者，各自的處置——指派到某一格、需要補訪、或明確不放。每一位都要有一句理由。",
+      "items": {
+        "type": "object",
+        "required": [
+          "subject_id",
+          "disposition",
+          "reason"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "subject_id": {
+            "type": "string",
+            "pattern": "^P-[0-9]+$"
+          },
+          "disposition": {
+            "type": "string",
+            "enum": [
+              "assigned",
+              "needs_followup",
+              "left_out"
+            ]
+          },
+          "assigned_quadrant_id": {
+            "type": "string",
+            "pattern": "^QUADRANT-[1-4]$",
+            "description": "只有 disposition 是 assigned 時才需要——這一位被指派到哪一格；同一位也要出現在該格 quadrant_members 的 subject_ids 裡。"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "description": "為什麼是這個處置——「需要補訪」是一筆研究缺口的紀錄，不是「不放」的委婉說法，理由要講清楚是哪一種。"
+          }
+        },
+        "if": {
+          "properties": {
+            "disposition": {
+              "const": "assigned"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "assigned_quadrant_id"
+          ]
+        },
+        "else": {
+          "not": {
+            "required": [
+              "assigned_quadrant_id"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "if": {
+    "required": [
+      "secondary_quadrant_id"
+    ]
+  },
+  "then": {
+    "required": [
+      "secondary_rationale"
+    ]
+  },
+  "else": {
+    "not": {
+      "required": [
+        "secondary_rationale"
+      ]
+    }
+  }
+}

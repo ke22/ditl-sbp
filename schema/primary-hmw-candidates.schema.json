@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/primary-hmw-candidates.schema.json",
+  "title": "Primary HMW candidates — up to 3 existing HMW entries ranked for the researcher to weigh",
+  "description": "propose-primary-hmw-candidates：AI 讀完 hmw.yaml 已經產出的張力清單，從裡面挑出最多 3 則最值得當「這輪要追的主要改善方向」的候選——tension／statement 本身不重寫，只用 hmw_id 參照既有 hmw.yaml 的 entry，每個候選附一段新的理由：為什麼追這則、後面的調研/提案會往哪個方向走，不能複述 tension/statement 本身。候選數量不是恆定 3 個——hmw.yaml 有幾則就最多端出幾則。不推薦任何一個為預設答案，決定權在研究者（CLAUDE.md「助理的界線」）。",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "case_id",
+    "candidates"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/definitions/candidate"
+      }
+    },
+    "framed_by": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "narrative_job_selection"
+      ],
+      "description": "frame-hmw-from-narrative：這份產出是用第 2 站選定的顧客任務當框架產生的（選定內容的摘要雜湊；2026-10-01 之前的舊選定也含敘事）。顧客任務只是框架，不是證據；研究者換了顧客任務之後，工作台用這個值判斷候選是不是依舊的選定產生的。",
+      "properties": {
+        "narrative_job_selection": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "candidate": {
+      "type": "object",
+      "required": [
+        "hmw_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "hmw_id": {
+          "type": "string",
+          "pattern": "^HMW-[0-9]+$",
+          "description": "參照 hmw.yaml 裡既有的 entry id——不重寫該則的 tension／statement。"
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "description": "COMPATIBILITY_ONLY（hmw-framings-from-problem-structures，2026-10-01 起候選由程式投影、不寫理由，只供讀舊檔）：為什麼證據撐得住這個框法，以及選它代表接下來關注哪個時刻、哪段經驗或哪個問題邊界——不寫解法或介入方向、提案走向、優化目標、評估指標或 To-be；也不能只是複述該則的 tension 或 statement（hmw-candidate-rationale-boundary）。"
+        }
+      }
+    }
+  }
+}

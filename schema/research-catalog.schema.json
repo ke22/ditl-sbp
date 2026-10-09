@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/research-catalog.schema.json",
+  "title": "Bounded external research catalog",
+  "type": "object",
+  "required": ["schema_version", "artifact_type", "case_id", "scenario_id", "sources", "claims", "query_audit"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "artifact_type": {"const": "research_catalog"},
+    "case_id": {"type": "string", "minLength": 1},
+    "scenario_id": {"type": "string", "minLength": 1},
+    "sources": {"type": "array", "items": {"$ref": "#/definitions/source"}},
+    "claims": {"type": "array", "items": {"$ref": "#/definitions/research_claim"}},
+    "query_audit": {"type": "array", "items": {"$ref": "#/definitions/query_record"}}
+  },
+  "definitions": {
+    "source": {
+      "type": "object",
+      "required": [
+        "id",
+        "source_class",
+        "title",
+        "authors_or_publisher",
+        "locator",
+        "accessed_at",
+        "admission",
+        "admission_reason"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "content-provenance.schema.json#/definitions/research_source_id"},
+        "source_class": {"$ref": "content-provenance.schema.json#/definitions/source_class"},
+        "title": {"type": "string", "minLength": 1},
+        "authors_or_publisher": {"type": "string", "minLength": 1},
+        "url": {"type": "string", "minLength": 1},
+        "doi": {"type": "string", "minLength": 1},
+        "locator": {"type": "string", "minLength": 1},
+        "accessed_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+        "admission": {"$ref": "content-provenance.schema.json#/definitions/source_admission"},
+        "admission_reason": {"type": "string", "minLength": 1}
+      },
+      "anyOf": [{"required": ["url"]}, {"required": ["doi"]}]
+    },
+    "source_link": {
+      "type": "object",
+      "required": ["source_ref", "relationship", "locator"],
+      "additionalProperties": false,
+      "properties": {
+        "source_ref": {"$ref": "content-provenance.schema.json#/definitions/research_source_id"},
+        "relationship": {"enum": ["supports", "limits"]},
+        "locator": {"type": "string", "minLength": 1}
+      }
+    },
+    "research_claim": {
+      "type": "object",
+      "required": ["id", "claim_state", "text", "applicability_context", "uncertainty", "source_links"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "content-provenance.schema.json#/definitions/research_claim_id"},
+        "claim_state": {"$ref": "content-provenance.schema.json#/definitions/hypothesis_claim_state"},
+        "text": {"type": "string", "minLength": 1},
+        "applicability_context": {"type": "string", "minLength": 1},
+        "question_refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "uncertainty": {"$ref": "content-provenance.schema.json#/definitions/uncertainty"},
+        "source_links": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/definitions/source_link"},
+          "contains": {
+            "type": "object",
+            "required": ["relationship"],
+            "properties": {"relationship": {"const": "supports"}}
+          }
+        }
+      }
+    },
+    "query_record": {
+      "type": "object",
+      "required": ["deidentified_query", "purpose", "executed_at", "returned_source_refs"],
+      "additionalProperties": false,
+      "properties": {
+        "deidentified_query": {"type": "string", "minLength": 1},
+        "purpose": {"type": "string", "minLength": 1},
+        "executed_at": {"type": "string", "minLength": 1},
+        "returned_source_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "content-provenance.schema.json#/definitions/research_source_id"}
+        }
+      }
+    }
+  }
+}

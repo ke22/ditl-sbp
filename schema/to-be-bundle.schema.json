@@ -1,0 +1,331 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/to-be-bundle.schema.json",
+  "title": "Grounded To-be proposal bundle",
+  "type": "object",
+  "required": [
+    "schema_version", "artifact_type", "case_id", "scenario_id", "source_as_is_ref",
+    "improvement_goal", "direction", "issue_coverage", "revision_context",
+    "proposals", "blueprint_changes"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "artifact_type": {"const": "to_be_bundle"},
+    "case_id": {"type": "string", "minLength": 1},
+    "scenario_id": {"type": "string", "minLength": 1},
+    "source_as_is_ref": {"type": "string", "minLength": 1},
+    "improvement_goal": {"type": "string", "minLength": 1},
+    "direction": {"$ref": "#/definitions/direction"},
+    "issue_coverage": {
+      "type": "array", "minItems": 1,
+      "items": {"$ref": "#/definitions/issue_coverage"}
+    },
+    "revision_context": {"$ref": "#/definitions/revision_context"},
+    "proposals": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/proposal"}},
+    "blueprint_changes": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/blueprint_change"}}
+  },
+  "definitions": {
+    "direction": {
+      "type": "object",
+      "required": ["claim_state", "title", "summary"],
+      "additionalProperties": false,
+      "properties": {
+        "claim_state": {"$ref": "content-provenance.schema.json#/definitions/proposal_claim_state"},
+        "title": {"type": "string", "minLength": 1},
+        "summary": {"type": "string", "minLength": 1}
+      }
+    },
+    "issue_coverage": {
+      "type": "object",
+      "required": ["issue_ref", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "issue_ref": {"$ref": "content-provenance.schema.json#/definitions/issue_id"},
+        "status": {"enum": ["addressed", "not_addressed"]},
+        "proposal_refs": {"$ref": "content-provenance.schema.json#/definitions/proposal_refs"},
+        "reason": {
+          "enum": ["outside_improvement_goal", "insufficient_research_support", "outside_primary_scenario"]
+        },
+        "explanation": {"type": "string", "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {"required": ["status"], "properties": {"status": {"const": "addressed"}}},
+          "then": {
+            "required": ["proposal_refs"],
+            "not": {"anyOf": [{"required": ["reason"]}, {"required": ["explanation"]}]}
+          }
+        },
+        {
+          "if": {"required": ["status"], "properties": {"status": {"const": "not_addressed"}}},
+          "then": {
+            "required": ["reason", "explanation"],
+            "not": {"required": ["proposal_refs"]}
+          }
+        }
+      ]
+    },
+    "revision_context": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"enum": ["initial", "revision", "validation_revision"]},
+        "prior_to_be_version_ref": {"type": "string", "pattern": "^AV-[A-Fa-f0-9]{64}$"},
+        "prior_to_be_fingerprint": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "base_content_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "decisions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["proposal_ref", "decision"],
+            "additionalProperties": false,
+            "properties": {
+              "proposal_ref": {"$ref": "content-provenance.schema.json#/definitions/proposal_id"},
+              "decision": {"enum": ["retain", "revise", "remove"]},
+              "instruction": {"type": "string", "minLength": 1}
+            },
+            "allOf": [
+              {
+                "if": {"required": ["decision"], "properties": {"decision": {"const": "retain"}}},
+                "then": {"not": {"required": ["instruction"]}}
+              },
+              {
+                "if": {
+                  "required": ["decision"],
+                  "properties": {"decision": {"enum": ["revise", "remove"]}}
+                },
+                "then": {"required": ["instruction"]}
+              }
+            ]
+          }
+        },
+        "instruction": {"type": "string", "minLength": 1},
+        "instruction_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "pilot_version_ref": {"type": "string", "pattern": "^AV-[a-f0-9]{64}$"},
+        "pilot_content_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "validation_outcome_version_ref": {"type": "string", "pattern": "^AV-[a-f0-9]{64}$"},
+        "validation_outcome_content_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "validation_context_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "research_mode": {"enum": ["reuse_current_research", "supplement_research"]},
+        "validation_context": {"$ref": "#/definitions/validation_revision_summary"}
+      },
+      "allOf": [
+        {
+          "if": {"required": ["kind"], "properties": {"kind": {"const": "initial"}}},
+          "then": {
+            "not": {"anyOf": [
+              {"required": ["prior_to_be_version_ref"]},
+              {"required": ["prior_to_be_fingerprint"]},
+              {"required": ["base_content_digest"]},
+              {"required": ["decisions"]},
+              {"required": ["instruction"]},
+              {"required": ["instruction_digest"]},
+              {"required": ["pilot_version_ref"]},
+              {"required": ["pilot_content_digest"]},
+              {"required": ["validation_outcome_version_ref"]},
+              {"required": ["validation_outcome_content_digest"]},
+              {"required": ["validation_context_digest"]},
+              {"required": ["research_mode"]},
+              {"required": ["validation_context"]}
+            ]}
+          }
+        },
+        {
+          "if": {"required": ["kind"], "properties": {"kind": {"const": "revision"}}},
+          "then": {
+            "required": [
+              "prior_to_be_version_ref", "base_content_digest",
+              "instruction", "instruction_digest"
+            ],
+            "not": {"anyOf": [
+              {"required": ["prior_to_be_fingerprint"]},
+              {"required": ["pilot_version_ref"]},
+              {"required": ["pilot_content_digest"]},
+              {"required": ["validation_outcome_version_ref"]},
+              {"required": ["validation_outcome_content_digest"]},
+              {"required": ["validation_context_digest"]},
+              {"required": ["research_mode"]},
+              {"required": ["validation_context"]}
+            ]}
+          }
+        },
+        {
+          "if": {"required": ["kind"], "properties": {"kind": {"const": "validation_revision"}}},
+          "then": {
+            "required": [
+              "prior_to_be_version_ref",
+              "prior_to_be_fingerprint",
+              "pilot_version_ref",
+              "pilot_content_digest",
+              "validation_outcome_version_ref",
+              "validation_outcome_content_digest",
+              "validation_context_digest",
+              "research_mode",
+              "validation_context"
+            ],
+            "not": {"anyOf": [
+              {"required": ["instruction"]},
+              {"required": ["instruction_digest"]},
+              {"required": ["base_content_digest"]},
+              {"required": ["decisions"]}
+            ]}
+          }
+        }
+      ]
+    },
+    "validation_revision_summary": {
+      "type": "object",
+      "required": [
+        "pilot_cycle_id",
+        "cited_observations",
+        "not_observed",
+        "deviations",
+        "adverse_effects",
+        "assessments",
+        "final_decision",
+        "rationale"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "pilot_cycle_id": {"$ref": "content-provenance.schema.json#/definitions/pilot_cycle_id"},
+        "cited_observations": {
+          "type": "array",
+          "items": {"$ref": "pilot-record.schema.json#/definitions/observation"}
+        },
+        "not_observed": {
+          "type": "array",
+          "items": {"$ref": "pilot-record.schema.json#/definitions/not_observed"}
+        },
+        "deviations": {
+          "type": "array",
+          "items": {"$ref": "pilot-record.schema.json#/definitions/pilot_event"}
+        },
+        "adverse_effects": {
+          "type": "array",
+          "items": {"$ref": "pilot-record.schema.json#/definitions/pilot_event"}
+        },
+        "assessments": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "validation-outcome.schema.json#/definitions/assessment"}
+        },
+        "final_decision": {"const": "revise"},
+        "rationale": {"type": "string", "minLength": 1},
+        "deviation_rationale": {"type": "string", "minLength": 1}
+      }
+    },
+    "assumption": {
+      "type": "object",
+      "required": ["claim_state", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "claim_state": {"$ref": "content-provenance.schema.json#/definitions/hypothesis_claim_state"},
+        "text": {"type": "string", "minLength": 1}
+      }
+    },
+    "validation_plan": {
+      "type": "object",
+      "required": ["target_outcome", "metric", "method", "success_condition", "decision_rule", "pilot_scope"],
+      "additionalProperties": false,
+      "properties": {
+        "target_outcome": {"type": "string", "minLength": 1},
+        "metric": {"type": "string", "minLength": 1},
+        "method": {"type": "string", "minLength": 1},
+        "success_condition": {"type": "string", "minLength": 1},
+        "decision_rule": {"type": "string", "minLength": 1},
+        "pilot_scope": {"type": "string", "minLength": 1}
+      }
+    },
+    "proposal": {
+      "type": "object",
+      "required": [
+        "id",
+        "claim_state",
+        "statement",
+        "expected_change",
+        "issue_refs",
+        "research_claim_refs",
+        "source_refs",
+        "assumptions",
+        "risks",
+        "validation_plan"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "content-provenance.schema.json#/definitions/proposal_id"},
+        "claim_state": {"$ref": "content-provenance.schema.json#/definitions/proposal_claim_state"},
+        "statement": {"type": "string", "minLength": 1},
+        "expected_change": {"type": "string", "minLength": 1},
+        "issue_refs": {"$ref": "content-provenance.schema.json#/definitions/issue_refs"},
+        "research_claim_refs": {"$ref": "content-provenance.schema.json#/definitions/research_claim_refs"},
+        "source_refs": {"$ref": "content-provenance.schema.json#/definitions/research_source_refs"},
+        "assumptions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/definitions/assumption"}
+        },
+        "risks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "validation_plan": {"$ref": "#/definitions/validation_plan"}
+      }
+    },
+    "blueprint_change": {
+      "type": "object",
+      "required": ["id", "operation", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "operation": {"enum": ["retain", "modify", "add", "remove"]},
+        "description": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 1},
+        "step": {"type": "integer", "minimum": 1},
+        "layer": {"enum": ["實體證據", "顧客行動", "前台行動", "後台行動", "支援流程"]},
+        "as_is_element_ref": {"$ref": "content-provenance.schema.json#/definitions/as_is_element_id"},
+        "local_element_id": {"$ref": "content-provenance.schema.json#/definitions/to_be_element_id"},
+        "proposal_refs": {"$ref": "content-provenance.schema.json#/definitions/proposal_refs"}
+      },
+      "allOf": [
+        {
+          "if": {"required": ["operation"], "properties": {"operation": {"const": "retain"}}},
+          "then": {
+            "required": ["as_is_element_ref"],
+            "not": {"anyOf": [
+              {"required": ["local_element_id"]}, {"required": ["proposal_refs"]},
+              {"required": ["label"]}, {"required": ["step"]}, {"required": ["layer"]}
+            ]}
+          }
+        },
+        {
+          "if": {"required": ["operation"], "properties": {"operation": {"enum": ["modify", "remove"]}}},
+          "then": {
+            "required": ["as_is_element_ref", "proposal_refs"],
+            "not": {"required": ["local_element_id"]}
+          }
+        },
+        {
+          "if": {"required": ["operation"], "properties": {"operation": {"const": "modify"}}},
+          "then": {"required": ["label", "step", "layer"]}
+        },
+        {
+          "if": {"required": ["operation"], "properties": {"operation": {"const": "remove"}}},
+          "then": {
+            "not": {"anyOf": [{"required": ["label"]}, {"required": ["step"]}, {"required": ["layer"]}]}
+          }
+        },
+        {
+          "if": {"required": ["operation"], "properties": {"operation": {"const": "add"}}},
+          "then": {
+            "required": ["local_element_id", "proposal_refs", "label", "step", "layer"],
+            "not": {"required": ["as_is_element_ref"]}
+          }
+        }
+      ]
+    }
+  }
+}

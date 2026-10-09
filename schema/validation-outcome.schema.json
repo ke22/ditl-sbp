@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/validation-outcome.schema.json",
+  "title": "Canonical To-be pilot validation outcome",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_type",
+    "case_id",
+    "scenario_id",
+    "outcome_id",
+    "pilot_cycle_id",
+    "source_pilot_version_ref",
+    "source_pilot_fingerprint",
+    "assessments",
+    "recommended_decision",
+    "final_decision",
+    "decision_alignment",
+    "rationale",
+    "decided_by",
+    "decided_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "artifact_type": {"const": "validation_outcome"},
+    "case_id": {"type": "string", "minLength": 1},
+    "scenario_id": {"type": "string", "minLength": 1},
+    "outcome_id": {"$ref": "content-provenance.schema.json#/definitions/validation_outcome_id"},
+    "pilot_cycle_id": {"$ref": "content-provenance.schema.json#/definitions/pilot_cycle_id"},
+    "source_pilot_version_ref": {"$ref": "artifact-lifecycle.schema.json#/definitions/version_id"},
+    "source_pilot_fingerprint": {"$ref": "artifact-lifecycle.schema.json#/definitions/digest"},
+    "assessments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/definitions/assessment"}
+    },
+    "recommended_decision": {"enum": ["continue", "revise", "stop"]},
+    "final_decision": {"enum": ["continue", "revise", "stop"]},
+    "decision_alignment": {"enum": ["aligned", "deviated"]},
+    "rationale": {"type": "string", "minLength": 1},
+    "deviation_rationale": {"type": "string", "minLength": 1},
+    "impact_confirmed": {"const": true},
+    "decided_by": {"$ref": "pilot-record.schema.json#/definitions/actor"},
+    "decided_at": {"type": "string", "minLength": 1}
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["decision_alignment"],
+        "properties": {"decision_alignment": {"const": "aligned"}}
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {"required": ["deviation_rationale"]},
+            {"required": ["impact_confirmed"]}
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["decision_alignment"],
+        "properties": {"decision_alignment": {"const": "deviated"}}
+      },
+      "then": {"required": ["deviation_rationale", "impact_confirmed"]}
+    }
+  ],
+  "definitions": {
+    "assessment": {
+      "type": "object",
+      "required": ["proposal_ref", "rule_assessment", "relation_to_rule"],
+      "additionalProperties": false,
+      "properties": {
+        "proposal_ref": {"$ref": "content-provenance.schema.json#/definitions/proposal_id"},
+        "rule_assessment": {"enum": ["continue", "revise", "stop", "inconclusive"]},
+        "relation_to_rule": {"type": "string", "minLength": 1},
+        "observation_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "content-provenance.schema.json#/definitions/observation_id"}
+        },
+        "not_observed_ref": {"$ref": "content-provenance.schema.json#/definitions/proposal_id"}
+      },
+      "oneOf": [
+        {
+          "required": ["observation_refs"],
+          "not": {"required": ["not_observed_ref"]}
+        },
+        {
+          "required": ["not_observed_ref"],
+          "not": {"required": ["observation_refs"]}
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/decisions.schema.json",
+  "title": "Case-level decisions index — where each framework-point decision lives",
+  "description": "sbp-gen decisions --case <dir>：掃描一個案子底下所有 runs/ 目錄，把六個候選機制（核心類別／Persona維度／主要Job／主要HMW／目標族群軸／主要目標）各自最新的選擇結果整理成一份索引。只記狀態與檔案出處，不複製選擇檔內容（TARGET-ARCHITECTURE.md 決定十一；目標族群軸是 add-segmentation-axis-designation 補上的第五個框架點，主要目標是 add-target-segmentation-designation 補上、取代原本核心目標對象的第六個框架點——quadrant-members-are-designer-assigned 移除了 primary_persona，見 tools/sbp_gen/decisions.py 的說明）。",
+  "type": "object",
+  "required": ["schema_version", "case_id", "decisions"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "decisions": {
+      "type": "object",
+      "required": ["core_category", "narrative_job", "persona_dimensions", "primary_job", "primary_hmw", "segmentation_axes", "primary_target"],
+      "additionalProperties": false,
+      "properties": {
+        "core_category": { "$ref": "#/definitions/decision_point" },
+        "narrative_job": { "$ref": "#/definitions/decision_point" },
+        "persona_dimensions": { "$ref": "#/definitions/decision_point" },
+        "primary_job": { "$ref": "#/definitions/decision_point" },
+        "primary_hmw": { "$ref": "#/definitions/decision_point" },
+        "segmentation_axes": { "$ref": "#/definitions/decision_point" },
+        "primary_target": { "$ref": "#/definitions/decision_point" }
+      }
+    }
+  },
+  "definitions": {
+    "decision_point": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["status"],
+          "additionalProperties": false,
+          "properties": {
+            "status": { "const": "undecided" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["status", "run", "selection_file"],
+          "additionalProperties": false,
+          "properties": {
+            "status": { "const": "decided" },
+            "run": {
+              "type": "string",
+              "minLength": 1,
+              "description": "答案來自哪一個 run 目錄（目錄名稱，不是完整路徑）。"
+            },
+            "selection_file": {
+              "type": "string",
+              "minLength": 1,
+              "description": "相對於案子目錄的路徑，指到那個 run 裡的選擇檔。"
+            },
+            "candidates_file": {
+              "type": "string",
+              "minLength": 1,
+              "description": "選填——只有同一個 run 裡也有完成的候選檔才會出現，不跨 run 配對。"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

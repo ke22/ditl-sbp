@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/primary-hmw-selection.schema.json",
+  "title": "Primary HMW selection — the researcher's chosen primary HMW",
+  "description": "propose-primary-hmw-candidates：研究者選定的主要 HMW——不管是照抄某一則既有的 hmw.yaml entry（用 hmw_id 參照，不複製內容，避免跟原文不同步），還是完全自己寫一則新的（hmw.yaml 沒抓到張力的類別，研究者判斷值得追）。這是研究者的判斷，不是模型的產出——沒有欄位表達這則來自哪個候選，因為系統不判斷哪個選擇是對的。",
+  "oneOf": [
+    {
+      "$ref": "#/definitions/reference_selection"
+    },
+    {
+      "$ref": "#/definitions/authored_selection"
+    }
+  ],
+  "definitions": {
+    "reference_selection": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "case_id",
+        "rationale",
+        "hmw_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "case_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rationale": {
+          "type": "string",
+          "description": "研究者為什麼選這則當主要 HMW（可留白，2026-09-27 研究者依版面稿裁定不強制；有填的話照實記下）。"
+        },
+        "hmw_id": {
+          "type": "string",
+          "pattern": "^HMW-[0-9]+$",
+          "description": "參照 hmw.yaml 裡既有的 entry id。"
+        }
+      }
+    },
+    "authored_selection": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "case_id",
+        "rationale",
+        "statement"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "case_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rationale": {
+          "type": "string",
+          "description": "研究者為什麼選這則當主要 HMW（可留白，2026-09-27 研究者依版面稿裁定不強制；有填的話照實記下）。"
+        },
+        "tension": {
+          "type": "string",
+          "description": "行為模式、目標模式、應然模式三者之間，什麼在跟什麼拉扯（可留白，2026-09-27 研究者裁定畫面不再問）。"
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 1,
+          "description": "「我們如何⋯」的問題陳述，不指名任何具體服務、技術或產品。"
+        },
+        "grounded_in": {
+          "type": "string",
+          "pattern": "^CAT-[0-9]+$",
+          "description": "這則 HMW 是從哪一個主軸編碼類別看出來的張力（選填，2026-09-27 研究者裁定畫面不再問）。"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 0,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^E-[0-9]+$"
+          },
+          "description": "支持這則張力的證據（選填；研究者自寫的 HMW 可以沒有）。"
+        }
+      }
+    }
+  }
+}

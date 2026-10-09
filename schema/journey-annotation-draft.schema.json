@@ -1,0 +1,103 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "journey-annotation-draft.schema.json",
+  "title": "Journey annotation draft",
+  "description": "The AI's draft of emotion, satisfaction and solutions for every step of a confirmed journey; merged into journey_annotations.yaml with source ai-draft.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "steps"
+  ],
+  "properties": {
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/step_draft"
+      }
+    }
+  },
+  "definitions": {
+    "level_draft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "level",
+        "basis",
+        "evidence_refs"
+      ],
+      "properties": {
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "basis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "solutions_draft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "texts",
+        "basis",
+        "evidence_refs"
+      ],
+      "properties": {
+        "texts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "basis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "step_draft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "step_id",
+        "emotion",
+        "satisfaction",
+        "solutions"
+      ],
+      "properties": {
+        "step_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "emotion": {
+          "$ref": "#/definitions/level_draft"
+        },
+        "satisfaction": {
+          "$ref": "#/definitions/level_draft"
+        },
+        "solutions": {
+          "$ref": "#/definitions/solutions_draft"
+        }
+      }
+    }
+  }
+}

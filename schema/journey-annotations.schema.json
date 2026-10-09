@@ -1,0 +1,150 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "journey-annotations.schema.json",
+  "title": "Journey annotations",
+  "description": "A researcher's per-step annotations on the customer journey map, stored apart from the journey facts. Keyed by the step identifiers of the run's primary scenario.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "steps"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "steps": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "$ref": "#/definitions/step_annotations"
+      }
+    }
+  },
+  "definitions": {
+    "source": {
+      "enum": [
+        "researcher",
+        "ai-draft"
+      ]
+    },
+    "level": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "level",
+        "source",
+        "updated_at"
+      ],
+      "properties": {
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "source": {
+          "$ref": "#/definitions/source"
+        },
+        "updated_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "basis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "source": {
+            "const": "ai-draft"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "basis",
+          "evidence_refs"
+        ]
+      }
+    },
+    "texts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "texts",
+        "source",
+        "updated_at"
+      ],
+      "properties": {
+        "texts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        },
+        "source": {
+          "$ref": "#/definitions/source"
+        },
+        "updated_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "basis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "source": {
+            "const": "ai-draft"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "basis",
+          "evidence_refs"
+        ]
+      }
+    },
+    "step_annotations": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "emotion": {
+          "$ref": "#/definitions/level"
+        },
+        "satisfaction": {
+          "$ref": "#/definitions/level"
+        },
+        "solutions": {
+          "$ref": "#/definitions/texts"
+        },
+        "pain_points": {
+          "$ref": "#/definitions/texts"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ditl-sbp"
+version = "0.1.0"
+description = "Researcher-facing Service Blueprint workbench"
+requires-python = ">=3.14"
+dependencies = [
+  "PyYAML==6.0.3",
+  "jsonschema==4.26.0",
+  "psycopg[binary]==3.3.6",
+]
+
+[project.optional-dependencies]
+# Deferred production paths: exports do not load these until requested.
+export = [
+  "openpyxl==3.1.5",
+  "XlsxWriter==3.2.9",
+]
+export-pdf = [
+  "playwright==1.59.0",
+]
+providers = [
+  "httpx==0.28.1",
+  "anthropic==0.107.1",
+  "google-genai==2.8.0",
+]
+# This remains deliberately outside the production dependency set.
+test = [
+  "Pillow==12.2.0",
+]
+
+[tool.setuptools]
+packages = []

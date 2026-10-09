@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/persona-dimensions-selection.schema.json",
+  "title": "Persona dimensions selection — the researcher's chosen dimension set",
+  "description": "propose-persona-dimension-candidates：研究者選定的 Persona Matrix 維度組——不管是照抄某個候選、還是完全自己寫的新維度，一律存完整的軸定義，不是存一個候選編號的參照（自填的維度沒有候選編號可以參照）。這是研究者的判斷，不是模型的產出——沒有欄位表達這組維度來自哪個候選，因為系統不判斷哪個選擇是對的。軸數是 1 條以上，不設上限（restore-differentiation-dimension-axis-count：這裡記的是區辨維度，恰好 2 條是另一個獨立步驟——目標族群軸——的規格）。",
+  "type": "object",
+  "required": ["schema_version", "case_id", "rationale", "axes"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1,
+      "description": "研究者為什麼選這組維度——不能是空字串或只有空白。"
+    },
+    "axes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/axis"
+      }
+    }
+  },
+  "definitions": {
+    "axis": {
+      "type": "object",
+      "required": ["label", "pole_low", "pole_high", "discriminating_basis", "grounded_in"],
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "pole_low": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pole_high": {
+          "type": "string",
+          "minLength": 1
+        },
+        "discriminating_basis": {
+          "type": "string",
+          "minLength": 1,
+          "description": "為什麼這是一條能區辨受訪者的軸，不是複述類別定義。"
+        },
+        "grounded_in": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^CAT-[0-9]+$"
+          },
+          "description": "這條軸是從哪個或哪些主軸編碼類別讀出來的。這裡還沒有 AXIS-N id——id 要等真的產出 persona_matrix.yaml 時才指派。"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/segmentation-axis-selection.schema.json",
+  "title": "Segmentation axis selection — the researcher's chosen 2 axes for target segmentation",
+  "description": "add-segmentation-axis-designation：研究者指定的目標族群軸——只用 axis_ids 參照同一次 run 的 persona_matrix.yaml 裡既有的軸，不重寫軸的內容，也沒有自填分支：軸已經由 Persona Matrix 階段固定下來，這裡不創造新的軸，只指定哪兩條當目標族群軸。恰好 2 條是這個框架點的規格（交叉出 2×2 才能往下走），不是任意的數字限制——見 TARGET-ARCHITECTURE.md 決定十一。`business_rationale` 是必填欄位，且不能是空字串——這是這個框架點的判準（業務邏輯與商業價值）不在證據裡，只能由研究者自己寫。",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "case_id",
+    "axis_ids",
+    "business_rationale"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "axis_ids": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^AXIS-[0-9]+$"
+      },
+      "description": "參照同一次 run 的 persona_matrix.yaml 裡既有的兩條軸 id，不能重複。"
+    },
+    "business_rationale": {
+      "type": "string",
+      "description": "為什麼選這兩條軸當目標族群軸（可留白，2026-09-15 研究者決定不強制要求；有填的話要講商業邏輯與商業價值）。"
+    }
+  }
+}

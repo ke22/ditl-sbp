@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/data-profile.schema.json",
+  "title": "data_profile.yaml — 案例的資料側寫（ADR-0001 決定一、二）",
+  "description": "誠實記錄這個案例手上有什麼、缺什麼。這份檔案取代了原本 §1.3「五類資料齊備才能開始」的門檻——缺口本身是資料的一部分，不是等待被填滿的空格。用途：讓「該區到底有沒有證據」變成可計算的，於是「AI 失職」（有證據卻在推論）與「證據本來就沒有」（沒證據所以推論，正確行為）可以自動分開。",
+  "type": "object",
+  "required": ["meta", "roles_covered", "roles_absent"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["case_id", "compiled"],
+      "properties": {
+        "case_id": { "type": "string" },
+        "compiled": { "type": "string", "description": "編製日期" },
+        "evidence_file": { "type": "string" },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "roles_covered": {
+      "type": "array",
+      "description": "有拿到第一手證據的角色。role 的字面值必須與 evidence.yaml 的 role 完全一致。",
+      "items": {
+        "type": "object",
+        "required": ["role", "tier", "n_evidence"],
+        "properties": {
+          "role": { "type": "string", "minLength": 1 },
+          "tier": {
+            "type": "string",
+            "enum": ["frontstage", "backstage", "interpretation"]
+          },
+          "n_evidence": { "type": "integer", "minimum": 1 },
+          "sources": { "type": "array", "items": { "type": "string" } },
+          "note": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "roles_absent": {
+      "type": "array",
+      "description": "沒有第一手證據的角色。**這一節是待訪清單的來源**，也是判定「AI 在這一區推論是正確行為」的依據。空陣列要慎用——多數真實案例都有缺口，宣告零缺口通常表示沒認真盤點。",
+      "items": {
+        "type": "object",
+        "required": ["role", "why"],
+        "properties": {
+          "role": { "type": "string", "minLength": 1 },
+          "why": {
+            "type": "string",
+            "description": "為什麼沒有：未訪談／約不到／不在範圍／資料未取得……"
+          },
+          "mentioned_in_evidence": {
+            "type": "boolean",
+            "description": "這個角色是否被現有證據點名過。true 特別值得注意——證據自己說這個角色很重要，但我們沒去問他"
+          },
+          "consequence": {
+            "type": "string",
+            "description": "這個缺口會讓藍圖的哪一部分只能靠二手轉述或推論"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "known_limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

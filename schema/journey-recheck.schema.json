@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/journey-recheck.schema.json",
+  "title": "Journey evidence recheck result",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "case_id",
+    "state",
+    "request_digest",
+    "baseline_editable_digest",
+    "edited_editable_digest",
+    "reconciled_evidence",
+    "reconciled_journey",
+    "step_assessments",
+    "journey_findings",
+    "attempt_trace"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "case_id": {"type": "string", "minLength": 1},
+    "state": {"const": "awaiting_confirmation"},
+    "request_digest": {"$ref": "#/definitions/digest"},
+    "baseline_editable_digest": {"$ref": "#/definitions/digest"},
+    "edited_editable_digest": {"$ref": "#/definitions/digest"},
+    "reconciled_evidence": {
+      "type": "array",
+      "items": {"$ref": "evidence.schema.json#/items"}
+    },
+    "reconciled_journey": {"$ref": "journey.schema.json"},
+    "step_assessments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/definitions/step_assessment"}
+    },
+    "journey_findings": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/journey_finding"}
+    },
+    "attempt_trace": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/definitions/attempt"}
+    }
+  },
+  "definitions": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "step_assessment": {
+      "type": "object",
+      "required": ["step_ref", "state", "evidence_refs", "rationale"],
+      "additionalProperties": false,
+      "properties": {
+        "step_ref": {"type": "string", "minLength": 1},
+        "state": {"enum": ["supported", "partial", "evidence_gap", "conflict"]},
+        "evidence_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^E-[0-9]+$"}
+        },
+        "rationale": {"type": "string", "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"state": {"const": "evidence_gap"}}},
+          "then": {"properties": {"evidence_refs": {"maxItems": 0}}}
+        },
+        {
+          "if": {"properties": {"state": {"enum": ["supported", "partial"]}}},
+          "then": {"properties": {"evidence_refs": {"minItems": 1}}}
+        },
+        {
+          "if": {"properties": {"state": {"const": "conflict"}}},
+          "then": {"properties": {"evidence_refs": {"minItems": 2}}}
+        }
+      ]
+    },
+    "journey_finding": {
+      "type": "object",
+      "required": ["id", "kind", "summary", "affected_step_refs", "evidence_refs"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^JR-F-[0-9]+$"},
+        "kind": {"enum": ["ordering", "missing_touchpoint", "scope", "conflict"]},
+        "summary": {"type": "string", "minLength": 1},
+        "affected_step_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "evidence_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^E-[0-9]+$"}
+        }
+      }
+    },
+    "attempt": {
+      "type": "object",
+      "required": ["provider", "model", "attempt", "outcome", "validation_errors"],
+      "additionalProperties": false,
+      "properties": {
+        "provider": {"enum": ["gemini", "anthropic"]},
+        "model": {"type": "string", "minLength": 1},
+        "attempt": {"type": "integer", "minimum": 1},
+        "outcome": {
+          "enum": ["accepted", "provider_error", "empty_output", "parse_error", "validation_error"]
+        },
+        "validation_errors": {"type": "array", "items": {"type": "string"}},
+        "fallback_reason": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}
