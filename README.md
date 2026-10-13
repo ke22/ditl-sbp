@@ -4,7 +4,7 @@ A research assistant for service designers. It turns qualitative research data i
 Coding → JTBD → HMW → Persona → Customer Journey → Service Blueprint,
 while keeping every researcher decision explicit and traceable to the original evidence.
 
-**Status: Public Preview 0.1.0.** Runs on your own Mac, single user, no account required. macOS on Apple silicon only. See [CHANGELOG.md](CHANGELOG.md).
+**Status: Public Preview 0.1.1.** Runs on your own Mac, single user, no account required. macOS on Apple silicon only. See [CHANGELOG.md](CHANGELOG.md).
 
 ## What it does
 
@@ -51,8 +51,8 @@ Optional: to upload PDF files, install Poppler yourself (`brew install poppler`)
 
 **安裝（只要做一次）**
 
-1. 到 [Releases](https://github.com/ke22/ditl-sbp/releases/latest) 下載 `ditl-sbp-0.1.0.zip`，雙擊解壓縮。
-2. 在 Finder 對解壓後的 `ditl-sbp-0.1.0` 資料夾按右鍵，選「服務」→「新增位於檔案夾位置的終端機視窗」。（找不到這個選項時，打開「終端機」，輸入 `cd ` 加一個空格，把資料夾拖進視窗後按 Enter。）
+1. 到 [Releases](https://github.com/ke22/ditl-sbp/releases/latest) 下載 `ditl-sbp-0.1.1.zip`，雙擊解壓縮。
+2. 在 Finder 對解壓後的 `ditl-sbp-0.1.1` 資料夾按右鍵，選「服務」→「新增位於檔案夾位置的終端機視窗」。（找不到這個選項時，打開「終端機」，輸入 `cd ` 加一個空格，把資料夾拖進視窗後按 Enter。）
 3. 輸入下面這行並按 Enter，等到出現「安裝完成」（第一次約需 1–3 分鐘，要連網）：
 
    ```bash

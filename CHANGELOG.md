@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1 — Fix (2026-10-13)
+
+- Fixed: coding stopped at 語意分段 with 「判準來源檔不存在：schema/service-design-judgment.criteria.yaml」. The 0.1.0 package left out the judgment criteria file that every coding step reads; it is now included.
+- The release build now loads the judgment criteria from the packaged copy and refuses to build if it cannot.
+
 ## 0.1.0 — Public Preview (2026-10-09)
 
 First public preview. macOS on Apple silicon only.

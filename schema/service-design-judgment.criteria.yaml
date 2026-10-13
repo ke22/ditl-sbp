@@ -1,0 +1,482 @@
+# 服務設計判準 — the single source for every rule that judges generated
+# content, as distinct from the schemas that judge whether it is well-formed.
+#
+# Both halves of the contract reaching the model are derived, not hand-copied:
+# schema_contract.py renders "which fields exist and what values they accept"
+# from the validating schema; this file carries "when to use them and why".
+# A rule stated here reaches the model AND is checked on its output. Neither
+# side is authored separately, so neither can drift from the other.
+#
+# ── This file has two sections, and the boundary is load-bearing ───────────
+#
+#   knowledge:  service-design knowledge. Belongs to no repository in
+#               particular. Rule text, who settles it, how well founded it
+#               is, and where that standing comes from.
+#
+#   bindings:   this project's wiring. Which generation stages the rule is
+#               sent to, and the name of the check that settles it. Every
+#               one of these names something that exists only in ditl_sbp.
+#
+# Keep them apart. If a second project ever needs the same criteria, the
+# knowledge half moves and the bindings half stays; that is a file split,
+# not a redesign. Nothing from bindings may appear under knowledge.
+#
+# ── Two fields govern behaviour; they are not annotations ──────────────────
+#
+#   arbiter: machine    | settled by inspecting the artifact. May be reported
+#                       | as a finding stating what was found.
+#   arbiter: researcher | needs a judgement about the service the artifact
+#                       | cannot contain. Rendered ONLY as a question. Never
+#                       | as a verdict, score, or pass/fail. This is the
+#                       | product boundary in CLAUDE.md made mechanical:
+#                       | 綜合、排序、翻譯、摘要 → 助理；裁定事實 → 研究者.
+#
+#   source_status: corpus_verified     | verified against this project's own
+#                                      | corpus or its own runs.
+#   source_status: literature_general  | general service-design literature,
+#                                      | not quoted in this project's corpus.
+#                                      | May instruct and may raise an
+#                                      | advisory finding, but may never be
+#                                      | the sole basis of a finding the
+#                                      | researcher cannot dismiss.
+#
+# No criterion here can make a run structurally invalid. Blocking stays with
+# schema conformance and provenance integrity. On 2026-09-02 one schema field
+# tightened to enforce a judgement rule left the review UI unable to open its
+# own default preview case; a judgement rule is the kind most likely to be
+# wrong on first authoring, and the gate must not sit downstream of it.
+
+# ══ knowledge ══ service-design knowledge; portable, owns no file paths ══
+
+knowledge:
+  over-generalized-scope:
+    label: 過度通則化
+    rule: '任何把一件事講成普遍現象（不管是節點 claim 的 `scope: general_pattern`，還是類別的區辨依據用「都」「每」「通常」「一律」這類全稱語氣）都必須有引用的來源原文本身也用了同樣的全稱語氣撐著，否則只能算個別案例：節點
+      claim 標 `scope: individual_case`；類別的區辨依據照實描述成部分證據的狀況，不能寫得像全部都這樣。'
+    arbiter: machine
+    source_status: corpus_verified
+    citation: 'ditl_sbp validator, 2026-08-20 (c9557d0). Derived from this project''s own runs: claims
+      declared as general patterns whose cited source text carried no universal quantifier.'
+  planned-not-yet-effective:
+    label: 計畫尚未生效
+    rule: '如果證據描述的是一個已經宣布、有明確生效時間或範圍、但目前還沒發生的具體操作改變（證據裡出現「明年度」「開始實施」「即將」「新制」「尚未」這類詞搭配具體日期或範圍），而且這個改變確實對應到某一個具體動作——不是上面「支援流程」段落講的那種泛泛政策背景、也不是意見或建議——這個
+      action node 要填 `status: planned`：此時填 `committed_actor`（會執行這個動作的角色），不要填 `actor`；逐字稿講了生效日期或適用範圍就填進
+      `effective.date`／`effective.scope`；逐字稿裡任何資格或範圍限定詞（例如「先決條件」「只有」「限」「才能」）都要留在 `description` 裡，不能為了精簡標籤而省略，省略會讓範圍看起來比實際更大。沒有這種未生效時間線索的動作，`status`
+      不用填（等同已發生），維持原本填 `actor` 的做法。'
+    arbiter: machine
+    source_status: corpus_verified
+    citation: ditl_sbp change distinguish-planned-from-observed-actions, 2026-08-24 (8f5f1e0). Derived
+      from transport-case evidence describing announced-but-not-yet-running service changes.
+  actor-not-in-evidence:
+    label: 行為者未見於證據
+    rule: '如果一個前台或後台 action 的所有支持證據都只描述顧客自己看到、感覺到、或自己描述的流程順序，完全沒有任何一句話提到店家一方的人做了什麼，那麼這個 node 的 `actor`
+      是你自己判斷出來的，不是逐字稿直接觀察到的——這種情況下這個 node 的每一則 claim 都要填 `source: inference`、`inferred: true`，並在 `description`
+      寫清楚推論依據是什麼（例如：「證據只描述顧客的動線，沒有直接說店員做了什麼，此為推論」），不能用 `source: evidence`、`inferred: false` 把這個行為者當成已經被觀察到的事實。'
+    arbiter: machine
+    source_status: corpus_verified
+    citation: ditl_sbp change ground-structure-stage-action-boundaries, 2026-08-31 (a3b7e2a). Derived
+      from provider-layer nodes whose supporting evidence only ever described the customer's own view.
+  marker-reason-is-generic:
+    label: 標記理由像通用定義
+    rule: 每則 marker 的 `note` 必須寫出「這一則具體符合的理由」，引用 `evidence_ref` 所指證據裡實際發生的事（例如「沒位子時等了將近二十分鐘」），不能只是重複三種分類本身的定義（例如不能只寫「顧客或流程在這個動作卡住等待」）——那句定義畫面上本來就會顯示，`note`
+      要補的是「這一次具體是什麼情況」，不是再講一次分類是什麼意思。
+    arbiter: machine
+    source_status: corpus_verified
+    citation: ditl_sbp change require-marker-specific-reason-note, 2026-09-02 (f34b0cb). Measured on this
+      project's runs before it was authored.
+  same-moment-two-paths:
+    label: 同一服務時刻的兩條路徑
+    rule: '以下三個條件同時成立時，代表兩個候選 action 描述的是同一個服務時刻的兩條可互換路徑，不是兩個不同的動作，必須合併成一個 node，不能因為具體操作方式不同就硬拆成兩個：(1)
+      屬於同一組 `scenario_refs`、同一個 `step`、同一個 `layer`、同一個 `actor`、同一個 `channel`；(2) 兩者都沒有掛任何 marker（`失誤點`／`等候點`／`決策點`）；(3)
+      兩者的 outgoing relation 目標節點集合完全相同且非空。只要三個條件有任何一個不成立——outgoing
+      目標不同（例如其中一條通向放棄離開，另一條通向繼續等候）、任一邊掛了 marker、或兩者透過不同的 `channel` 發生——就代表這是兩個不同的服務時刻，各自維持獨立 node，仍然套用上一段「絕不合併」的預設立場。
+
+      通向同一個結果不是合併的理由；透過不同媒介發生就是不同的節點。顧客可以用掃碼或領取號碼牌兩種方式加入候位，兩者都通向同一個「等候座位」node，但一個是
+      `digital_product`、一個是 `physical_product`——媒介不同，必須各自維持獨立 node，不能因為結果相同就合併成一個。只有同一媒介、同一行動者、同一步、同一層、outgoing
+      目標相同的兩條路徑，才合併。
+
+      合併後（僅限同一媒介的情況），兩條路徑各自的細節寫進合併後那個 node 的 `description`（沒有字數上限），例如「顧客可透過現場排隊或電話預約兩種方式完成同一個登記動作」；不要為了記錄這個差異新增任何 JSON
+      欄位——`description` 已經是這個專案記錄「放不下的細節」的固定位置，這裡沿用同一個做法。如果你判斷這兩個候選有 graph 目前結構還看不出來的理由需要保留分開（例如證據明確把它們框成研究問題要分別追蹤的選項），可以維持分開，但要在各自的
+      `description` 寫清楚保留分開的理由。'
+    arbiter: machine
+    source_status: corpus_verified
+    citation: ditl_sbp change add-action-node-consolidation-criteria, 2026-09-02 (f34b0cb). Motivated
+      by the MUJI pair 掃碼候位 / 領取號碼牌, both leading to the same waiting node.
+
+  decision-marker-missing:
+    label: 可能缺決策點
+    rule: 輸出前必須逐一重看每個 action node 的 evidence claim，做一次節點標示覆核：證據若明確描述動作失敗、拒絕、取消、失約、遺漏或無法完成，建立 `失誤點`；若明確描述等待、延遲、候補、卡住或逾時，建立
+      `等候點`；若明確描述某個利害關係人面對兩個以上可行做法、並且由他挑了其中一個，建立 `決策點`。決策點標的是「有人在做選擇」，不是「這裡有個岔路」——依既定規則自動走向某一邊的步驟不算，即使原文出現核准、判斷、分流這類詞也一樣，因為做選擇的是規則，不是人。不算的例子：依名單條件把符合資格的人分流到另一條路線（規則決定，沒有人在選）、系統監看到行程偏離就觸發提醒（條件觸發，不是選擇）、依規定於行駛中鎖門（照做，不是判斷）。算的例子：社工訪視後決定准或不准改用長照交通（准／不准兩條路，社工挑）、司機在乘客提出的路線與系統建議之間挑一條（兩條路線，司機挑）、乘客決定要不要向司機提出路線偏好（開口／照原路，乘客挑）。若明確描述一個人或角色把責任、資訊或任務移交給下一個人或角色接手，建立 `交接點`——移交本身要寫在證據裡，不是任何有兩個角色出現的節點都算。若明確描述顧客或流程參與者中止了這條路徑、沒有走到原本該有的結果，建立 `放棄點`——沒完成本身要寫在證據裡，不是「等了很久但最後還是完成了」（那算等候點，不算放棄點）。`等候點` 的 note 除了寫這一次具體是什麼情況，還要明確寫出證據裡有沒有講到這個等待妨礙了對方原本要做的事；證據沒講到就老實寫沒有明講，不要杜撰因果。同一節點可以有不同類型的
+      marker，但每一則都必須指回實際支持該分類的 evidence claim。只有逐一覆核後確定沒有任何證據符合時，才可輸出空的 `markers`；不可因為 marker 不是主要節點或為了節省輸出而略過。
+    arbiter: machine
+    source_status: corpus_verified
+    citation: 'ditl_sbp change flag-unmarked-decision-language, 2026-08-24 (8f5f1e0)；定義於 2026-09-03 由研究者修正：原定義把「分流」與「規則分支」算成決策，研究者在正征產出的走查上裁定那些是 SOP，決策點只標「利害關係人在替代方案中抉擇」。 Derived from this
+      project''s own runs: nodes whose evidence described a judgement, approval or branch but carried no
+      決策點 marker.'
+
+  principle-continuity:
+    label: 歷程斷了一步
+    rule: 顧客歷程必須是連續的。如果 journey 已確認的步驟區間裡，有某一步在 graph 上完全沒有任何節點，不要靜靜跳過那一步：要嘛從證據裡找出那一步實際發生什麼並建立節點，要嘛在相鄰節點的
+      `description` 寫明這一段資料裡沒有涵蓋。歷程中間憑空少一步，讀圖的人會以為那一步不存在，而不是以為那一步沒有資料。
+    arbiter: machine
+    source_status: corpus_verified
+    citation: Lee & Hsien-Hui (2022) 服務設計五原則，此原則在本專案語料中出現；此處收窄成可判定形式的程度是量出來的，見 define-service-design-judgment-criteria
+      tasks.md 4.1。
+  principle-stakeholder-centred:
+    label: 這一步沒有顧客
+    rule: '每一個有服務方動作的步驟，都要有對應的顧客行動節點。如果某一步只有前台、後台或支援流程的動作，顧客那一層卻是空的，代表這一步是從服務內部的作業視角描述的，不是從顧客的經歷描述的——回到證據找出顧客在這一步實際在做什麼或在等什麼，把它建成
+      `layer: 顧客行動` 的節點；證據真的沒有講，就用 `annotations` 記下顧客在這一步的處境，不要留空。'
+    arbiter: machine
+    source_status: corpus_verified
+    citation: Lee & Hsien-Hui (2022) 服務設計五原則，此原則在本專案語料中出現；此處收窄成可判定形式的程度是量出來的，見 define-service-design-judgment-criteria
+      tasks.md 4.1。
+  principle-whole-system:
+    label: 只畫了看得見的一半
+    rule: 藍圖要涵蓋可見線以下。如果整張圖沒有任何 `後台行動` 或 `支援流程` 的節點，代表只描述了顧客看得到的部分，服務為什麼能運作沒有被畫出來。從證據裡找出支撐這些前台動作的後台作業或支援流程；證據完全沒有觸及後台，就在輸出裡明說這份資料只涵蓋顧客側，不要讓一張只有前台的圖看起來像完整的服務藍圖。
+    arbiter: machine
+    source_status: corpus_verified
+    citation: Lee & Hsien-Hui (2022) 服務設計五原則，此原則在本專案語料中出現；此處收窄成可判定形式的程度是量出來的，見 define-service-design-judgment-criteria
+      tasks.md 4.1。
+  principle-real:
+    label: 整張卡片沒有出處
+    rule: '每個節點至少要有一則引用證據的 claim。如果一個節點的所有 claim 都沒有 `evidence_ref`，這個節點整個是推論出來的——它可以存在，但它的每一則 claim 都必須標
+      `source: inference`、`inferred: true`，而且要在 `description` 寫清楚推論依據。不要讓一個完全沒有出處的節點跟有證據的節點看起來一樣。'
+    arbiter: machine
+    source_status: corpus_verified
+    citation: Lee & Hsien-Hui (2022) 服務設計五原則，此原則在本專案語料中出現；此處收窄成可判定形式的程度是量出來的，見 define-service-design-judgment-criteria
+      tasks.md 4.1。
+
+  journey-step-coverage:
+    label: 有步驟沒被畫出來
+    rule: 輸出前檢查主要情境已確認的每一步，是不是至少有一個節點的 `step` 落在那一步上（任何泳道都算）。如果某一步完全沒有節點，代表這一步的內容可能被吞進相鄰的步驟，或是漏掉了——回到證據找出那一步實際發生什麼並建立節點；證據真的沒有涵蓋，也要讓那一步至少有一個節點承接（即使只是在
+      `description` 註明資料沒有涵蓋這一步），不要讓一個已確認的步驟在圖上完全消失、不留痕跡。
+    arbiter: machine
+    source_status: corpus_verified
+    citation: 'declare-analysis-chain-and-journey-coverage change, 2026-09-03。實測 2026-08-21-manual-transport-chongzheng
+      與 2026-08-21-demo-with-briefing 兩份真實 run：已確認九步旅程的第 8、9 步在圖上完全沒有節點，內容被吸進第 7 步。'
+
+  dimension-independence:
+    label: 這是不是同一個類別換句話說
+    rule: 兩個類別若引用的證據重疊比例（重疊係數 |A∩B|/min(|A|,|B|)）達到門檻，代表它們可能是同一個構念被拆成兩個類別——不斷言一定要合併，只提出這個疑問讓研究者判斷。門檻訂在
+      0.6：手造的合成資料裡，重疊 0.67（其中一類幾乎整個包在另一類裡）讀起來像同一類，重疊 0.20（五筆只共用一筆）讀起來明顯是兩類，0.6 落在兩者之間。
+    arbiter: machine
+    source_status: corpus_verified
+    citation: 'add-axial-selective-coding change, 2026-09-03。沒有真實 axial_coding.yaml 可供量測（這是新產物類型），門檻取自手造的四組合成資料，見該
+      change tasks.md 4.1；真實生成後（tasks.md 7.2）要回頭校正。'
+
+  distribution-required:
+    label: 這個類別是不是只靠一個人撐起來的
+    rule: 一個類別引用的證據若全部來自同一個 `role`，代表這是單一強烈說法，不是跨參與者的共通模式——不代表這樣不行，只是要讓研究者知道這個差異，不要把單一說法誤讀成模式。
+    arbiter: machine
+    source_status: corpus_verified
+    citation: 'add-axial-selective-coding change, 2026-09-03。同一原則已在 CLAUDE.md 對 Persona Matrix
+      的討論中出現（一條軸如果所有落點都在同一端，是共同 need 不是分群變項）；這裡把同一種「單一來源不等於模式」的判斷套用到類別的證據來源上。'
+
+  axis-grounded-in-category:
+    label: 軸沒有對應到類別
+    rule: 一條行為變項軸的 grounded_in 必須指向主軸編碼實際產出的類別 id。如果 grounded_in 引用了不存在的類別，代表這條軸是憑空發明的維度，不是從證據聚出來的類別讀出來的。
+    arbiter: machine
+    source_status: literature_general
+    citation: 'add-persona-matrix change, 2026-09-03。尚未有真實 persona_matrix.yaml 可供量測（新產物類型），這條是 referential-integrity
+      層級的規則，跟 axial-coding 的 evidence_refs 檢查同一種限制：只查 id 存不存在，不查軸的內容是否真的從那個類別的內容推導出來。'
+  subject-placement-coverage:
+    label: 受訪者在每一軸都沒有落點
+    rule: 一個受訪者如果在每一條軸上都沒有落點，代表這個受訪者的分組除了 evidence_refs 之外沒有多提供任何區辨資訊——不代表這樣不行，是要讓研究者知道這個受訪者可能被分錯規模，或現有的軸對他不適用。
+    arbiter: machine
+    source_status: literature_general
+    citation: 'add-persona-matrix change, 2026-09-03。同一種「留白比硬填一個猜測值誠實」的判斷，跟 require-marker-specific-reason-note
+      的 note 欄位、以及 selective-coding 不猜核心類別是同一個原則，套用到落點是否存在上。'
+
+  subject-source-names-multiple-people:
+    label: 受訪者的證據來源本身就提到不只一個人
+    rule: 一個受訪者的證據來源（evidence.yaml 的 source 欄位）如果同一則就寫了不只一個角色名，代表這個受訪者可能是兩個人的說法被合併成一筆——不代表一定是錯，是要讓研究者確認這是不是把兩個人誤判成同一人。
+    arbiter: machine
+    source_status: corpus_verified
+    citation: 'flag-persona-matrix-subject-identity-conflicts change, 2026-09-08。tools/sbp_gen/prompts/persona_matrix.md:21-28
+      已經拿「崇正＿林督導、吳督導」當反面教材教模型這件事，但沒有任何程式碼檢查過。用真實 run
+      runs/2026-08-21-manual-transport-chongzheng 量測：受訪者 P-3 的證據全部來自 source「崇正＿林督導、吳督導」，命中；同一個 run
+      的 P-4 也命中（來源分別是「崇正＿林督導前三名」與「崇正＿林督導報告」，兩則不同來源但都不含頓號／逗號，合起來仍是兩個不同 token）；同一個
+      run 的 P-1（單一來源「崇正＿陳司機」）不命中，確認沒有到處誤報。'
+
+  subject-identity-overlap-across-subjects:
+    label: 兩個不同受訪者的證據來源提到同一個人
+    rule: 兩個不同受訪者的證據來源如果字串不同、卻都指向同一個角色名，代表這兩個受訪者可能其實是同一個人被拆成兩筆——不代表一定是錯，是要讓研究者確認這是不是把同一人的說法拆開了。
+    arbiter: machine
+    source_status: corpus_verified
+    citation: 'flag-persona-matrix-subject-identity-conflicts change, 2026-09-08。用真實 run
+      runs/2026-08-21-manual-transport-chongzheng 量測：受訪者 P-3 的來源「崇正＿林督導、吳督導」跟 P-4 的來源「崇正＿林督導前三名」／「崇正＿林督導報告」不是同一個字串，但都提到「林督導」，命中——同一個
+      run 裡 conflicts.yaml 第 5 行已經獨立記錄這兩則證據其實來自同一位督導，證實這不是誤報。P-1（「崇正＿陳司機」）跟 P-2（「崇正＿紀司機」）是兩個真的不同的人，不命中，確認沒有到處誤報。'
+
+  axis-placement-spread:
+    label: 這條軸的落點有沒有分布（軸層級，不是類別層級）
+    rule: 一條用來分群的軸，受訪者落點必須有分布。分布與覆蓋是兩件事，不能混為一談：落點有沒有分開講的是這條軸，有幾位受訪者被放上去講的是落點工作做到哪。四種結果分開報：全部受訪者都有落點且全落同一端，是「差異不存在」（強訊號，每個人都被讀過就是沒分開）；兩位以上一致但至少一位沒被放上來，是「資料不足」，不下沒有差別的結論，只講放了幾位；不到兩位有落點，是「無從判斷」；落點在兩個以上位置，不報。全部只提出疑問，不擋流程——服務對象是單一群體時分不出群是合理結果，不是分析失敗，措辭一律不暗示那些軸不合格。
+    arbiter: machine
+    source_status: literature_general
+    citation: 'enforce-axis-quality-criteria-in-persona-matrix change, 2026-09-05。Cooper 行為變項法的 Variance
+      篩選；`schema/analysis-chain.yaml` 的 `distribution-required` 通則宣告的正是「一條用來分群的軸，受訪者落點必須有分布」且
+      `arbiter: machine`，但在這條加入之前，掛在該 id 底下的唯一實作查的是「一個類別的證據是不是全來自同一個 role」——類別層級，不是軸層級，等於宣告了一個不存在的機器把關。立案前依
+      service-design-judgment-criteria「machine 判準要先量過現有 run」實測：2026-08-21-manual-transport-chongzheng
+      6 條軸命中 5 條、2026-09-04-manual-transport-henglong-full 2 條軸命中 0 條、2026-09-04-manual-transport-muji-full
+      8 條軸命中 2 條，合計 7 筆，不是到處都命中。實作後加入覆蓋率判斷，同一批資料的讀法更正為：崇正 6 條軸有 0 條「差異不存在」、3 條「資料不足」、2 條「無從判斷」、1 條有分布——沒有任何一條軸把 4 位受訪者全部放上去，第一版把落點覆蓋不足報成了「比較過但沒分開」。'
+
+  axis-independence:
+    label: 這是不是同一條軸換句話說（軸層級，不是類別層級）
+    rule: 兩條軸若透過各自的 grounded_in 追溯回主軸編碼類別的證據聯集，重疊比例（重疊係數
+      |A∩B|/min(|A|,|B|)）達到門檻，代表它們可能是同一個構念被拆成兩條軸——不斷言一定要合併，只提出這個疑問讓研究者判斷。重用
+      `dimension-independence` 已有的門檻（0.6）跟核心比對邏輯，不另立第二套。
+    arbiter: machine
+    source_status: literature_general
+    citation: 'enforce-axis-quality-criteria-in-persona-matrix change, 2026-09-05。`schema/analysis-chain.yaml`
+      的 `dimension-independence` 通則宣告的是「兩條軸是不是同一構念換句話說」，但掛在該 id 底下的唯一實作（`dimension_independence`）查的是兩個
+      **類別**的證據重疊，不是兩條**軸**透過 grounded_in 追溯後的重疊——跟 `axis-placement-spread`
+      補上 `distribution-required` 缺的那一半是同一種缺口。立案前依 service-design-judgment-criteria
+      「machine 判準要先量過現有 run」實測（用完整的 axial_coding.yaml，不套用核心類別縮減——縮減只該套用在即將呼叫模型的生成路徑，量測已產生的文件用縮減後的子集會把橫跨多個類別的軸誤判成無法比對，見下方
+      3.1 記錄的真實 bug）：2026-08-21-manual-transport-chongzheng 6 條軸命中 0、2026-09-04-manual-transport-henglong-full
+      2 條軸命中 0、2026-09-04-manual-transport-muji-full 8 條軸命中 1（AXIS-4「品牌聯結強度」與 AXIS-8「提案傾向」重疊
+      86%），合計 16 條軸命中 1 筆——不是到處都命中，但確實命中至少一次，不需要依同一份文件「matching nothing everywhere」的但書改列
+      researcher。'
+
+  persona-member-grounded-in-subject:
+    label: Persona 沒有對應到受訪者
+    rule: 一個 persona 的 member_subject_ids 必須指向同一次 run 的 persona_matrix.yaml 實際產出的受訪者 id。如果引用了不存在的受訪者，代表這個 persona 沒有真的從供給的受訪者落點讀出來。
+    arbiter: machine
+    source_status: literature_general
+    citation: 'add-persona-content change, 2026-09-05。尚未有真實 persona_content.yaml 可供量測（新產物類型），這條是 referential-integrity
+      層級的規則，跟 persona-matrix 的 axis-grounded-in-category、jtbd 的 job-grounded-in-category 同一種限制：只查 id
+      存不存在，不查分群的內容是否真的從那些落點的內容推導出來。'
+  persona-subject-coverage:
+    label: 受訪者沒有被分進主要目標的 persona
+    rule: 一個受訪者如果落點符合主要目標象限在兩條選定軸上的兩端組合，卻沒有出現在這份 persona 的 member_subject_ids 裡，代表這個受訪者的分群狀態無法跟「還沒被檢視過」區分——不代表這樣不行，是要讓研究者知道這位受訪者可能被漏掉了。範圍只到落點符合這一格的受訪者，不是這次 run 全部受訪者——generate-persona-for-target-quadrant 之後一份 run 只長一份 persona，對應一個象限，象限之外的受訪者是正常情況下的多數，拿他們當分母會讓這條規則對幾乎每一份文件都發出警告，變成不帶資訊的雜訊。
+    arbiter: machine
+    source_status: literature_general
+    citation: 'add-persona-content change, 2026-09-05；generate-persona-for-target-quadrant change 縮小範圍，2026-09-12。
+      原始判準用「這次 run 全部受訪者」當分母，套用到只長一份 persona 的文件上會系統性誤報：鎖定 run
+      runs/2026-09-04-manual-transport-muji-full 的 15 位受訪者，只有 4 位落在主要目標象限（QUADRANT-3）的兩端組合裡，
+      舊判準會把另外 11 位（73%）全部報成「沒有被分進」，即使他們本來就不屬於這一格。縮小後的分母只放落點符合這一格的
+      4 位，覆蓋率檢查回到只在真的漏掉人時才發出警告，跟 persona-matrix 的 subject-placement-coverage 同一個「留白比硬填
+      一個猜測值誠實」的原則一致。'
+  persona-field-provenance-policy:
+    label: 哪個 persona 欄位能標哪一種來源
+    rule: 'persona 的每一個有內容的欄位都要標明它屬於四種來源的哪一種：research_evidence（受訪者講過的或紀錄裡寫著的）、evidence_synthesis（把好幾筆這種記錄重新整理，沒有新增機制、原因或意義）、evidence_inference（證據撐得住、但沒有人講過，因此是一個會被後面的人拿去用的研究主張）、illustrative_identity（完全不作研究主張，只為了讓這份
+      persona 讀起來像個人）。哪個欄位能標哪些種，由下面的 policy 表決定，標了表上沒有的種就是錯的。表背後的原則有兩條：**人口變項不得被推論、也不得被虛構**——職業、收入、家庭結構會直接改變後面的人怎麼讀這群人的行為（看到「上班族」就會自己接出「午休時間有限所以偏好快速」，而原始資料一個字都沒講過），所以證據沒記錄就整個欄位不要寫；**行為、需求、動機、情境、阻礙不得被虛構**——那些正是這份
+      persona 唯一要交付的研究內容。姓名與頭像則相反，它們只能是 illustrative_identity：它們是為了好記而存在的呈現層設定，不代表任何一位受訪者，它們帶的性別、年齡感、階級暗示都不得被後續分析當成這一群的研究屬性。另外三條機器擋得住的：標成
+      evidence_inference 的欄位要寫 reasoning_summary（一句話的推導橋接）並指名它讀的證據；標成 evidence_synthesis 的要指名證據但不必寫橋接；標成
+      illustrative_identity 的不得附證據也不得附理由——逼它生一套理由只會得到一段看起來跟真的一樣的假理由。description 是這份 persona 對選定目標族群的綜合摘要，不是受訪者原話：它的來源追溯到支持這個描述的成員證據，只能標 evidence_synthesis 或 evidence_inference，不得標成 research_evidence。機器擋不住、只能靠研究者看的：一個標成
+      synthesis 的句子其實是不是推論、一個值有沒有比它的證據更精確（證據寫「約 35 歲」卻寫成「34 歲」）。'
+    arbiter: machine
+    source_status: literature_general
+    citation: 'evidence-aware-persona-provenance change, 2026-09-13。前一支 change
+      （mark-and-show-inferred-persona-fields）只分得出「推論」與「其他」，於是把「三十五歲上下」這種把四筆受訪者描述收斂起來的整理，
+      跟「這家店沒有非來不可的理由」這種超出任何人講過的話的解釋，標成同一種，等於告訴讀的人它們證據強度一樣。鎖定 run
+      runs/2026-09-04-manual-transport-muji-full 的 QUADRANT-3 是實際依據：四位成員的受訪者描述裡有年齡（兩組「約 35 歲」、一組「中年夫婦」）
+      但沒有任何一位的職業，而證據池裡確實有「上班族」——那是象限外另一位受訪者講的。沒有欄位政策時，模型把那個「上班族」搬過來是結構合法的。'
+    policy:
+      person_name: [illustrative_identity]
+      avatar: [illustrative_identity]
+      age: [research_evidence, evidence_synthesis]
+      profession: [research_evidence, evidence_synthesis]
+      income: [research_evidence, evidence_synthesis]
+      household_structure: [research_evidence, evidence_synthesis]
+      # persona-description-provenance-policy (2026-10-01): description is a
+      # synthesized first-person summary, never a participant's words.
+      description: [evidence_synthesis, evidence_inference]
+      motivation_goal: [research_evidence, evidence_synthesis, evidence_inference]
+      decision_pattern: [research_evidence, evidence_synthesis, evidence_inference]
+      behavior_strategy: [research_evidence, evidence_synthesis, evidence_inference]
+      motivation: [research_evidence, evidence_synthesis, evidence_inference]
+      context: [research_evidence, evidence_synthesis, evidence_inference]
+      behavior: [research_evidence, evidence_synthesis, evidence_inference]
+      challenge: [research_evidence, evidence_synthesis, evidence_inference]
+      need: [research_evidence, evidence_synthesis, evidence_inference]
+      user_story: [research_evidence, evidence_synthesis, evidence_inference]
+      worldview: [research_evidence, evidence_synthesis, evidence_inference]
+      emotional_tendencies: [research_evidence, evidence_synthesis, evidence_inference]
+      behavioral_patterns: [research_evidence, evidence_synthesis, evidence_inference]
+      linguistic_style: [research_evidence, evidence_synthesis, evidence_inference]
+    # model-facing-current-fields-only (2026-10-01): rows kept so older Personas
+    # still validate; never shown to the model (persona-nine-canonical-fields).
+    compatibility_only: [motivation, behavior, worldview, emotional_tendencies, behavioral_patterns, linguistic_style]
+
+  job-grounded-in-category:
+    label: Job 沒有對應到類別
+    rule: 一則 Job 的 grounded_in 必須指向主軸編碼實際產出的類別 id。如果 grounded_in 引用了不存在的類別，代表這則 Job 是憑空發明的陳述，不是從證據聚出來的類別讀出來的。
+    arbiter: machine
+    source_status: literature_general
+    citation: 'add-jtbd change, 2026-09-03。尚未有真實 jtbd.yaml 可供量測（新產物類型），這條是 referential-integrity
+      層級的規則，跟 persona-matrix 的 axis-grounded-in-category、axial-coding 的 evidence_refs 檢查同一種限制：只查 id 存不存在，不查
+      Job 的內容是否真的從那個類別的內容推導出來。'
+
+  step-evidence-within-job:
+    label: 階段引用了別則 Job 的證據
+    rule: Job Map 一個階段的 evidence_refs 必須是它自己那則 Job 在 jtbd.yaml 裡引用過的證據子集。如果引用了範圍外的證據，代表這個階段不是真的從這則 Job 自己的範圍推導出來的。
+    arbiter: machine
+    source_status: literature_general
+    citation: 'add-job-map change, 2026-09-03。尚未有真實 job_map.yaml 可供量測（新產物類型），這條是 referential-integrity
+      層級的規則，跟 jtbd 的 job-grounded-in-category、persona-matrix 的 axis-grounded-in-category 同一種限制：只查
+      id 是否在允許範圍內，不查階段的內容是否真的從那些證據的內容推導出來。'
+
+  hmw-entry-grounded:
+    label: HMW 沒有對應到類別或證據
+    rule: 一則 HMW 的 grounded_in 必須指向真實存在的主軸編碼類別，evidence_refs 必須指向真實存在的證據。如果引用了不存在的類別或證據，代表這則 HMW 不是真的從供給的資料推導出來的。
+    arbiter: machine
+    source_status: literature_general
+    citation: 'add-how-might-we change, 2026-09-03。尚未有真實 hmw.yaml 可供量測（新產物類型），這條是 referential-integrity
+      層級的規則，跟這條線其他 change（jtbd、persona-matrix、job-map）的同類檢查一樣：只查 id 是否存在，不查陳述的內容是否真的從那些鏡頭的內容推導出來。'
+
+  evidence-visible:
+    label: 引用撐得住這些說法嗎
+    rule: 這條判準不送給模型。它問研究者：這份產出裡標為有證據的說法，引用的原文真的支持它們嗎？
+    arbiter: researcher
+    source_status: corpus_verified
+    citation: 'Lee & Hsien-Hui (2022) 服務設計五原則之「證據可見」。其可由機器判定的部分已由 schema 保證（`source: evidence` 必須有 `evidence_ref`，`inference`/`researcher`
+      必須 `inferred: true`），實測在磁碟上九份 graph 命中 0 次。剩下的部分是 docs/experiment/pipeline.md §2.3 的 G1b：引用是否真的支持該主張，該文件已實測資料齊全時
+      25%、只剩三分之一時 37% 並不完全支持，且明說需要人工抽樣。'
+
+  job-map-opportunity-signal:
+    label: 這個 Job 階段值得看嗎
+    rule: 這條判準不送給模型。它問研究者：Job Map 裡這則 Job 的這個階段，它的證據完全沒有出現在目前服務的結構圖裡——這裡是不是真的有服務漏掉的地方？
+    arbiter: researcher
+    source_status: literature_general
+    citation: 這是本專案自己整合出的比對方法（把 Job Map 的應然輸出拿去跟結構圖的實然證據對照），不是對應到某一篇外部文獻的逐字結論；只查證據 id 存不存在於圖上，不查內容是否真的對應，也不分辨「完全沒出現」（缺席）跟「出現但被標成失誤點／等候點」（故障，屬於既有標記機制）。
+
+  desirability:
+    label: 這條歷程對顧客值得走嗎
+    rule: 這條判準不送給模型。它問研究者：顧客在這條歷程上遇到的摩擦，是不是已經多到讓整件事對他不值得？
+    arbiter: researcher
+    source_status: literature_general
+    citation: IDEO 設計思考三透鏡（Desirability／Feasibility／Viability）。通用文獻，未在本專案語料裡逐字出現，因此只能作為問研究者的問題，不能自行下結論，也不會成為研究者無法忽略的檢查。
+  feasibility:
+    label: 服務方做得動嗎
+    rule: 這條判準不送給模型。它問研究者：這條歷程要服務方做的事，現有的人力與流程撐得住嗎？
+    arbiter: researcher
+    source_status: literature_general
+    citation: IDEO 設計思考三透鏡（Desirability／Feasibility／Viability）。通用文獻，未在本專案語料裡逐字出現，因此只能作為問研究者的問題，不能自行下結論，也不會成為研究者無法忽略的檢查。
+  viability:
+    label: 這樣做得下去嗎
+    rule: 這條判準不送給模型。它問研究者：這些必須一直運轉的支援流程，組織有辦法長期維持嗎？
+    arbiter: researcher
+    source_status: literature_general
+    citation: IDEO 設計思考三透鏡（Desirability／Feasibility／Viability）。通用文獻，未在本專案語料裡逐字出現，因此只能作為問研究者的問題，不能自行下結論，也不會成為研究者無法忽略的檢查。
+
+# ══ bindings ══ this project's wiring; stage names and check names ══════
+
+bindings:
+  over-generalized-scope:
+    binds_to:
+    - structure
+    - structure_to_be
+    - axial_coding
+    check: over_generalized_scope
+  planned-not-yet-effective:
+    binds_to:
+    - structure
+    - structure_to_be
+    check: planned_not_yet_effective
+  actor-not-in-evidence:
+    binds_to:
+    - structure
+    - structure_to_be
+    check: actor_not_in_evidence
+  marker-reason-is-generic:
+    binds_to:
+    - structure
+    - structure_to_be
+    check: marker_reason_is_generic
+  same-moment-two-paths:
+    binds_to:
+    - structure
+    - structure_to_be
+    check: same_moment_two_paths
+  decision-marker-missing:
+    binds_to:
+    - structure
+    - structure_to_be
+    check: decision_marker_missing
+  principle-continuity:
+    binds_to:
+    - structure
+    - structure_to_be
+    check: principle_continuity
+  principle-stakeholder-centred:
+    binds_to:
+    - structure
+    check: principle_stakeholder_centred
+  principle-whole-system:
+    binds_to:
+    - structure
+    check: principle_whole_system
+  principle-real:
+    binds_to:
+    - structure
+    check: principle_real
+  journey-step-coverage:
+    binds_to:
+    - structure
+    - structure_to_be
+    check: journey_step_coverage
+  dimension-independence:
+    binds_to:
+    - axial_coding
+    check: dimension_independence
+  distribution-required:
+    binds_to:
+    - axial_coding
+    check: distribution_required
+  axis-grounded-in-category:
+    binds_to:
+    - persona_matrix
+    check: axis_not_grounded
+  subject-placement-coverage:
+    binds_to:
+    - persona_matrix
+    check: subject_unplaced_on_every_axis
+  subject-source-names-multiple-people:
+    binds_to:
+    - persona_matrix
+    check: subject_source_names_multiple_people
+  subject-identity-overlap-across-subjects:
+    binds_to:
+    - persona_matrix
+    check: subject_identity_overlap_across_subjects
+  axis-placement-spread:
+    binds_to:
+    - persona_matrix
+    check: axis_without_placement_spread
+  axis-independence:
+    binds_to:
+    - persona_matrix
+    check: axis_independence_in_persona_matrix
+  persona-member-grounded-in-subject:
+    binds_to:
+    - persona_content
+    check: persona_member_not_grounded
+  persona-subject-coverage:
+    binds_to:
+    - persona_content
+    check: subject_unassigned_to_any_persona
+  persona-field-provenance-policy:
+    binds_to:
+    - persona_content
+    check: persona_field_provenance_policy
+  job-grounded-in-category:
+    binds_to:
+    - jtbd
+    check: job_not_grounded
+  step-evidence-within-job:
+    binds_to:
+    - job_map
+    check: step_evidence_outside_job
+  hmw-entry-grounded:
+    binds_to:
+    - how_might_we
+    check: hmw_entry_not_grounded
+  job-map-opportunity-signal:
+    asked_when: job_map_step_unaddressed
+  evidence-visible:
+    asked_when: evidence_over_extended
+  desirability:
+    asked_when: customer_friction_concentrated
+  feasibility:
+    asked_when: provider_work_outweighs_customer_steps
+  viability:
+    asked_when: support_processes_carry_ongoing_cost
