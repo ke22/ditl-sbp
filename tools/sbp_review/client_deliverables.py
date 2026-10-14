@@ -49,6 +49,9 @@ def print_url(base_url: str, item_id: str, case_id: str, run_name: str) -> str:
     return f"{base_url.rstrip('/')}/?{query}"
 
 
+BROWSER_MISSING_MESSAGE = "輸出 PDF 需要的瀏覽器元件還沒裝好，請重新執行 ./install.sh 後再輸出。"
+
+
 def render_pdfs(base_url: str, case_id: str, run_name: str, item_ids: list[str],
                 cookie: str | None = None, timeout_ms: int = 90000) -> list[tuple[str, bytes]]:
     """Print each item's screen to PDF bytes, as (filename, body) pairs."""
@@ -59,7 +62,10 @@ def render_pdfs(base_url: str, case_id: str, run_name: str, item_ids: list[str],
         raise ClientDeliverableError("這台機器沒有安裝 PDF 列印需要的 Playwright。") from exc
     rendered = []
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=True)
+        try:
+            browser = playwright.chromium.launch(headless=True)
+        except PlaywrightError as exc:  # never show Playwright's own text or local paths
+            raise ClientDeliverableError(BROWSER_MISSING_MESSAGE) from exc
         try:
             context = browser.new_context(viewport={"width": 1400, "height": 1000},
                                           extra_http_headers={"Cookie": cookie} if cookie else None)

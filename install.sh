@@ -99,6 +99,12 @@ say "建立執行環境並安裝依賴（第一次需要幾分鐘）…"
   -r "$STAGING/app/requirements.lock" ||
   fail "安裝依賴套件失敗。$NETWORK_MSG" "原本可用的安裝沒有被更動。"
 
+# PDF export prints the research deliverables with the Chromium build that matches
+# the pinned Playwright. It goes to Playwright's shared browser cache.
+say "下載輸出 PDF 需要的瀏覽器元件（第一次約 200 MB）…"
+"$STAGING/.venv/bin/python" -m playwright install chromium-headless-shell >/dev/null 2>&1 ||
+  fail "下載輸出 PDF 需要的瀏覽器元件失敗。$NETWORK_MSG" "原本可用的安裝沒有被更動。"
+
 verify() { # $1 = version directory
   PYTHONDONTWRITEBYTECODE=1 "$1/.venv/bin/python" -c "import yaml, jsonschema" >/dev/null 2>&1 &&
     PYTHONDONTWRITEBYTECODE=1 "$1/.venv/bin/python" "$1/app/tools/sbp_review/launcher.py" --help >/dev/null 2>&1

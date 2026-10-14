@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3 — Fix (2026-10-14)
+
+- Fixed: 輸出研究產物 failed for every deliverable in an installed workbench, because the PDF printer's browser component was never installed. `./install.sh` now downloads the matching Chromium component (about 200 MB); if that download fails, the installation stops and the previous one keeps working.
+- If the component is missing, the export says so in one plain sentence instead of showing the printer's own error.
+- README: outputs are five PDFs (the coding export also includes an XLSX workbook); export is in the project's ⋯ menu.
+
 ## 0.1.2 — Fix (2026-10-14)
 
 - Fixed: with the workbench started by `ditl-sbp start`, choosing Codex in 設定 showed 「已設定 ✕」 and AI steps could not run through Codex. The launcher now sets up the Codex runner the same way it sets up Claude Code.

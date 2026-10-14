@@ -4,7 +4,7 @@ A research assistant for service designers. It turns qualitative research data i
 Coding → JTBD → HMW → Persona → Customer Journey → Service Blueprint,
 while keeping every researcher decision explicit and traceable to the original evidence.
 
-**Status: Public Preview 0.1.2.** Runs on your own Mac, single user, no account required. macOS on Apple silicon only. See [CHANGELOG.md](CHANGELOG.md).
+**Status: Public Preview 0.1.3.** Runs on your own Mac, single user, no account required. macOS on Apple silicon only. See [CHANGELOG.md](CHANGELOG.md).
 
 ## What it does
 
@@ -35,7 +35,7 @@ Download the release ZIP, unzip it, and in that folder run:
 ditl-sbp start
 ```
 
-`install.sh` fetches its own pinned Python 3.14 (through uv) and the pinned Python packages; you do not need to install Python, uv or Homebrew first. The program goes to `~/.local/share/ditl-sbp/` and the `ditl-sbp` command to `~/.local/bin/`. Re-running `./install.sh` is safe: a failed run leaves the previous installation working.
+`install.sh` fetches its own pinned Python 3.14 (through uv) and the pinned Python packages; you do not need to install Python, uv or Homebrew first. It also downloads the matching Chromium browser component (about 200 MB) that prints the PDF exports; it goes to Playwright's shared cache, `~/Library/Caches/ms-playwright`. The program goes to `~/.local/share/ditl-sbp/` and the `ditl-sbp` command to `~/.local/bin/`. Re-running `./install.sh` is safe: a failed run leaves the previous installation working.
 
 If `~/.local/bin` is not on your `PATH`, the installer says so at the end and prints the full path to run instead, plus a line you can add to your shell settings yourself. It does not edit your shell files.
 
@@ -51,9 +51,9 @@ Optional: to upload PDF files, install Poppler yourself (`brew install poppler`)
 
 **安裝（只要做一次）**
 
-1. 到 [Releases](https://github.com/ke22/ditl-sbp/releases/latest) 下載 `ditl-sbp-0.1.2.zip`，雙擊解壓縮。
-2. 在 Finder 對解壓後的 `ditl-sbp-0.1.2` 資料夾按右鍵，選「服務」→「新增位於檔案夾位置的終端機視窗」。（找不到這個選項時，打開「終端機」，輸入 `cd ` 加一個空格，把資料夾拖進視窗後按 Enter。）
-3. 輸入下面這行並按 Enter，等到出現「安裝完成」（第一次約需 1–3 分鐘，要連網）：
+1. 到 [Releases](https://github.com/ke22/ditl-sbp/releases/latest) 下載 `ditl-sbp-0.1.3.zip`，雙擊解壓縮。
+2. 在 Finder 對解壓後的 `ditl-sbp-0.1.3` 資料夾按右鍵，選「服務」→「新增位於檔案夾位置的終端機視窗」。（找不到這個選項時，打開「終端機」，輸入 `cd ` 加一個空格，把資料夾拖進視窗後按 Enter。）
+3. 輸入下面這行並按 Enter，等到出現「安裝完成」（第一次約需 1–3 分鐘，要連網；會下載約 200 MB 的瀏覽器元件，用來輸出 PDF）：
 
    ```bash
    ./install.sh
@@ -81,6 +81,7 @@ ditl-sbp start
 
 - 更新：下載新版 ZIP，在新資料夾執行一次 `./install.sh`。研究資料不受影響。
 - 移除程式：刪除 `~/.local/share/ditl-sbp` 資料夾與 `~/.local/bin/ditl-sbp`。研究資料不會一起刪除；要刪除資料，請自行刪除上面的資料夾。
+- 輸出 PDF 用的瀏覽器元件放在 `~/Library/Caches/ms-playwright`，其他使用 Playwright 的程式可能共用這個資料夾，移除時不會自動刪除；確定沒有其他程式需要時，可以只刪除其中 `chromium_headless_shell-*` 開頭的資料夾。
 
 **授權**：可以下載、安裝並用於研究、教學與工作；不得修改或轉傳，請他人直接從本頁下載。詳見 [LICENSE](LICENSE)。
 
@@ -142,7 +143,7 @@ If an AI step fails, the screen says which step stopped, what was kept, and offe
 
 ## Outputs
 
-Each station can export client-facing deliverables (coding, JTBD + HMW, Persona, customer journey, service blueprint). XLSX export works with the standard install. PDF export is not part of this release's supported scope.
+Export from the project's ⋯ menu on Project Home → 輸出研究產物. The five research deliverables (coding, JTBD + HMW, Persona Matrix + Persona, customer journey map, service blueprint) export as PDF; the coding export also includes an XLSX workbook of the same content. The AI collaboration record exports as Markdown.
 
 ## License
 
