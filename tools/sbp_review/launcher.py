@@ -32,6 +32,7 @@ WAIT_BUDGET_SECONDS = 15.0
 POLL_SECONDS = 0.25
 DATA_ROOT_ENV = "DITL_SBP_DATA_ROOT"
 CLAUDE_RUNNER_ENV = "SBP_CLI_RUNNER_COMMAND_CLAUDE"
+CODEX_RUNNER_ENV = "SBP_CLI_RUNNER_COMMAND"
 
 
 def default_data_root(platform: str, home: str | Path, environ) -> Path:
@@ -73,6 +74,15 @@ def configure_claude_runner(environ) -> None:
         return
     wrapper = TOOLS / "cli_runners" / "claude.py"
     environ[CLAUDE_RUNNER_ENV] = f"{shlex.quote(sys.executable)} {shlex.quote(str(wrapper))}"
+
+
+def configure_codex_runner(environ) -> None:
+    """Point Codex at the shipped wrapper unless already set, as the server's own
+    entry point does; without it an installed workbench reports Codex as not set up."""
+    if (environ.get(CODEX_RUNNER_ENV) or "").strip():
+        return
+    wrapper = TOOLS / "cli_runners" / "codex.py"
+    environ[CODEX_RUNNER_ENV] = f"{shlex.quote(sys.executable)} {shlex.quote(str(wrapper))}"
 
 
 def open_browser(url: str) -> None:
@@ -117,6 +127,7 @@ def start(args, environ=None) -> int:
     root = resolve_data_root(args.data_root, environ)
     ports = port_range(args.port)
     configure_claude_runner(environ)
+    configure_codex_runner(environ)
 
     def on_listening(httpd) -> None:
         port = httpd.server_address[1]

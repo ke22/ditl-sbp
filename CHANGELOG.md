@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2 — Fix (2026-10-14)
+
+- Fixed: with the workbench started by `ditl-sbp start`, choosing Codex in 設定 showed 「已設定 ✕」 and AI steps could not run through Codex. The launcher now sets up the Codex runner the same way it sets up Claude Code.
+
 ## 0.1.1 — Fix (2026-10-13)
 
 - Fixed: coding stopped at 語意分段 with 「判準來源檔不存在：schema/service-design-judgment.criteria.yaml」. The 0.1.0 package left out the judgment criteria file that every coding step reads; it is now included.
