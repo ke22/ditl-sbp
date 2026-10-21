@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3200" height="1320" viewBox="0 0 3200 1320">
+<defs>
+<pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1.3" fill="#414148" opacity=".55"/></pattern>
+<marker id="arrowGrey" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L7,3 L0,6" fill="none" stroke="#aeb1bb" stroke-width="1.7"/></marker>
+<marker id="arrowRed" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L7,3 L0,6" fill="none" stroke="#ee716c" stroke-width="1.7"/></marker>
+</defs>
+<rect width="3200" height="1320" fill="#202125"/>
+<rect width="3200" height="1320" fill="url(#grid)"/>
+<g font-family="Noto Sans CJK TC, Noto Sans TC, sans-serif">
+<text x="75" y="93" text-anchor="start" font-size="54" font-weight="750" fill="#f8f8f9" opacity="1">ditl_sbp｜Human–AI 工作流程</text>
+<text x="77" y="148" text-anchor="start" font-size="29" font-weight="400" fill="#b7bac4" opacity="1">從 One-shot 生成，走向以研究證據與專業判斷支持服務設計</text>
+<circle cx="2145" cy="96" r="10" fill="#afb2bb"/>
+<text x="2169" y="106" text-anchor="start" font-size="26" font-weight="450" fill="#dcdee5" opacity="1">一般生成</text>
+<circle cx="2450" cy="96" r="10" fill="#ef716b"/>
+<text x="2474" y="106" text-anchor="start" font-size="26" font-weight="450" fill="#dcdee5" opacity="1">AI 分析與生成</text>
+<circle cx="2848" cy="96" r="10" fill="#9bcbe0"/>
+<text x="2872" y="106" text-anchor="start" font-size="26" font-weight="450" fill="#dcdee5" opacity="1">研究者決策</text>
+<path d="M 430.0 193 L 430.0 1057" fill="none" stroke="#44464e" stroke-width="2" stroke-dasharray="7 10"/>
+<circle cx="598.75" cy="236" r="31" fill="#dda7a9"/>
+<text x="598.75" y="247" text-anchor="middle" font-size="32" font-weight="750" fill="#34262b" opacity="1">1</text>
+<text x="598.75" y="316" text-anchor="middle" font-size="32" font-weight="650" fill="#f0f0f2" opacity="1">資料輸入</text>
+<path d="M 767.5 193 L 767.5 1057" fill="none" stroke="#44464e" stroke-width="2" stroke-dasharray="7 10"/>
+<circle cx="936.25" cy="236" r="31" fill="#dda7a9"/>
+<text x="936.25" y="247" text-anchor="middle" font-size="32" font-weight="750" fill="#34262b" opacity="1">2</text>
+<text x="936.25" y="316" text-anchor="middle" font-size="32" font-weight="650" fill="#f0f0f2" opacity="1">研究分析</text>
+<path d="M 1105.0 193 L 1105.0 1057" fill="none" stroke="#44464e" stroke-width="2" stroke-dasharray="7 10"/>
+<circle cx="1273.75" cy="236" r="31" fill="#dda7a9"/>
+<text x="1273.75" y="247" text-anchor="middle" font-size="32" font-weight="750" fill="#34262b" opacity="1">3</text>
+<text x="1273.75" y="316" text-anchor="middle" font-size="32" font-weight="650" fill="#f0f0f2" opacity="1">需求理解</text>
+<path d="M 1442.5 193 L 1442.5 1057" fill="none" stroke="#44464e" stroke-width="2" stroke-dasharray="7 10"/>
+<circle cx="1611.25" cy="236" r="31" fill="#dda7a9"/>
+<text x="1611.25" y="247" text-anchor="middle" font-size="32" font-weight="750" fill="#34262b" opacity="1">4</text>
+<text x="1611.25" y="316" text-anchor="middle" font-size="32" font-weight="650" fill="#f0f0f2" opacity="1">問題定義</text>
+<path d="M 1780.0 193 L 1780.0 1057" fill="none" stroke="#44464e" stroke-width="2" stroke-dasharray="7 10"/>
+<circle cx="1948.75" cy="236" r="31" fill="#dda7a9"/>
+<text x="1948.75" y="247" text-anchor="middle" font-size="32" font-weight="750" fill="#34262b" opacity="1">5</text>
+<text x="1948.75" y="316" text-anchor="middle" font-size="32" font-weight="650" fill="#f0f0f2" opacity="1">目標使用者</text>
+<path d="M 2117.5 193 L 2117.5 1057" fill="none" stroke="#44464e" stroke-width="2" stroke-dasharray="7 10"/>
+<circle cx="2286.25" cy="236" r="31" fill="#dda7a9"/>
+<text x="2286.25" y="247" text-anchor="middle" font-size="32" font-weight="750" fill="#34262b" opacity="1">6</text>
+<text x="2286.25" y="316" text-anchor="middle" font-size="32" font-weight="650" fill="#f0f0f2" opacity="1">體驗歷程</text>
+<path d="M 2455.0 193 L 2455.0 1057" fill="none" stroke="#44464e" stroke-width="2" stroke-dasharray="7 10"/>
+<circle cx="2623.75" cy="236" r="31" fill="#dda7a9"/>
+<text x="2623.75" y="247" text-anchor="middle" font-size="32" font-weight="750" fill="#34262b" opacity="1">7</text>
+<text x="2623.75" y="316" text-anchor="middle" font-size="32" font-weight="650" fill="#f0f0f2" opacity="1">解方探索</text>
+<path d="M 2792.5 193 L 2792.5 1057" fill="none" stroke="#44464e" stroke-width="2" stroke-dasharray="7 10"/>
+<circle cx="2961.25" cy="236" r="31" fill="#dda7a9"/>
+<text x="2961.25" y="247" text-anchor="middle" font-size="32" font-weight="750" fill="#34262b" opacity="1">8</text>
+<text x="2961.25" y="316" text-anchor="middle" font-size="32" font-weight="650" fill="#f0f0f2" opacity="1">服務提案</text>
+<rect x="64" y="399" width="295" height="115" rx="16" fill="#d8d9df" stroke="none" stroke-width="1" opacity="1"/>
+<text x="211" y="448" text-anchor="middle" font-size="32" font-weight="750" fill="#292b30" opacity="1">One-shot AI</text>
+<text x="211" y="489" text-anchor="middle" font-size="25" font-weight="450" fill="#646672" opacity="1">一次性生成</text>
+<rect x="64" y="709" width="295" height="132" rx="17" fill="#dd514b" stroke="none" stroke-width="1" opacity="1"/>
+<text x="211" y="761" text-anchor="middle" font-size="38" font-weight="750" fill="#fff" opacity="1">ditl_sbp</text>
+<text x="211" y="803" text-anchor="middle" font-size="24" font-weight="550" fill="#fff" opacity="1">Human–AI 協作</text>
+<path d="M 598.75 466 L 2961.25 466" fill="none" stroke="#a1a5b0" stroke-width="5" marker-end="url(#arrowGrey)"/>
+<rect x="453.75" y="383" width="290" height="166" rx="18" fill="#292b30" stroke="#a9aeba" stroke-width="3" opacity="1"/>
+<text x="598.75" y="426" text-anchor="middle" font-size="26" font-weight="650" fill="#e9eaf0" opacity="1">DATA</text>
+<text x="598.75" y="470" text-anchor="middle" font-size="30" font-weight="670" fill="#f0f0f4" opacity="1">輸入資料</text>
+<text x="598.75" y="511" text-anchor="middle" font-size="23" font-weight="400" fill="#b3b7c1" opacity="1">逐字稿／文件</text>
+<rect x="1128.75" y="383" width="290" height="166" rx="18" fill="#292b30" stroke="#a9aeba" stroke-width="3" opacity="1"/>
+<text x="1273.75" y="426" text-anchor="middle" font-size="26" font-weight="650" fill="#e9eaf0" opacity="1">ASK</text>
+<text x="1273.75" y="470" text-anchor="middle" font-size="30" font-weight="670" fill="#f0f0f4" opacity="1">撰寫 Prompt</text>
+<text x="1273.75" y="511" text-anchor="middle" font-size="23" font-weight="400" fill="#b3b7c1" opacity="1">描述要產出的內容</text>
+<rect x="2141.25" y="383" width="290" height="166" rx="18" fill="#292b30" stroke="#a9aeba" stroke-width="3" opacity="1"/>
+<text x="2286.25" y="426" text-anchor="middle" font-size="26" font-weight="650" fill="#e9eaf0" opacity="1">AI</text>
+<text x="2286.25" y="470" text-anchor="middle" font-size="30" font-weight="670" fill="#f0f0f4" opacity="1">AI 一鍵生成</text>
+<text x="2286.25" y="511" text-anchor="middle" font-size="23" font-weight="400" fill="#b3b7c1" opacity="1">一次形成多項產物</text>
+<rect x="2816.25" y="383" width="290" height="166" rx="18" fill="#292b30" stroke="#a9aeba" stroke-width="3" opacity="1"/>
+<text x="2961.25" y="426" text-anchor="middle" font-size="26" font-weight="650" fill="#e9eaf0" opacity="1">FILE</text>
+<text x="2961.25" y="470" text-anchor="middle" font-size="30" font-weight="670" fill="#f0f0f4" opacity="1">取得文件</text>
+<text x="2961.25" y="511" text-anchor="middle" font-size="23" font-weight="400" fill="#b3b7c1" opacity="1">最終設計結果</text>
+<path d="M 64 615 L 3136 615" fill="none" stroke="#484a53" stroke-width="2" stroke-dasharray="8 10"/>
+<text x="74" y="664" text-anchor="start" font-size="30" font-weight="650" fill="#f0b5b2" opacity="1">從「產出文件」到「形成設計判斷」</text>
+<path d="M 598.75 807 L 2961.25 807" fill="none" stroke="#e86660" stroke-width="5" marker-end="url(#arrowRed)"/>
+<rect x="453.75" y="721" width="290" height="180" rx="18" fill="#32292d" stroke="#f07a72" stroke-width="3" opacity="1"/>
+<text x="598.75" y="770" text-anchor="middle" font-size="26" font-weight="650" fill="#f07a72" opacity="1">DATA</text>
+<text x="598.75" y="818" text-anchor="middle" font-size="32" font-weight="750" fill="#f1f3f4" opacity="1">研究資料</text>
+<text x="598.75" y="865" text-anchor="middle" font-size="24" font-weight="450" fill="#bbc0c9" opacity="1">保留原始來源</text>
+<rect x="791.25" y="721" width="290" height="180" rx="18" fill="#32292d" stroke="#f07a72" stroke-width="3" opacity="1"/>
+<text x="936.25" y="770" text-anchor="middle" font-size="26" font-weight="650" fill="#f07a72" opacity="1">CODE</text>
+<text x="936.25" y="818" text-anchor="middle" font-size="32" font-weight="750" fill="#f1f3f4" opacity="1">AI 編碼</text>
+<text x="936.25" y="865" text-anchor="middle" font-size="24" font-weight="450" fill="#bbc0c9" opacity="1">萃取與綜整證據</text>
+<rect x="864.95" y="925" width="142.60000000000002" height="51" rx="25" fill="#3c2d30" stroke="#aa6c68" stroke-width="2" opacity="1"/>
+<text x="936.25" y="959" text-anchor="middle" font-size="23" font-weight="600" fill="#f6c6bd" opacity="1">檢查原意</text>
+<rect x="1128.75" y="721" width="290" height="180" rx="18" fill="#27323a" stroke="#9bcbe0" stroke-width="3" opacity="1"/>
+<text x="1273.75" y="770" text-anchor="middle" font-size="26" font-weight="650" fill="#9bcbe0" opacity="1">JOB</text>
+<text x="1273.75" y="818" text-anchor="middle" font-size="32" font-weight="750" fill="#f1f3f4" opacity="1">JTBD</text>
+<text x="1273.75" y="865" text-anchor="middle" font-size="24" font-weight="450" fill="#bbc0c9" opacity="1">理解使用者任務</text>
+<rect x="1190.375" y="925" width="166.75" height="51" rx="25" fill="#263742" stroke="#6593a9" stroke-width="2" opacity="1"/>
+<text x="1273.75" y="959" text-anchor="middle" font-size="23" font-weight="600" fill="#c1e2f1" opacity="1">研究者選擇</text>
+<rect x="1466.25" y="721" width="290" height="180" rx="18" fill="#27323a" stroke="#9bcbe0" stroke-width="3" opacity="1"/>
+<text x="1611.25" y="770" text-anchor="middle" font-size="26" font-weight="650" fill="#9bcbe0" opacity="1">HMW</text>
+<text x="1611.25" y="818" text-anchor="middle" font-size="32" font-weight="750" fill="#f1f3f4" opacity="1">HMW</text>
+<text x="1611.25" y="865" text-anchor="middle" font-size="24" font-weight="450" fill="#bbc0c9" opacity="1">形成設計問題</text>
+<rect x="1527.875" y="925" width="166.75" height="51" rx="25" fill="#263742" stroke="#6593a9" stroke-width="2" opacity="1"/>
+<text x="1611.25" y="959" text-anchor="middle" font-size="23" font-weight="600" fill="#c1e2f1" opacity="1">選擇／改寫</text>
+<rect x="1803.75" y="721" width="290" height="180" rx="18" fill="#27323a" stroke="#9bcbe0" stroke-width="3" opacity="1"/>
+<text x="1948.75" y="770" text-anchor="middle" font-size="26" font-weight="650" fill="#9bcbe0" opacity="1">USER</text>
+<text x="1948.75" y="818" text-anchor="middle" font-size="32" font-weight="750" fill="#f1f3f4" opacity="1">Persona</text>
+<text x="1948.75" y="865" text-anchor="middle" font-size="24" font-weight="450" fill="#bbc0c9" opacity="1">辨識目標族群</text>
+<rect x="1853.3" y="925" width="190.9" height="51" rx="25" fill="#263742" stroke="#6593a9" stroke-width="2" opacity="1"/>
+<text x="1948.75" y="959" text-anchor="middle" font-size="23" font-weight="600" fill="#c1e2f1" opacity="1">選軸／選群體</text>
+<rect x="2141.25" y="721" width="290" height="180" rx="18" fill="#27323a" stroke="#9bcbe0" stroke-width="3" opacity="1"/>
+<text x="2286.25" y="770" text-anchor="middle" font-size="26" font-weight="650" fill="#9bcbe0" opacity="1">CJM</text>
+<text x="2286.25" y="818" text-anchor="middle" font-size="32" font-weight="750" fill="#f1f3f4" opacity="1">CJM</text>
+<text x="2286.25" y="865" text-anchor="middle" font-size="24" font-weight="450" fill="#bbc0c9" opacity="1">建構體驗歷程</text>
+<rect x="2190.8" y="925" width="190.9" height="51" rx="25" fill="#263742" stroke="#6593a9" stroke-width="2" opacity="1"/>
+<text x="2286.25" y="959" text-anchor="middle" font-size="23" font-weight="600" fill="#c1e2f1" opacity="1">檢視／選問題</text>
+<rect x="2478.75" y="721" width="290" height="180" rx="18" fill="#32292d" stroke="#f07a72" stroke-width="3" opacity="1"/>
+<text x="2623.75" y="770" text-anchor="middle" font-size="26" font-weight="650" fill="#f07a72" opacity="1">IDEA</text>
+<text x="2623.75" y="818" text-anchor="middle" font-size="32" font-weight="750" fill="#f1f3f4" opacity="1">解方探索</text>
+<text x="2623.75" y="865" text-anchor="middle" font-size="24" font-weight="450" fill="#bbc0c9" opacity="1">提出設計候選</text>
+<rect x="2540.375" y="925" width="166.75" height="51" rx="25" fill="#3c2d30" stroke="#aa6c68" stroke-width="2" opacity="1"/>
+<text x="2623.75" y="959" text-anchor="middle" font-size="23" font-weight="600" fill="#f6c6bd" opacity="1">研究者判斷</text>
+<rect x="2816.25" y="721" width="290" height="180" rx="18" fill="#32292d" stroke="#f07a72" stroke-width="3" opacity="1"/>
+<text x="2961.25" y="770" text-anchor="middle" font-size="26" font-weight="650" fill="#f07a72" opacity="1">SBP</text>
+<text x="2961.25" y="818" text-anchor="middle" font-size="32" font-weight="750" fill="#f1f3f4" opacity="1">SBP</text>
+<text x="2961.25" y="865" text-anchor="middle" font-size="24" font-weight="450" fill="#bbc0c9" opacity="1">形成服務藍圖</text>
+<rect x="2877.875" y="925" width="166.75" height="51" rx="25" fill="#3c2d30" stroke="#aa6c68" stroke-width="2" opacity="1"/>
+<text x="2961.25" y="959" text-anchor="middle" font-size="23" font-weight="600" fill="#f6c6bd" opacity="1">研究者確認</text>
+<rect x="425" y="1050" width="2704" height="153" rx="20" fill="#2b2d32" stroke="#848891" stroke-width="2" opacity="1"/>
+<text x="478" y="1107" text-anchor="start" font-size="30" font-weight="700" fill="#f0f0f2" opacity="1">下一階段｜現場驗證與持續修正</text>
+<text x="478" y="1157" text-anchor="start" font-size="25" font-weight="430" fill="#c4c6ce" opacity="1">尚未建立完整回饋閉環</text>
+<text x="1828" y="1128" text-anchor="middle" font-size="26" font-weight="600" fill="#e7e9eb" opacity="1">現場回饋</text>
+<text x="2011.5" y="1128" text-anchor="middle" font-size="34" font-weight="650" fill="#e3a7a5" opacity="1">→</text>
+<text x="2195" y="1128" text-anchor="middle" font-size="26" font-weight="600" fill="#e7e9eb" opacity="1">新增證據</text>
+<text x="2387.5" y="1128" text-anchor="middle" font-size="34" font-weight="650" fill="#e3a7a5" opacity="1">→</text>
+<text x="2580" y="1128" text-anchor="middle" font-size="26" font-weight="600" fill="#e7e9eb" opacity="1">重新檢視</text>
+<text x="2770.0" y="1128" text-anchor="middle" font-size="34" font-weight="650" fill="#e3a7a5" opacity="1">→</text>
+<text x="2960" y="1128" text-anchor="middle" font-size="26" font-weight="600" fill="#e7e9eb" opacity="1">調整提案</text>
+<text x="75" y="1263" text-anchor="start" font-size="25" font-weight="500" fill="#b4b8c2" opacity="1">說明：各階段的人工介入已有部分功能基礎；其對下游成果品質的實質影響仍待驗證。</text>
+<text x="75" y="1298" text-anchor="start" font-size="24" font-weight="500" fill="#969ba8" opacity="1">來源：ditl_sbp 產品設計整理｜流程概念示意｜樣本數：不適用｜單位：不適用</text>
+</g></svg>

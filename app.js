@@ -28,3 +28,15 @@ imageDialog.addEventListener('click', event => {
   }
 });
 imageDialog.addEventListener('close', () => openImage.focus());
+
+const workflowDialog = document.querySelector('#workflow-diagram-dialog');
+const openWorkflow = document.querySelector('#open-workflow-diagram');
+openWorkflow.addEventListener('click', () => workflowDialog.showModal());
+document.querySelector('#close-workflow-diagram').addEventListener('click', () => workflowDialog.close());
+workflowDialog.addEventListener('click', event => {
+  if (event.target === workflowDialog) {
+    const rect = workflowDialog.getBoundingClientRect();
+    if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) workflowDialog.close();
+  }
+});
+workflowDialog.addEventListener('close', () => openWorkflow.focus());
