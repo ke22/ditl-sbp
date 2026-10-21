@@ -1,0 +1,15 @@
+{
+  "capture_date": "2026-10-21",
+  "source": "Installed ditl-sbp 0.2.0 release ZIP (ditl-sbp start) on http://127.0.0.1:8782/, new interface at /",
+  "screen": "Empty project homepage",
+  "data_root": "throwaway HOME, fresh empty data folder",
+  "loaded_research_cases": 0,
+  "live_model_calls": 0,
+  "image_edits": "none",
+  "width": 2016,
+  "height": 1148,
+  "sha256": "cb97a67fd8b95368662322bf96a76d930e1bbc455742e304dab347b61558729f",
+  "ui_source_sha256": "1a1e1151728664b707fa34be4d259125b58cd6f7b40d2e6ec1cb0cca86c544ba",
+  "version_note": "Public Preview 0.2.0 release build.",
+  "viewport": "1440x820 at device scale 1.4"
+}

@@ -1,0 +1,40 @@
+/* Generated from design-system/desktop-workbench.yaml. Run python3 website/build_assets.py. */
+:root {
+  --surface-app: #f4f2ef;
+  --surface-work: #fafaf9;
+  --surface-raised: #ffffff;
+  --surface-overlay: #ffffff;
+  --surface-selected: #efeae4;
+  --surface-hover: #f5f2ee;
+  --text-primary: #1f2530;
+  --text-secondary: #596170;
+  --text-muted: #626b78;
+  --text-inverse: #ffffff;
+  --text-link: #1f2530;
+  --border-subtle: #e6e3df;
+  --border-strong: #c9c5bf;
+  --border-selected: #cc4e0a;
+  --border-warning: #8e3b5e;
+  --action-primary-bg: #cc4e0a;
+  --action-primary-text: #ffffff;
+  --action-secondary-bg: #ffffff;
+  --action-secondary-text: #1f2530;
+  --action-destructive: #a33a3a;
+  --action-dark-bg: #1f2530;
+  --action-dark-hover: #33476a;
+  --accent-bg: #cc4e0a;
+  --accent-hover: #b84508;
+  --accent-tint: #fbede4;
+  --accent-text: #ffffff;
+  --status-neutral: #69717f;
+  --status-processing: #526b95;
+  --status-pending: #8e3b5e;
+  --status-confirmed: #3e6558;
+  --status-failed: #a33a3a;
+  --status-pending-surface: #f6ecf1;
+  --status-failed-surface: #fbefef;
+  --radius-component: 12px;
+  --radius-floating: 18px;
+  --radius-card: 14px;
+  --radius-pill: 999px;
+}
