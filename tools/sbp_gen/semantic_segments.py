@@ -196,7 +196,7 @@ def segment_transcript(source: str, content: str, evidence_here: list, case_id: 
         lambda d: segment_errors(d, lines, evidence_here), opts)
     call = {"source": source, **{key: usage.get(key) for key in (
         "seconds", "wall_seconds", "started_at", "finished_at", "executor", "tokens", "attempts",
-        "model_requested", "effort_requested") if usage.get(key) is not None}}
+        "model_requested", "effort_requested", "model_source", "model_effective") if usage.get(key) is not None}}
     return lines, data, call
 
 

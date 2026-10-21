@@ -64,6 +64,12 @@ class RunnerReply:
     # What the executor itself reported, per token kind; None when it reports no split.
     usage: dict | None = None
     effort: str | None = None
+    # cli-model-override-reaches-runner: where `model` came from -- "workbench"
+    # (the researcher chose it), "executor_settings" (inherited from the
+    # researcher's own executor settings) or None (the executor's own default)
+    # -- and whether the executor itself reported that this model ran.
+    model_source: str | None = None
+    model_confirmed: bool = False
 
 
 # runner(prompt, *, output_schema, web_search, model, timeout) -> RunnerReply
@@ -220,10 +226,14 @@ def _declares_web_search(body: Mapping[str, Any]) -> bool:
 
 
 def _requested_model(request: Mapping[str, Any]) -> str | None:
-    model = request.get("model")
-    if not isinstance(model, str) or not model.strip() or model == RUNNER_DEFAULT_MODEL:
-        return None
-    return model
+    """The model to send to the executor: the request's own stage model, else
+    the model the researcher chose for this execution (SBP_CLI_MODEL, set by
+    the Workbench only when the researcher chose one), else None so the
+    executor applies its existing default."""
+    for model in (request.get("model"), os.environ.get("SBP_CLI_MODEL")):
+        if isinstance(model, str) and model.strip() and model != RUNNER_DEFAULT_MODEL:
+            return model.strip()
+    return None
 
 
 def handle(request: Mapping[str, Any], runner: Runner) -> dict[str, Any]:
@@ -246,6 +256,10 @@ def handle(request: Mapping[str, Any], runner: Runner) -> dict[str, Any]:
         if not reply.text.strip():
             raise RunnerError("runner_empty_reply")
         result = {"status": "ok", "content": reply.text, "tokens": int(reply.tokens), "model": reply.model}
+        if reply.model_source:
+            result["model_source"] = reply.model_source
+        if reply.model_confirmed and reply.model:
+            result["model_effective"] = reply.model
         if isinstance(reply.usage, dict) and reply.usage:
             result["usage"] = dict(reply.usage)
         if reply.effort:
@@ -261,8 +275,9 @@ def handle(request: Mapping[str, Any], runner: Runner) -> dict[str, Any]:
             build_responses_prompt(body),
             output_schema=reply_schema(body),
             web_search=wants_search and can_search,
-            # The research body names an API model id; a CLI runner uses its own default.
-            model=None,
+            # The research body names an API model id, which a CLI runner never
+            # uses; the researcher's chosen CLI model still applies.
+            model=_requested_model({}),
             timeout=timeout,
         )
         if not reply.text.strip():

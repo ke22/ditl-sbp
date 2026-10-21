@@ -29,6 +29,7 @@ from pathlib import Path
 from collections import Counter
 
 import yaml
+from yaml_loader import safe_load as load_safe_yaml
 from jsonschema import Draft7Validator, RefResolver
 
 from sbp_gen import lifecycle
@@ -99,7 +100,7 @@ SCHEMA_FILES = {
 
 def load_yaml(path):
     with open(path, encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        return load_safe_yaml(f)
 
 
 def selective_coding_narrative_errors(data: object, evidence_ids: set[str]) -> list[str]:
@@ -1142,7 +1143,22 @@ def _to_be_anchor_analysis(graph: dict, journey: dict | None) -> dict:
                 rooted.add(nid)
                 grew = True
     unrooted = sorted(str(nid) for nid, anchors in anchored.items() if anchors and nid not in rooted)
-    return {"rooted": rooted, "problems": problems, "unrooted": unrooted}
+    # to-be-solution-carry-through: the adopted Solutions each rooted node
+    # carries -- its own valid Solution anchors plus those of the rooted
+    # service nodes it anchors on. A step anchor carries no Solution.
+    solutions = {nid: {str(a.get("ref")) for a in anchored[nid]
+                       if a.get("kind") == "selected_solution" and anchor_problem(a) is None}
+                 for nid in rooted}
+    grew = True
+    while grew:
+        grew = False
+        for nid in rooted:
+            for anchor in anchored[nid]:
+                upstream = solutions.get(str(anchor.get("ref"))) if anchor.get("kind") == "service_node" else None
+                if upstream and not upstream <= solutions[nid]:
+                    solutions[nid] |= upstream
+                    grew = True
+    return {"rooted": rooted, "problems": problems, "unrooted": unrooted, "solutions": solutions}
 
 
 def to_be_rooted_ids(graph: dict, journey: dict | None) -> set:
@@ -1151,6 +1167,21 @@ def to_be_rooted_ids(graph: dict, journey: dict | None) -> set:
     if not isinstance(graph, dict) or (graph.get("meta") or {}).get("blueprint_method") != TO_BE_METHOD:
         return set()
     return _to_be_anchor_analysis(graph, journey)["rooted"]
+
+
+def to_be_solution_coverage(graph: dict, journey: dict | None) -> dict[str, str]:
+    """to-be-solution-carry-through: whether each adopted Solution reached the
+    To-be blueprint -- `carried` (a rooted changed/added node's anchor chain
+    reaches it), `topology_flagged`, or `not_carried`. A display state for the
+    researcher, never a validation error: an error would retry generation and
+    push the model to force a node in."""
+    if not isinstance(graph, dict) or (graph.get("meta") or {}).get("blueprint_method") != TO_BE_METHOD:
+        return {}
+    flagged = {str(f.get("solution_ref")) for f in graph.get("topology_flags") or [] if isinstance(f, dict)}
+    carried = set().union(*_to_be_anchor_analysis(graph, journey)["solutions"].values())
+    return {solution_id: "topology_flagged" if solution_id in flagged
+            else "carried" if solution_id in carried else "not_carried"
+            for solution_id in to_be_adopted_solutions(journey)}
 
 
 def to_be_errors(graph: dict, journey: dict | None) -> list[str]:
@@ -2037,7 +2068,7 @@ def persona_field_provenance_policy_table(path=None) -> dict:
         return _POLICY_CACHE
     source = path or (SCHEMA_DIR / "service-design-judgment.criteria.yaml")
     with open(source, encoding="utf-8") as handle:
-        document = yaml.safe_load(handle) or {}
+        document = load_safe_yaml(handle) or {}
     entry = ((document.get("knowledge") or {}).get(_FIELD_PROVENANCE_CRITERION) or {})
     policy = entry.get("policy")
     if not isinstance(policy, dict) or not policy:

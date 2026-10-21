@@ -306,6 +306,8 @@ def call(*, stage: str, system: str, user: str, model: str | None = None,
         model=response.get("model") if isinstance(response.get("model"), str) else None,
         effort=response.get("effort") if isinstance(response.get("effort"), str) else None,
         usage={k: v for k, v in usage.items() if isinstance(v, int) and v >= 0} if isinstance(usage, dict) else None,
+        model_source=response.get("model_source") if isinstance(response.get("model_source"), str) else None,
+        model_effective=response.get("model_effective") if isinstance(response.get("model_effective"), str) else None,
     )
 
 

@@ -19,7 +19,7 @@ from pathlib import Path
 
 import yaml
 
-from . import lifecycle, stages
+from . import lifecycle, run_files, run_lock, stages
 
 STATES = ("none", "untracked", "current", "retained", "stale")
 
@@ -43,7 +43,7 @@ def current_fingerprint(run_dir: str | Path) -> str | None:
         return None
     axial = _load_yaml(run / "axial_coding.yaml") or {}
     try:
-        runtime_case = stages.case_with_journey(case, journey)
+        runtime_case = stages.case_with_journey(case, journey, {e.get("id") for e in evidence if isinstance(e, dict) and e.get("id")})
     except (ValueError, KeyError, StopIteration):
         return None
     from . import implementation_research
@@ -57,13 +57,6 @@ def _state(run: Path) -> dict:
         return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
     except (OSError, ValueError):
         return {}
-
-
-def _write_state(run: Path, state: dict) -> None:
-    path = run / "run.json"
-    tmp = path.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp.replace(path)
 
 
 def _now() -> str:
@@ -99,14 +92,15 @@ class NotStale(ValueError):
 def retain(run_dir: str | Path) -> dict:
     """The researcher keeps the blueprint against the current upstream."""
     run = Path(run_dir)
-    if sbp_freshness(run)["state"] != "stale":
-        raise NotStale("服務藍圖目前沒有需要決定沿用或重新產生的變更。")
-    state = _state(run)
-    basis = dict(state.get("sbp_basis") or {})
-    basis["retained_against_fingerprint"] = current_fingerprint(run)
-    basis["retained_at"] = _now()
-    state["sbp_basis"] = basis
-    _write_state(run, state)
+    with run_lock.hold(run):
+        if sbp_freshness(run)["state"] != "stale":
+            raise NotStale("服務藍圖目前沒有需要決定沿用或重新產生的變更。")
+        fingerprint_now = current_fingerprint(run)
+        with run_files.transaction(run / "run.json") as state:
+            basis = dict(state.get("sbp_basis") or {})
+            basis["retained_against_fingerprint"] = fingerprint_now
+            basis["retained_at"] = _now()
+            state["sbp_basis"] = basis
     return sbp_freshness(run)
 
 

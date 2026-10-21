@@ -15,6 +15,7 @@ import json
 import math
 import os
 import re
+import shutil
 import sys
 import threading
 import time
@@ -27,9 +28,10 @@ if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
 import validate_sbp as V  # noqa: E402
+from . import performance_trace as perf
 import internal_id_patterns  # noqa: E402
 
-from . import as_is_projection, cli_runner, judgment_criteria, lifecycle, llm, schema_contract  # noqa: E402
+from . import as_is_projection, cli_runner, judgment_criteria, lifecycle, llm, run_files, schema_contract  # noqa: E402
 
 PROMPT_DIR = Path(__file__).resolve().parent / "prompts"
 CHANNEL_REASONING_PATH = Path(__file__).resolve().with_name("channel_reasoning.md")
@@ -43,6 +45,9 @@ CHANNEL_REASONING_STAGES = frozenset({
     "journey_solutions",
     "journey_recheck",
     "structure",
+    # to-be-solution-carry-through: the shared rule names To-be; the To-be
+    # blueprint prompt is where To-be channel work is reasoned about.
+    "structure_to_be",
     "as_is_recheck",
     "issues",
     "issue_grounding",
@@ -865,7 +870,15 @@ def _call_with_network_retry(call_kwargs: dict, *, max_attempts: int = 3) -> llm
     last_exc: llm.LLMError | None = None
     for network_attempt in range(max_attempts):
         try:
-            return llm.call(**call_kwargs)
+            with perf.phase('model_call', network_attempt=network_attempt + 1) as observation:
+                result = llm.call(**call_kwargs)
+                if observation is not None:
+                    observation.update(tokens=result.tokens, runner_reported_seconds=result.seconds,
+                                       model_requested=call_kwargs.get('model'),
+                                       effort_requested=call_kwargs.get('effort'),
+                                       system_characters=len(call_kwargs.get('system') or ''),
+                                       user_characters=len(call_kwargs.get('user') or ''))
+                return result
         except llm.LLMError as exc:
             last_exc = exc
             message = str(exc)
@@ -874,6 +887,9 @@ def _call_with_network_retry(call_kwargs: dict, *, max_attempts: int = 3) -> llm
             is_transient = is_rate_limited or any(
                 marker in message for marker in _TRANSIENT_NETWORK_MARKERS
             )
+            if observation is not None:
+                observation['failure_kind'] = ('rate_limit' if is_rate_limited else
+                                                'transient_error' if is_transient else 'terminal_error')
             if not is_transient:
                 raise
             if network_attempt == max_attempts - 1:
@@ -884,13 +900,15 @@ def _call_with_network_retry(call_kwargs: dict, *, max_attempts: int = 3) -> llm
                 f"  [{call_kwargs['stage']}] {reason}（{network_attempt + 2}/{max_attempts}，等 {delay:.1f}s）：{exc}",
                 file=sys.stderr,
             )
-            time.sleep(delay)
+            with perf.phase('transport_backoff', reason='rate_limit' if is_rate_limited else 'transient_error'):
+                time.sleep(delay)
     raise last_exc  # pragma: no cover - loop always returns or raises above
 
 
 _DIAGNOSTIC_ITEM_RE = re.compile(r"\w+\[(\d+)\]")
 
 
+@perf.timed('write')
 def _record_attempt_diagnostic(opts: dict, stage: str, attempt: int, max_attempts: int,
                                errors: list, data: object, raw_text: str, call: dict | None = None) -> None:
     """Keep one rejected attempt for diagnosis when `opts["diagnostics_dir"]`
@@ -977,6 +995,11 @@ def _item_repair_message(user: str, data: list, failed: set, errors: list) -> st
     )
 
 
+@perf.timed('retry_prepare')
+def _generation_retry_message(*args, **kwargs):
+    return llm.build_retry_message(*args, **kwargs)
+
+
 def _generate(stage: str, system: str, user: str, validate, opts, max_retries: int = MAX_RETRIES,
               item_repair: bool = False, items_key: str | None = None, partial_repair=None) -> tuple:
     """產生 → 驗證 → 把錯誤餵回去重試。回傳 `(data, usage)`。
@@ -1029,13 +1052,19 @@ def _generate(stage: str, system: str, user: str, validate, opts, max_retries: i
     # 不是執行器確認實際用了什麼）；沒回報就不寫，不估算。
     token_detail: dict = {}
     model_requested = effort_requested = None
+    model_source = model_effective = None
     pending_repair = None  # (previous full output, failed positions)
     left_out_total = 0
     partial_used = False
     pending_partial = None  # (baseline output the repair edits, target segments)
     partial_targets: frozenset = frozenset()
     partial_record = None  # observability only; nothing below reads it back
+    partial_key = getattr(partial_repair, "record_key", "targeted_segments")
     for attempt in range(max_retries + 1):
+        trace = perf.current()
+        if trace:
+            trace.begin_attempt(attempt + 1, 'items' if pending_repair is not None else
+                                'partial' if pending_partial is not None else 'full')
         call_kwargs = {
             "stage": stage,
             "system": system,
@@ -1051,9 +1080,11 @@ def _generate(stage: str, system: str, user: str, validate, opts, max_retries: i
         if pending_repair is not None:
             # Only a few items are rewritten, so a stuck repair is cut sooner.
             with cli_runner.call_timeout(REPAIR_CALL_TIMEOUT_SECONDS):
-                result = _call_with_network_retry(call_kwargs)
+                with perf.phase('model_wait'):
+                    result = _call_with_network_retry(call_kwargs)
         else:
-            result = _call_with_network_retry(call_kwargs)
+            with perf.phase('model_wait'):
+                result = _call_with_network_retry(call_kwargs)
         attempt_wall_seconds = time.monotonic() - call_started
         total_wall_seconds += attempt_wall_seconds
         attempt_call = {"wall_seconds": round(attempt_wall_seconds, 1), "model_seconds": result.seconds,
@@ -1065,8 +1096,11 @@ def _generate(stage: str, system: str, user: str, validate, opts, max_retries: i
             token_detail[kind] = token_detail.get(kind, 0) + count
         model_requested = getattr(result, "model", None) or model_requested
         effort_requested = getattr(result, "effort", None) or effort_requested
+        model_source = getattr(result, "model_source", None) or model_source
+        model_effective = getattr(result, "model_effective", None) or model_effective
         try:
-            data = llm.extract_json(result.text)
+            with perf.phase('validation', operation='parse_json'):
+                data = llm.extract_json(result.text)
         except llm.LLMError as exc:
             # retry-on-non-json-reply：本機 coding agent 執行器有時會把該填進
             # JSON 欄位的內容寫成給人看的文章（標題、條列），完全沒有 JSON——
@@ -1074,6 +1108,8 @@ def _generate(stage: str, system: str, user: str, validate, opts, max_retries: i
             # 就宣告失敗。跟 schema 驗證失敗一樣值得再打一次，只是沒有可錨定的
             # best_data，用直接的格式提醒取代錯誤清單。
             last_errors = [f"[回覆不是 JSON] {exc}"]
+            if trace:
+                trace.validation(last_errors)
             _record_attempt_diagnostic(opts, stage, attempt + 1, max_retries + 1, last_errors, None, result.text,
                                        attempt_call)
             if attempt == max_retries:
@@ -1081,9 +1117,9 @@ def _generate(stage: str, system: str, user: str, validate, opts, max_retries: i
             print(RETRY_NOTICE.format(stage=stage, attempt=attempt + 1), file=sys.stderr)
             if pending_partial is not None:
                 pending_partial = None
-                partial_record = _partial_repair_record(partial_targets, "fell_back", "reply_not_json")
+                partial_record = _partial_repair_record(partial_targets, "fell_back", "reply_not_json", partial_key)
                 anchor_data, anchor_errors = baseline.anchor()
-                convo = llm.build_retry_message(
+                convo = _generation_retry_message(
                     user, json.dumps(anchor_data, indent=2, ensure_ascii=False), anchor_errors
                 )
                 continue
@@ -1098,10 +1134,12 @@ def _generate(stage: str, system: str, user: str, validate, opts, max_retries: i
             pending_partial = None
             merged, reason = partial_repair.splice(previous, targets, data)
             if merged is None:
-                partial_record = _partial_repair_record(targets, "fell_back", reason)
+                if trace:
+                    trace.validation([f'partial_repair: {reason}'])
+                partial_record = _partial_repair_record(targets, "fell_back", reason, partial_key)
                 print(f"  [{stage}] 局部修補的回覆不能用（{reason}），改為整份重送", file=sys.stderr)
                 anchor_data, anchor_errors = baseline.anchor()
-                convo = llm.build_retry_message(
+                convo = _generation_retry_message(
                     user, json.dumps(anchor_data, indent=2, ensure_ascii=False), anchor_errors
                 )
                 continue
@@ -1115,20 +1153,24 @@ def _generate(stage: str, system: str, user: str, validate, opts, max_retries: i
             if left_out:
                 left_out_total += left_out
                 print(f"  [{stage}] 修正回覆少了 {left_out} 筆，這幾筆仍算沒通過", file=sys.stderr)
-        errors = validate(data)
+        with perf.phase('validation', operation='validate_output'):
+            errors = validate(data)
         if errors and isinstance(data, list) and len(data) == 1 and isinstance(data[0], dict):
             # Observed with the Gemini provider: JSON mode sometimes wraps a
             # single-object result in a one-element array. Only unwrap when
             # doing so is what actually satisfies the stage's own contract,
             # so a stage whose real output is a one-item array is untouched.
-            unwrapped_errors = validate(data[0])
+            with perf.phase('validation', operation='validate_unwrapped_output'):
+                unwrapped_errors = validate(data[0])
             if not unwrapped_errors:
                 data = data[0]
                 errors = unwrapped_errors
+        if trace:
+            trace.validation(errors)
         if merged_partial:
             partial_record = _partial_repair_record(
                 partial_targets, "fell_back" if errors else "succeeded",
-                "still_failed_after_repair" if errors else None)
+                "still_failed_after_repair" if errors else None, partial_key)
         if not errors:
             if attempt:
                 print(f"  [{stage}] 第 {attempt + 1} 次通過驗證", file=sys.stderr)
@@ -1140,6 +1182,8 @@ def _generate(stage: str, system: str, user: str, validate, opts, max_retries: i
                           "attempts": attempt + 1,
                           "model_requested": model_requested,
                           "effort_requested": effort_requested,
+                          **({"model_source": model_source} if model_source else {}),
+                          **({"model_effective": model_effective} if model_effective else {}),
                           **({"repair_left_out": left_out_total} if left_out_total else {}),
                           **({"partial_repair": partial_record} if partial_record else {}),
                           **({"token_detail": token_detail} if token_detail else {})}
@@ -1160,11 +1204,11 @@ def _generate(stage: str, system: str, user: str, validate, opts, max_retries: i
                 partial_used = True
                 partial_targets = targets
                 pending_partial = (baseline.complete[0], targets)
-                print(f"  [{stage}] 第 {attempt + 1} 次驗證失敗（{len(errors)} 筆），只重做超標的 {len(targets)} 段",
+                print(f"  [{stage}] 第 {attempt + 1} 次驗證失敗（{len(errors)} 筆），只修補沒過的 {len(targets)} 處",
                       file=sys.stderr)
-                convo = llm.build_retry_message(
+                convo = _generation_retry_message(
                     user, json.dumps(baseline.complete[0], indent=2, ensure_ascii=False), baseline.complete[1],
-                    closing=partial_repair.closing(targets),
+                    closing=partial_repair.closing(targets, baseline.complete[1]),
                 )
                 continue
         print(
@@ -1172,7 +1216,7 @@ def _generate(stage: str, system: str, user: str, validate, opts, max_retries: i
             file=sys.stderr,
         )
         anchor_data, anchor_errors = baseline.anchor()
-        convo = llm.build_retry_message(
+        convo = _generation_retry_message(
             user, json.dumps(anchor_data, indent=2, ensure_ascii=False), anchor_errors
         )
     raise llm.LLMError(
@@ -1530,7 +1574,8 @@ def _verbatim_errors(data: object, chunk: str, declared_sources: frozenset = fro
 
 
 _ALIGN_BATCH_FIELDS = ("started_at", "finished_at", "wall_seconds", "seconds", "tokens", "attempts", "executor",
-                       "model_requested", "effort_requested", "token_detail", "repair_left_out")
+                       "model_requested", "effort_requested", "model_source", "model_effective",
+                       "token_detail", "repair_left_out")
 _ALIGN_HEADER_RE = re.compile(r"^# (.+?) · ", re.MULTILINE)
 
 
@@ -1613,9 +1658,26 @@ def _align_coverage_errors(reply: object, units: list[str]) -> list[str]:
     return errors
 
 
+def _align_source_codes(units: list[str]) -> dict[str, str]:
+    """align-source-codes: a short code per source of the batch, in list order."""
+    return {f"S{index}": unit for index, unit in enumerate(units, 1)}
+
+
 def _align_sources_note(units: list[str]) -> str:
-    return ("\n\n這一批的來源（source_coverage 要逐一交代，每條證據的 source 也用這些名稱）：\n"
-            + "\n".join(f"- {unit}" for unit in units))
+    return ("\n\n這一批的來源（source_coverage 要逐一交代；每條證據與 source_coverage 的 source 都寫左邊的代號）：\n"
+            + "\n".join(f"- {code}：{unit}" for code, unit in _align_source_codes(units).items()))
+
+
+def _restore_source_codes(reply: object, codes: dict[str, str]) -> None:
+    """align-source-codes: the model names sources by the batch's codes; the
+    program writes the full names back before any check or storage. A full
+    name is kept; anything else is left for the existing source checks."""
+    if not isinstance(reply, dict):
+        return
+    for key in ("evidence", "source_coverage"):
+        for entry in reply.get(key) if isinstance(reply.get(key), list) else []:
+            if isinstance(entry, dict) and entry.get("source") in codes:
+                entry["source"] = codes[entry["source"]]
 
 
 def align(raw_material: str, opts: dict) -> tuple:
@@ -1655,7 +1717,10 @@ def align(raw_material: str, opts: dict) -> tuple:
         chunk_opts = {**opts, "diagnostics_label": label, "diagnostics_source": "、".join(transcripts)}
         restored: dict = {}  # evidence id -> restored text
 
+        codes = _align_source_codes(units)
+
         def validate_reply(reply):
+            _restore_source_codes(reply, codes)
             # align-source-coverage: every source accounted for, then the
             # existing per-item checks on the evidence list (same error paths).
             coverage = _align_coverage_errors(reply, units)
@@ -1728,6 +1793,8 @@ def align(raw_material: str, opts: dict) -> tuple:
                 "executor": next((b["executor"] for b in batches if b.get("executor")), None),
                 "model_requested": next((b["model_requested"] for b in batches if b.get("model_requested")), None),
                 "effort_requested": next((b["effort_requested"] for b in batches if b.get("effort_requested")), None),
+                **{key: value for key in ("model_source", "model_effective")
+                   if (value := next((b[key] for b in batches if b.get(key)), None))},
                 "token_detail": token_detail or None, "batches": batches}
     return merged, {"tokens": total_tokens, "seconds": round(total_seconds),
                     **({"repair_left_out": left_out} if left_out else {}),
@@ -2294,8 +2361,11 @@ def journey(evidence: list, case: dict, opts: dict, coding_categories: list | No
 # (JOURNEY_SOLUTION_STEP_FIELDS minus the id). 2026-10-02 researcher ruling:
 # emotion is the researcher's reading of the journey, drawn as the emotion
 # curve -- not a Solution input -- so it is in neither list.
+# sbp-solution-adoption-and-core-problem: the researcher's core problem (`core_problem`)
+# frames the Solution, so rewriting it makes an adopted Solution stale. Steps
+# without it hash exactly as before.
 JOURNEY_STEP_DIGEST_FIELDS = ("label", "description", "stage_id", "customer_actions", "pain_points",
-                              "satisfaction", "experience")
+                              "satisfaction", "experience", "core_problem")
 # Solutions adopted before that ruling saved a fingerprint that also covered
 # emotion; they stay fresh whatever the emotion was or is now.
 _LEGACY_EMOTION_LEVELS = (None, 1, 2, 3, 4, 5)
@@ -2336,7 +2406,7 @@ def selected_solution_moments(journey_data: dict) -> list[str]:
 
 
 JOURNEY_SOLUTION_STEP_FIELDS = ("id", "label", "description", "stage_id", "customer_actions", "experience",
-                                "pain_points", "satisfaction")
+                                "pain_points", "satisfaction", "core_problem")
 
 
 def _journey_solutions_user_message(journey_data: dict, moment_ids: list[str], evidence: list,
@@ -2444,6 +2514,10 @@ def apply_journey_solutions(journey_data: dict, output: dict) -> dict:
         if moment is None:
             continue
         step["solution_analysis"] = copy.deepcopy(moment["analysis"])
+        # The researcher's own wording of the core problem stays the problem the
+        # Solution answers; the model never replaces it.
+        if str(step.get("core_problem") or "").strip():
+            step["solution_analysis"]["problem"] = step["core_problem"].strip()
         solution = moment["solution"]
         step["solution_candidates"] = [
             {"id": f"{step['id']}-SOL-1", "text": solution["text"],
@@ -3229,8 +3303,14 @@ def grounded_issue_package(
     return package, {"issues": issue_usage, "issue_grounding": grounding_usage}
 
 
-def case_with_journey(case: dict, journey_data: dict) -> dict:
-    errors = _journey_errors(journey_data, {r for s in journey_data.get("scenarios") or [] for st in s.get("steps") or [] for r in st.get("evidence_refs") or []}, require_confirmed=True)
+def case_with_journey(case: dict, journey_data: dict, evidence_ids=None) -> dict:
+    # sbp-solution-adoption-and-core-problem: a Solution may cite any evidence of the run (the
+    # Solution formation and the CJM confirmation already check against all of it), so callers
+    # that have the run's evidence pass its ids; without them only the steps' own references
+    # are known, as before.
+    known = ({r for s in journey_data.get("scenarios") or [] for st in s.get("steps") or [] for r in st.get("evidence_refs") or []}
+             if evidence_ids is None else set(evidence_ids))
+    errors = _journey_errors(journey_data, known, require_confirmed=True)
     if errors:
         raise ValueError("確認歷程無效：\n" + "\n".join(errors))
     scenario = next(s for s in journey_data["scenarios"] if s["id"] == journey_data["primary_scenario"])
@@ -3421,7 +3501,7 @@ def _structure_user_message(evidence: list, conflicts: list, case: dict, researc
         journey_block += ("## 顧客層（已確認，程式建立；不要輸出 layer: 顧客行動 的節點。這裡的 evidence_refs 只是顧客層自己的引用，不是可用的證據範圍）\n```yaml\n"
                           + _yaml_dump(layer) + "```\n\n")
     if view.get("external_references"):
-        journey_block += ("## 研究者採用的外部參考（設計參考，不是本案證據；只能用節點的 external_refs 引用，"
+        journey_block += ("## 建立藍圖前研究找到的外部參考（設計參考，不是本案證據；只能用節點的 external_refs 引用，"
                           "不能放進 claims 的 evidence_ref 或 anchors，也不能取代錨點與必要性理由）\n```yaml\n"
                           + _yaml_dump(view["external_references"]) + "```\n\n")
     return (
@@ -3464,6 +3544,131 @@ def _canonicalize_graph_metadata(data: dict, case: dict, journey_data: dict | No
     })
 
 
+# --------------------------------------------------------------------------
+# experiment-structure-relation-repair
+# --------------------------------------------------------------------------
+# A blueprint that failed only relation checks: ask for the missing or
+# corrected relations only and keep everything else. The model only produces
+# relations; replacing, appending and numbering are done here, so nodes,
+# dispositions, annotations and markers cannot change.
+_STRUCTURE_RELATION_ERROR_RE = re.compile(r"^\[graph\] (?:relation|supports|handoff) (\S+) ")
+_STRUCTURE_ISOLATED_ACTION_RE = re.compile(r"^\[graph\] action (\S+) 沒有任何 relation")
+# The To-be customer layer's relations; the program builds and owns them.
+_CUSTOMER_RELATION_PREFIX = "R-C"
+
+
+def _relation_ends(relation: dict) -> list:
+    return relation.get("endpoints") or [relation.get("from"), relation.get("to")]
+
+
+def _structure_relation_targets(data: object, errors: list) -> frozenset | None:
+    """The relations and isolated actions a relation repair would fix, or None
+    when it must not run: every error has to name one relation, or be an
+    isolated action; each named relation occurs exactly once and is not a
+    customer-layer relation; each named action is a node; no id is both."""
+    if not isinstance(data, dict) or not errors:
+        return None
+    relations, nodes = data.get("relations"), data.get("nodes")
+    if not isinstance(relations, list) or not isinstance(nodes, list):
+        return None
+    relation_ids = [r.get("id") for r in relations if isinstance(r, dict)]
+    node_ids = {n.get("id") for n in nodes if isinstance(n, dict)}
+    targets = set()
+    for error in errors:
+        text = str(error)
+        named = _STRUCTURE_RELATION_ERROR_RE.match(text)
+        isolated = None if named else _STRUCTURE_ISOLATED_ACTION_RE.match(text)
+        if named:
+            rid = named.group(1)
+            if relation_ids.count(rid) != 1 or rid.startswith(_CUSTOMER_RELATION_PREFIX) or rid in node_ids:
+                return None
+            targets.add(rid)
+        elif isolated:
+            nid = isolated.group(1)
+            if nid not in node_ids or nid in relation_ids:
+                return None
+            targets.add(nid)
+        else:
+            return None
+    return frozenset(targets)
+
+
+def _structure_relation_repair_closing(targets: frozenset, errors=()) -> str:
+    """The last paragraph of a relation repair request: which relations and
+    actions failed the existing relation rules, and to fix only those."""
+    return (
+        f"沒通過的是這幾處：{'、'.join(sorted(targets))}。它們沒有通過既有的關係規則。"
+        "請只修這幾處：被點名的 relation 回傳修正後的整條，保留原本的 id；"
+        "沒有任何 relation 的 action，新增連到它的 relation。"
+        "其餘節點、證據去向、註記與其他 relation 維持不變，也不用回傳。"
+        "只回傳一個 JSON 物件，格式是 {\"relations\": [...]}。"
+    )
+
+
+def _splice_structure_relation_repair(previous: object, targets: frozenset, reply: object) -> tuple:
+    """Put the repaired relations into the previous blueprint. Returns
+    (merged, None), or (None, reason) when the reply must be abandoned. A
+    named relation is replaced in place; any other new relation must touch a
+    named action, is appended, and gets the next unused R-<number> id. Only
+    the relations list changes."""
+    if not isinstance(previous, dict):
+        return None, "reply_shape"
+    items = reply.get("relations") if isinstance(reply, dict) else reply
+    if not isinstance(items, list) or not items or not all(
+            isinstance(r, dict) and isinstance(r.get("id"), str) and r["id"] for r in items):
+        return None, "reply_shape"
+    base = list(previous.get("relations") or [])
+    base_ids = {r.get("id") for r in base if isinstance(r, dict)}
+    named_relations = set(targets) & base_ids
+    named_actions = set(targets) - named_relations
+    nodes = [n for n in previous.get("nodes") or [] if isinstance(n, dict)]
+    node_ids = {n.get("id") for n in nodes}
+    # In a To-be blueprint every customer node is the program's; a relation
+    # between two of them is dropped by the customer-layer merge.
+    to_be = (previous.get("meta") or {}).get("blueprint_method") == V.TO_BE_METHOD
+    customer_ids = {n.get("id") for n in nodes if n.get("layer") == "顧客行動"} if to_be else set()
+    replaced, added, covered = {}, [], set()
+    for relation in items:
+        rid = relation["id"]
+        if rid.startswith(_CUSTOMER_RELATION_PREFIX):
+            return None, "reply_reserved_id"
+        ends = _relation_ends(relation)
+        if not ends or any(end not in node_ids for end in ends):
+            return None, "reply_unknown_endpoint"
+        if rid in named_relations:
+            if rid in replaced:
+                return None, "reply_shape"
+            replaced[rid] = relation
+        elif rid in base_ids:
+            return None, "reply_changes_untargeted"
+        else:
+            if set(ends) <= customer_ids:
+                return None, "reply_customer_only"
+            if not set(ends) & named_actions:
+                return None, "reply_new_not_targeted"
+            added.append(relation)
+        covered.update(set(ends) & named_actions)
+    if set(replaced) != named_relations or not named_actions <= covered:
+        return None, "target_not_covered"
+    numbers = [int(m.group(1)) for r in base if isinstance(r, dict) and isinstance(r.get("id"), str)
+               and (m := re.fullmatch(r"R-(\d+)", r["id"]))]
+    next_number = max(numbers, default=0) + 1
+    merged = copy.deepcopy(previous)
+    merged["relations"] = [copy.deepcopy(replaced.get(r.get("id"), r)) if isinstance(r, dict) else r for r in base]
+    for relation in added:
+        merged["relations"].append({**copy.deepcopy(relation), "id": f"R-{next_number}"})
+        next_number += 1
+    return merged, None
+
+
+class _StructureRelationRepair:
+    """What `_generate` needs to run a relation repair for the blueprint."""
+    plan = staticmethod(_structure_relation_targets)
+    closing = staticmethod(_structure_relation_repair_closing)
+    splice = staticmethod(_splice_structure_relation_repair)
+    record_key = "targeted_items"
+
+
 def structure(evidence: list, conflicts: list, case: dict, opts: dict, researcher_note=None, journey_data=None,
               coding_categories: list | None = None, external_references: list | None = None) -> tuple:
     evidence_ids = {e["id"] for e in evidence}
@@ -3483,16 +3688,18 @@ def structure(evidence: list, conflicts: list, case: dict, opts: dict, researche
         return (_validate_graph(data, evidence_ids, evidence_texts, journey_data)
                 + _generation_required_errors(data, "service-graph"))
 
+    with perf.phase('prepare', operation='build_prompt'):
+        system = _system("structure_to_be" if to_be else "structure")
+        user = _structure_user_message(evidence, conflicts, case, researcher_note, journey_data, coding_categories,
+                                       to_be=to_be, external_references=external_references if to_be else None)
     graph, usage = _generate(
-        "structure", _system("structure_to_be" if to_be else "structure"),
-        _structure_user_message(evidence, conflicts, case, researcher_note, journey_data, coding_categories,
-                                to_be=to_be, external_references=external_references if to_be else None),
-        validate, opts, max_retries=4,
+        "structure", system, user, validate, opts, max_retries=4, partial_repair=_StructureRelationRepair,
     )
-    if to_be:
-        _merge_to_be_customer_layer(graph, journey_data)
-        _set_external_references(graph, external_references)
-    _canonicalize_graph_metadata(graph, case, journey_data)
+    with perf.phase('validation', operation='finalize_graph'):
+        if to_be:
+            _merge_to_be_customer_layer(graph, journey_data)
+            _set_external_references(graph, external_references)
+        _canonicalize_graph_metadata(graph, case, journey_data)
     return graph, usage
 
 
@@ -3874,6 +4081,11 @@ def _open_coding_segment_errors(concepts: object, segments: list) -> list[str]:
 # produces replacement concepts; removing, inserting and numbering are done
 # here, so nothing outside the targeted segments can change.
 _OPEN_CODING_CAP_ERROR_RE = re.compile(r"^\[open_coding\] 段落 (\S+) 有 \d+ 個概念，一段最多 \d+ 個$")
+# extend-open-coding-partial-repair: two more errors that point at one concept,
+# so at the segments it cites. Bound to the messages `validate_sbp.structural_errors`
+# and `_open_coding_quote_error` write (see the partial-repair tests).
+_OPEN_CODING_LENGTH_ERROR_RE = re.compile(r"^\[結構\] concepts/(\d+)/(name|description): .* is too long$", re.S)
+_OPEN_CODING_QUESTION_ERROR_RE = re.compile(r"^\[open_coding\] concept (\S+) 的引言不是只刪不增：回答沒問題，但 question「")
 
 
 def _concepts_of(data: object) -> list | None:
@@ -3883,68 +4095,152 @@ def _concepts_of(data: object) -> list | None:
 
 
 def _open_coding_cap_targets(data: object, errors: list) -> frozenset | None:
-    """The failed segments a partial repair would redo, or None when it must
-    not run: every error has to be a segment-cap error, and every concept that
-    touches a failed segment has to cite only failed segments."""
+    """What a partial repair would redo, or None when it must not run.
+
+    Targets are strings: a segment over the cap (`SEG-4`, recoded whole), a
+    concept field that failed (`OC-12#name`, `OC-12#description`,
+    `OC-12#question`, only that field is changed), and a coupled segment
+    (`~SEG-9`): another segment a recoded concept cites, which the recoded
+    concepts may cite again and which must stay cited. Every error has to be
+    one of the recognised kinds (open-coding-coupled-repair)."""
     concepts = _concepts_of(data)
-    if concepts is None or not errors:
+    if concepts is None or not errors or not all(isinstance(c, dict) for c in concepts):
         return None
-    targets = set()
-    for error in errors:
-        match = _OPEN_CODING_CAP_ERROR_RE.match(str(error))
-        if match is None:
-            return None
-        targets.add(match.group(1))
     for concept in concepts:
-        if not isinstance(concept, dict):
-            return None
         refs = concept.get("segment_refs") or []
-        if not isinstance(refs, list):
+        if not isinstance(refs, list) or any(not isinstance(r, str) or "#" in r or r.startswith("~") for r in refs):
             return None
-        if targets.intersection(refs) and not set(refs) <= targets:
+    by_id = {c.get("id"): c for c in concepts}
+    segments, fields = set(), set()
+    for error in errors:
+        text = str(error)
+        if match := _OPEN_CODING_CAP_ERROR_RE.match(text):
+            segments.add(match.group(1))
+            continue
+        if match := _OPEN_CODING_LENGTH_ERROR_RE.match(text):
+            index = int(match.group(1))
+            concept, field = (concepts[index] if index < len(concepts) else None), match.group(2)
+        elif match := _OPEN_CODING_QUESTION_ERROR_RE.match(text):
+            concept, field = by_id.get(match.group(1)), "question"
+        else:
             return None
-    return frozenset(targets)
+        if (not isinstance(concept, dict) or not isinstance(concept.get("id"), str)
+                or list(by_id).count(concept["id"]) != 1 or not concept.get("segment_refs")):
+            return None
+        fields.add((concept["id"], field))
+    recoded = [c for c in concepts if segments.intersection(c.get("segment_refs") or [])]
+    recoded_ids = {c.get("id") for c in recoded}
+    coupled = {ref for c in recoded for ref in c.get("segment_refs") or []} - segments
+    return frozenset(segments | {f"{cid}#{field}" for cid, field in fields if cid not in recoded_ids}
+                     | {f"~{ref}" for ref in coupled})
 
 
-def _open_coding_partial_repair_closing(targets: frozenset) -> str:
-    """The last paragraph of a partial repair request: which segments failed
-    the existing rule, and to recode only those. Nothing else is said."""
+def _open_coding_target_parts(targets: frozenset) -> tuple[set, dict, set]:
+    """(segments to recode, {concept id: fields to change}, coupled segments)."""
+    segments = {t for t in targets if "#" not in t and not t.startswith("~")}
+    coupled = {t[1:] for t in targets if t.startswith("~")}
+    fields: dict = {}
+    for target in targets:
+        if "#" in target:
+            cid, field = target.split("#", 1)
+            fields.setdefault(cid, set()).add(field)
+    return segments, fields, coupled
+
+
+_OPEN_CODING_FIELD_LABELS = {"name": "名稱", "description": "描述", "question": "question"}
+
+
+def _open_coding_partial_repair_closing(targets: frozenset, errors=()) -> str:
+    """The last paragraph of a partial repair request: which segments and
+    fields failed which existing rules, and to redo only those. Nothing else is
+    said; with cap errors only and no coupled segment (or no errors given) it
+    reads as it always has."""
+    segments, fields, coupled = _open_coding_target_parts(targets)
+    texts = [str(e) for e in errors]
+    rules = [f"一段最多 {OPEN_CODING_MAX_CODES_PER_SEGMENT} 個概念"] if (
+        not texts or any(_OPEN_CODING_CAP_ERROR_RE.match(t) for t in texts)) else []
+    if any(_OPEN_CODING_LENGTH_ERROR_RE.match(t) for t in texts):
+        rules.append("概念名稱與描述不能超過字數上限")
+    if any(_OPEN_CODING_QUESTION_ERROR_RE.match(t) for t in texts):
+        rules.append("question 只放訪員的問題")
+    failed = []
+    if segments:
+        failed.append(f"沒通過的是這幾段：{'、'.join(sorted(segments))}。")
+    if fields:
+        named = "、".join(f"{cid} 的{_OPEN_CODING_FIELD_LABELS[f]}" for cid in sorted(fields) for f in sorted(fields[cid]))
+        failed.append(f"沒通過的欄位是：{named}。")
+    asks = []
+    if segments:
+        asks.append("請只重做這幾段，其餘概念維持不變，也不用回傳。")
+    if coupled:
+        asks.append(f"重做的概念可以照原文同時引用 {'、'.join(sorted(coupled))}。")
+    if fields:
+        asks.append("被點名的概念只改那個欄位，保留原本的 id 與其他欄位。")
+    if not segments:
+        asks.append("其餘概念維持不變，也不用回傳。")
+    returned = "這幾段的概念與被點名的概念" if segments and fields else ("這幾段的概念" if segments else "被點名的概念")
     return (
-        f"沒通過的是這幾段：{'、'.join(sorted(targets))}。"
-        f"它們沒有通過既有的規則（一段最多 {OPEN_CODING_MAX_CODES_PER_SEGMENT} 個概念）。"
-        "請只重做這幾段，其餘概念維持不變，也不用回傳。"
-        "只回傳這幾段的概念，格式是 {\"concepts\": [...]}。"
+        "".join(failed)
+        + f"它們沒有通過既有的規則（{'；'.join(rules)}）。"
+        + "".join(asks)
+        + f"只回傳{returned}，格式是 {{\"concepts\": [...]}}。"
     )
 
 
 def _splice_open_coding_repair(previous: object, targets: frozenset, reply: object) -> tuple:
-    """Put the replacement concepts into the previous output. Returns
-    (merged, None), or (None, reason) when the reply must be abandoned: it is
-    not a list of concepts, a concept cites a segment outside the targets, or a
-    target segment is left without any concept (an omission is never a
-    deletion). Concepts that do not touch a target are kept as they were."""
-    base, replacements = _concepts_of(previous), _concepts_of(reply)
-    if base is None or not replacements or not all(isinstance(c, dict) for c in replacements):
+    """Put the repair into the previous output. Returns (merged, None), or
+    (None, reason) when the reply must be abandoned.
+
+    A target field is copied from the reply's concept with the same id onto
+    the original concept, and nothing else of that concept is taken. A recoded
+    concept has to cite a target segment and may cite only target or coupled
+    segments; every target segment has to be covered and every coupled segment
+    still cited afterwards (an omission is never a deletion). Concepts that
+    cite no target segment are kept as they were, apart from their target
+    fields."""
+    base, replies = _concepts_of(previous), _concepts_of(reply)
+    if base is None or not replies or not all(isinstance(c, dict) for c in replies):
         return None, "reply_shape"
+    segments, fields, coupled = _open_coding_target_parts(targets)
+    fixes, replacements = {}, []
+    for concept in replies:
+        cid = concept.get("id")
+        if cid in fields and not segments.intersection(concept.get("segment_refs") or []):
+            if cid in fixes:
+                return None, "reply_shape"
+            fixes[cid] = concept
+        else:
+            replacements.append(concept)
+    if set(fixes) != set(fields):
+        return None, "target_not_covered"
     covered: set = set()
     for concept in replacements:
         refs = concept.get("segment_refs")
-        if not isinstance(refs, list) or not refs or not set(refs) <= targets:
+        if (not isinstance(refs, list) or not refs or not segments.intersection(refs)
+                or not set(refs) <= segments | coupled):
             return None, "reply_cites_outside_targets"
-        covered.update(refs)
-    if covered != set(targets):
+        covered.update(set(refs) & segments)
+    if covered != segments:
         return None, "target_not_covered"
     kept, removed, slot = [], [], {}
     for concept in base:
         refs = concept.get("segment_refs") or []
-        if targets.intersection(refs):
+        if segments.intersection(refs):
             removed.append(concept)
-            for ref in targets.intersection(refs):
+            for ref in segments.intersection(refs):
                 slot.setdefault(ref, len(kept))  # where this segment's concepts used to start
-        else:
-            kept.append(concept)
-    if not removed:
+            continue
+        if concept.get("id") in fields:
+            fixed, reason = _open_coding_field_fix(concept, fixes[concept["id"]], fields[concept["id"]])
+            if reason:
+                return None, reason
+            concept = fixed
+        kept.append(concept)
+    if segments and not removed:
         return None, "nothing_to_replace"
+    cited = {ref for c in [*kept, *replacements] for ref in c.get("segment_refs") or []}
+    if not coupled <= cited:
+        return None, "coupled_segment_uncovered"
     freed = [c["id"] for c in removed if isinstance(c.get("id"), str)]
     taken = {c.get("id") for c in kept}
     numbers = [int(m.group(1)) for i in [*taken, *freed] if isinstance(i, str) and (m := re.fullmatch(r"OC-(\d+)", i))]
@@ -3958,14 +4254,40 @@ def _splice_open_coding_repair(previous: object, targets: frozenset, reply: obje
             new_id = f"OC-{next_number:0{width}d}"
             next_number += 1
         taken.add(new_id)
-        # back where its (first) segment's concepts used to start, reply order kept
-        groups.setdefault(min(slot[ref] for ref in concept["segment_refs"]), []).append({**concept, "id": new_id})
+        # back where its (first) target segment's concepts used to start, reply order kept
+        groups.setdefault(min(slot[ref] for ref in concept["segment_refs"] if ref in slot), []).append(
+            {**concept, "id": new_id})
     merged = []
     for index, concept in enumerate(kept):
         merged.extend(groups.get(index, []))
         merged.append(concept)
     merged.extend(groups.get(len(kept), []))
     return ({**previous, "concepts": merged} if isinstance(previous, dict) else merged), None
+
+
+def _open_coding_field_fix(original: dict, reply: dict, fields: set) -> tuple:
+    """Copy only the named fields from the reply's concept onto a copy of the
+    original. The concept's segments must not change; a question fix keeps the
+    answer and only sets or removes the question."""
+    if reply.get("segment_refs") != original.get("segment_refs"):
+        return None, "reply_changes_untargeted"
+    fixed = copy.deepcopy(original)
+    for field in fields:
+        if field in ("name", "description"):
+            if not isinstance(reply.get(field), str):
+                return None, "reply_shape"
+            fixed[field] = reply[field]
+        else:
+            before, after = original.get("quote"), reply.get("quote")
+            if not isinstance(before, dict) or not isinstance(after, dict) or after.get("answer") != before.get("answer"):
+                return None, "reply_changes_untargeted"
+            quote = dict(fixed["quote"])
+            if after.get("question"):
+                quote["question"] = after["question"]
+            else:
+                quote.pop("question", None)
+            fixed["quote"] = quote
+    return fixed, None
 
 
 class _OpenCodingPartialRepair:
@@ -3975,11 +4297,14 @@ class _OpenCodingPartialRepair:
     splice = staticmethod(_splice_open_coding_repair)
 
 
-def _partial_repair_record(targets: frozenset, outcome: str, reason: str | None = None) -> dict:
+def _partial_repair_record(targets: frozenset, outcome: str, reason: str | None = None,
+                           key: str = "targeted_segments") -> dict:
     """Observability only: was a partial repair attempted, which segments, did
     it succeed or fall back and why. Tokens, seconds and attempt numbers are
-    already on the call record, so they are not repeated. Nothing reads this."""
-    return {"attempted": True, "targeted_segments": sorted(targets), "outcome": outcome, "fallback_reason": reason}
+    already on the call record, so they are not repeated. Nothing reads this.
+    `key` names the targets field; a stage whose targets are not segments
+    (experiment-structure-relation-repair) names its own."""
+    return {"attempted": True, key: sorted(targets), "outcome": outcome, "fallback_reason": reason}
 
 
 def open_coding(evidence: list, opts: dict, segments_doc: dict | None = None) -> tuple:
@@ -4097,6 +4422,7 @@ def open_code_transcript(source, segments: list, evidence_by_id: dict, case_id: 
         "attempts": usage.get("attempts"),
         "model_requested": usage.get("model_requested"),
         "effort_requested": usage.get("effort_requested"),
+        **{key: usage[key] for key in ("model_source", "model_effective") if usage.get(key)},
         **({"token_detail": usage["token_detail"]} if usage.get("token_detail") else {}),
         **({"partial_repair": usage["partial_repair"]} if usage.get("partial_repair") else {}),
     }
@@ -4134,6 +4460,7 @@ def merge_open_coding(results: list, case_id: str, wall_seconds: float, workers:
                      "attempts": sum(call.get("attempts") or 0 for call in per_source_seconds) or None,
                      "model_requested": first.get("model_requested"),
                      "effort_requested": first.get("effort_requested"),
+                     **{key: first[key] for key in ("model_source", "model_effective") if first.get(key)},
                      "started_at": min((call.get("started_at") or "" for call in per_source_seconds),
                                        default=None) or None,
                      "finished_at": max((call.get("finished_at") or "" for call in per_source_seconds),
@@ -4182,6 +4509,46 @@ def category_properties(categories_doc: dict, evidence: list, opts: dict) -> tup
     def number(raw: list) -> list:
         return [{**p, "id": f"PROP-{i + 1}"} if isinstance(p, dict) else p for i, p in enumerate(raw)]
 
+    # resume-category-properties-units: a category that passed its own
+    # validation is saved at once, outside the run directory, so a step that
+    # fails partway keeps it; a retry reuses it only when everything that was
+    # sent for it is unchanged and it still validates. Callers that give no
+    # place for saved units get the step as before.
+    checkpoint_dir = Path(opts["checkpoint_dir"]) if opts.get("checkpoint_dir") else None
+
+    def fingerprint(user: str) -> str:
+        return lifecycle.canonical_content_digest({
+            "stage": "category_properties",
+            "system_prompt": _prompt("category_properties"),
+            "user": user,
+            "provider": opts.get("category_properties_provider") or os.environ.get("SBP_LLM_PROVIDER"),
+            "executor": os.environ.get("SBP_CLI_EXECUTOR"),
+            "model": opts.get("category_properties_model"),
+            "effort": opts.get("category_properties_effort"),
+            "method_version": opts.get("category_properties_method_version"),
+        })
+
+    def saved_unit(category_id: str, unit_print: str, validate) -> list | None:
+        import yaml
+        try:
+            unit = yaml.safe_load((checkpoint_dir / f"{category_id}.yaml").read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001 - an unreadable unit is regenerated, never a failure
+            return None
+        if (not isinstance(unit, dict) or unit.get("fingerprint") != unit_print
+                or not isinstance(unit.get("properties"), list)):
+            return None
+        if validate({"properties": unit["properties"]}):
+            return None
+        return unit["properties"]
+
+    def save_unit(category_id: str, unit_print: str, props: list) -> None:
+        try:
+            checkpoint_dir.mkdir(parents=True, exist_ok=True)
+            run_files.write_yaml_atomic(checkpoint_dir / f"{category_id}.yaml",
+                                        {"fingerprint": unit_print, "category_id": category_id, "properties": props})
+        except OSError:
+            pass  # saving only spares a retry; the step itself does not depend on it
+
     # One call per category (2026-09-30): a property belongs to exactly one
     # category and the prompt has no cross-category rule, so each category is
     # read on its own. That keeps each call well inside the CLI runner's
@@ -4202,11 +4569,26 @@ def category_properties(categories_doc: dict, evidence: list, opts: dict) -> tup
                                   f"屬性不能掛到 {prop.get('category_id')}")
             return errors
 
-        data, usage = _generate("category_properties", _prompt("category_properties"), user, _validate, opts)
+        unit_print = fingerprint(user) if checkpoint_dir is not None else None
+        reused = saved_unit(category["id"], unit_print, _validate) if checkpoint_dir is not None else None
+        if reused is not None:
+            with progress_lock:
+                finished[0] += 1
+                _report_progress("屬性與面向", finished[0], len(categories), "類")
+            return reused, {"reused": True, "tokens": 0, "seconds": 0, "attempts": 0}
+
+        # Calls run concurrently, so each category keeps its own rejected-attempt
+        # record (observability only; the request and retries are unchanged).
+        call_opts = {**opts, "diagnostics_label": f"category-properties-{category['id']}",
+                     "diagnostics_source": category["id"]}
+        data, usage = _generate("category_properties", _prompt("category_properties"), user, _validate, call_opts)
+        props = [p for p in data.get("properties") or [] if isinstance(p, dict)]
+        if checkpoint_dir is not None:
+            save_unit(category["id"], unit_print, props)
         with progress_lock:
             finished[0] += 1
             _report_progress("屬性與面向", finished[0], len(categories), "類")
-        return [p for p in data.get("properties") or [] if isinstance(p, dict)], usage
+        return props, usage
 
     started_at = datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
     wall_started = time.monotonic()
@@ -4224,6 +4606,9 @@ def category_properties(categories_doc: dict, evidence: list, opts: dict) -> tup
     result = {"schema_version": 1, "case_id": case_id, "properties": properties}
     errors = V.category_properties_errors(result, category_ids, evidence_ids)
     if errors:
+        if checkpoint_dir is not None:
+            # The same saved units would fail the same way again.
+            shutil.rmtree(checkpoint_dir, ignore_errors=True)
         raise llm.LLMError("category_properties 合併結果未通過驗證：\n" + "\n".join(errors[:20]))
     calls = [{"category_id": category["id"], **usage} for category, (_props, usage) in zip(categories, results)]
     usage = {
@@ -5379,16 +5764,22 @@ def _hmw_scope_section(hmw_scope: dict | None) -> str:
 def _persona_matrix_user_message(evidence: list, categories_doc: dict, case_id: str,
                                   selected_axes: list | None = None,
                                   core_category: dict | None = None,
-                                  hmw_scope: dict | None = None) -> str:
+                                  hmw_scope: dict | None = None,
+                                  attribution: dict | None = None) -> str:
     # persona-segmentation-reasoning-contract (2026-10-01): the analysis
     # object is the comparison of participants, so evidence arrives grouped
     # by source (who said it) and each unit's text appears exactly once;
     # categories carry only evidence ids, as analytical material rather than
     # the structure axes are generated from.
+    # speaker-attribution-for-persona: with a source attribution file, each
+    # unit also says its confirmed speaker, or that it cannot be attributed.
+    from . import source_attribution
+    attribution_block, unit_extra = source_attribution.generation_block(evidence, attribution)
     sources: dict[str, list[dict]] = {}
     for e in evidence:
         if isinstance(e, dict):
-            sources.setdefault(str(e.get("source") or ""), []).append(_evidence_unit(e, "id", "role", "text"))
+            sources.setdefault(str(e.get("source") or ""), []).append(
+                {**_evidence_unit(e, "id", "role", "text"), **unit_extra.get(e.get("id"), {})})
     groups = [{"source": source, "units": units} for source, units in sources.items()]
     categories = []
     for c in categories_doc.get("categories") or []:
@@ -5413,6 +5804,7 @@ def _persona_matrix_user_message(evidence: list, categories_doc: dict, case_id: 
         + _hmw_scope_section(hmw_scope)
         + _core_category_block(core_category)
         + selected_block
+        + attribution_block
         + "## 主軸編碼類別（分析材料，只列證據 id）\n```yaml\n" + _yaml_dump(categories) + "```\n\n"
         "## 證據單元（依 source 分組；同一個 source 可能混著兩個人，同一個人也可能分在好幾組，"
         "誰是誰由你判斷）\n```yaml\n" + _yaml_dump(groups) + "```"
@@ -5520,7 +5912,8 @@ def _persona_placement_errors(subject: dict, placements: list[dict]) -> list[str
 
 
 def persona_matrix(evidence: list, categories_doc: dict, opts: dict, selected_axes: list | None = None,
-                    core_category: dict | None = None, hmw_scope: dict | None = None) -> tuple:
+                    core_category: dict | None = None, hmw_scope: dict | None = None,
+                    attribution: dict | None = None) -> tuple:
     """add-persona-matrix：把主軸編碼（axial-coding）產出的類別讀成一組區辨
     行為變項軸，並把每個可辨識的受訪者放到這些軸上。
 
@@ -5554,10 +5947,14 @@ def persona_matrix(evidence: list, categories_doc: dict, opts: dict, selected_ax
     evidence_ids = {e["id"] for e in evidence if isinstance(e, dict) and e.get("id")}
     axes_with_ids = _assign_axis_ids(selected_axes) if selected_axes else None
     user = _persona_matrix_user_message(evidence, categories_doc, case_id, axes_with_ids, core_category,
-                                        hmw_scope=hmw_scope)
+                                        hmw_scope=hmw_scope, attribution=attribution)
+    # speaker-attribution-for-persona: with a source attribution file, a
+    # respondent is one confirmed person backed by that person's evidence.
+    from . import source_attribution
     data, usage = _generate(
         "persona_matrix", _system("persona_matrix"), user,
-        lambda d: _persona_matrix_errors(d, category_ids, evidence_ids, axes_with_ids, generation=True), opts,
+        lambda d: _persona_matrix_errors(d, category_ids, evidence_ids, axes_with_ids, generation=True)
+        + source_attribution.persona_attribution_errors(d, evidence, attribution), opts,
     )
     data["case_id"] = case_id
     return data, usage

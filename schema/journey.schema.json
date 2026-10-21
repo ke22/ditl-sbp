@@ -149,6 +149,11 @@
           "x-not-generated": true,
           "$ref": "#/definitions/solution_analysis"
         },
+        "core_problem": {
+          "description": "研究者寫下這一刻要解決的核心問題（sbp-solution-adoption-and-core-problem，2026-10-19 研究者裁定可改寫）。有寫時，發展解方以它為問題。",
+          "x-not-generated": true,
+          "type": "string"
+        },
         "solution_basis": {
           "description": "產出解方當下這一步內容的 digest；與目前內容不同即為過期。",
           "x-not-generated": true,

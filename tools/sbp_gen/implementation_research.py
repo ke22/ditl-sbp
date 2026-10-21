@@ -43,8 +43,13 @@ SCHEMA_VERSION = 1
 RESEARCH_MODEL = "gpt-5"
 
 QUESTION_TEMPLATE = "其他服務要讓「{text}」這類做法落地，用了哪些做法、需要哪些條件、遇過哪些限制？"
+# built-in-implementation-research（研究者 2026-10-15）：研究依 CJM、Persona、HMW 自主進行。
+# 問題帶入選定 HMW 與目標 Persona 的名稱、需求、挑戰；Persona 的成員、理由與代表句不送出。
+CONTEXT_TEMPLATE = "設計方向：{hmw}\n目標顧客：{persona}\n"
 
-# The gate states (design D1). Blocking states stop 建立 SBP.
+# The gate states. built-in-implementation-research: research runs inside the
+# blueprint build and never blocks it, so nothing is blocking; a finished
+# operation needs no review.
 NOT_STARTED = "not_started"
 RUNNING = "running"
 FAILED = "failed"
@@ -52,7 +57,7 @@ NEEDS_REVIEW = "needs_review"
 NO_ADMISSIBLE = "no_admissible"
 REVIEWED = "reviewed"
 SKIPPED = "skipped"
-BLOCKING = {RUNNING, FAILED, NEEDS_REVIEW}
+BLOCKING: frozenset = frozenset()
 
 REASONS = {
     RUNNING: "落地研究進行中，完成後再建立 SBP。",
@@ -60,6 +65,10 @@ REASONS = {
     NEEDS_REVIEW: "落地研究還沒審查完：逐條決定後保存，或略過這次研究。",
 }
 NO_ADMISSIBLE_MESSAGE = "目前未找到符合來源標準的外部資料"
+# external-research-honest-status: the execution method could not search the
+# web, so no external research happened -- model knowledge is never stood in
+# for a web search.
+SEARCH_UNAVAILABLE = "search_unavailable"
 INTERRUPTED_MESSAGE = "落地研究中斷了：重新研究，或略過這次研究。"
 
 
@@ -115,12 +124,33 @@ def adopted_solutions(journey: dict | None) -> list[dict]:
     return result
 
 
-def questions(journey: dict | None) -> list[dict]:
-    """One broad implementation research question per adopted Solution."""
+def questions(journey: dict | None, context: Mapping[str, str] | None = None) -> list[dict]:
+    """One broad implementation research question per adopted Solution, led by
+    the selected HMW and target Persona when the run has them."""
+    lead = ""
+    if context and (context.get("hmw") or context.get("persona")):
+        lead = CONTEXT_TEMPLATE.format(hmw=context.get("hmw") or "（未選定）",
+                                       persona=context.get("persona") or "（未確認）")
     return [{"id": f"IQ-{item['solution_id']}", "solution_id": item["solution_id"],
              "step_label": item["step_label"], "solution_text": item["text"],
-             "text": QUESTION_TEMPLATE.format(text=item["text"])}
+             "text": lead + QUESTION_TEMPLATE.format(text=item["text"])}
             for item in adopted_solutions(journey) if item["text"]]
+
+
+def research_context(run_dir: str | Path) -> dict[str, str]:
+    """The selected HMW statement and the target Persona's label, need and
+    challenge. Persona members, rationale and quote stay in the case."""
+    from . import to_be  # local: to_be imports the research stack
+    run = Path(run_dir)
+    hmw_doc = _load_yaml(run / "hmw.yaml") or {}
+    hmw = to_be._resolve_primary_hmw(run, hmw_doc.get("entries") or [] if isinstance(hmw_doc, dict) else []) or {}
+    snapshot_doc = _load_yaml(run / "persona_confirmed.yaml") or {}
+    persona_doc = snapshot_doc.get("persona_content") if isinstance(snapshot_doc, dict) else None
+    personas = (persona_doc or {}).get("personas") if isinstance(persona_doc, dict) else None
+    target = personas[0] if isinstance(personas, list) and personas and isinstance(personas[0], dict) else {}
+    label, need, challenge = (str(target.get(key) or "").strip() for key in ("label", "need", "challenge"))
+    persona = (label + "：" if label and (need or challenge) else label) + need + challenge
+    return {"hmw": str(hmw.get("statement") or "").strip(), "persona": persona}
 
 
 def _research_dir(run_dir: Path) -> Path:
@@ -160,8 +190,9 @@ def snapshot(run_dir: str | Path) -> dict:
     run = Path(run_dir)
     journey = _journey(run)
     case = _load_yaml(run / "case.yaml") or {}
-    ticked = load_selection(run)
-    by_id = {q["id"]: q for q in questions(journey)}
+    current = questions(journey, research_context(run))
+    ticked = [q["id"] for q in current]
+    by_id = {q["id"]: q for q in current}
     return {
         "schema_version": SCHEMA_VERSION,
         "case_id": str(case.get("case_id") or journey.get("case_id") or ""),
@@ -253,7 +284,7 @@ def gate(run_dir: str | Path, *, job_active: bool = True) -> dict:
     elif state == NO_ADMISSIBLE:
         result = NO_ADMISSIBLE
     elif state == "complete":
-        result = REVIEWED if _review_is_current(run, operation) else NEEDS_REVIEW
+        result = REVIEWED
     else:
         result = FAILED
     reason = REASONS.get(result)
@@ -390,6 +421,9 @@ def run(run_dir: str | Path, *, run_research: Callable | None = None,
                        error={"code": getattr(exc, "code", "research_failed"), "detail": causes[-1]["message"]})
     if not isinstance(agent_result, Mapping):
         return _finish(run_path, operation, state=FAILED, error={"code": "citation_support_rejected", "detail": ""})
+    if "unavailable" in ((agent_result.get("runner_usage") or {}).get("search") or []):
+        _write_json(_operation_dir(run_path, digest) / TRACE_FILENAME, {"tool_audit": list(tool_audit or [])})
+        return _finish(run_path, operation, state=FAILED, error={"code": SEARCH_UNAVAILABLE, "detail": ""})
     snap = operation["snapshot"]
     try:
         catalog, trace = (build_catalog or research_policy.build_research_catalog)(
@@ -412,6 +446,43 @@ def run(run_dir: str | Path, *, run_research: Callable | None = None,
     _write_json(_operation_dir(run_path, digest) / TRACE_FILENAME, {**trace, "tool_audit": list(tool_audit or [])})
     return _finish(run_path, operation, state="complete", error=None,
                    counts={"sources": len(catalog.get("sources") or []), "claims": len(catalog.get("claims") or [])})
+
+
+def record_search_unavailable(run_dir: str | Path) -> dict | None:
+    """The blueprint build's research step when the execution method cannot
+    search: keep a finished operation for the current snapshot (it is reused),
+    otherwise record a failed operation without calling any model. None when
+    the run has no adopted Solution to research."""
+    run = Path(run_dir)
+    if not snapshot(run)["ticked_question_ids"]:
+        return None
+    finished = current_operation(run)
+    if finished and finished.get("state") in ("complete", NO_ADMISSIBLE):
+        return finished
+    return _finish(run, begin(run), state=FAILED, error={"code": SEARCH_UNAVAILABLE, "detail": ""})
+
+
+def research_status(run_dir: str | Path, *, job_active: bool = False) -> dict:
+    """What external research actually happened for the current snapshot, read
+    from its operation record: not_applicable, not_run, running, unsupported,
+    failed, no_admissible or complete."""
+    run = Path(run_dir)
+    if not snapshot(run)["ticked_question_ids"]:
+        return {"state": "not_applicable"}
+    operation = current_operation(run)
+    if operation is None:
+        return {"state": "not_run"}
+    state = operation.get("state")
+    if state == RUNNING:
+        return {"state": "running" if job_active else "failed"}
+    if state == FAILED:
+        code = (operation.get("error") or {}).get("code")
+        return {"state": "unsupported" if code == SEARCH_UNAVAILABLE else "failed"}
+    if state == NO_ADMISSIBLE:
+        return {"state": "no_admissible"}
+    if state == "complete":
+        return {"state": "complete", "claims": int((operation.get("counts") or {}).get("claims") or 0)}
+    return {"state": "failed"}
 
 
 # ---- what enters To-be generation ----
@@ -441,19 +512,16 @@ def _related_solutions(operation: Mapping[str, Any], question_ids: list[str]) ->
 
 
 def accepted_references(run_dir: str | Path, *, job_active: bool = False) -> list[dict]:
-    """Selected claims of the current, reviewed operation; empty otherwise."""
+    """Every admitted claim of the current finished operation; empty otherwise
+    (built-in-implementation-research: no per-claim review)."""
     run = Path(run_dir)
     status = gate(run, job_active=job_active)
     if status["state"] != REVIEWED:
         return []
     operation = load_operation(run, status["operation_digest"]) or {}
     catalog = load_catalog(run, status["operation_digest"]) or {}
-    review = CR.load(run, filename=REVIEW_FILENAME)
-    selected = {d.get("claim_ref") for d in review.get("claim_decisions") or [] if d.get("decision") == "select"}
     references = []
     for claim in catalog.get("claims") or []:
-        if claim.get("id") not in selected:
-            continue
         links = claim.get("source_links") or []
         question_ids = claim_questions(operation, claim)
         references.append({

@@ -6,6 +6,7 @@ import datetime as dt
 import hashlib
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -15,11 +16,14 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     __package__ = "sbp_gen"
 
-from . import as_is_research, decisions, gates, hmw_formation, improvement_goal_review, ingest, journey_operations, lifecycle, llm, stages, to_be  # noqa: E402
+from . import as_is_research, decisions, gates, hmw_formation, improvement_goal_review, ingest, journey_operations, lifecycle, llm, source_attribution, stages, to_be  # noqa: E402
 from . import run_state as run_state_file  # noqa: E402
+from . import run_files, run_lock  # noqa: E402
+from . import performance_trace as perf  # noqa: E402
 import role_coverage  # noqa: E402
 import validate_sbp as V  # noqa: E402
 import evidence_locator  # noqa: E402
+from yaml_loader import safe_load as load_safe_yaml  # noqa: E402
 import narrative_framing  # noqa: E402
 import hmw_scope as hmw_scope_module  # noqa: E402
 import storage_locations  # noqa: E402
@@ -94,12 +98,16 @@ def _reuse_stage(out_dir: Path, previous: dict, stage: str, fingerprint: str, fi
         return None
 
 
+@perf.timed('write')
 def _write_yaml(path: Path, data) -> None:
-    path.write_text(yaml.dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    # run-state-write-integrity: atomic; a state file (journey_proposal.yaml)
+    # is written only by the project-lock owner and never over a malformed one.
+    run_files.write_yaml_atomic(path, data, safe=False)
 
 
+@perf.timed('write')
 def _persist(path: Path, state: dict) -> None:
-    path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    run_files.write_json_atomic(path, state, trailing_newline=False)
 
 
 def _default_artifact_registry(out: Path, case_id: str) -> Path:
@@ -171,7 +179,7 @@ def _load_yaml(path: Path, label: str):
     try:
         if not path.is_file():
             raise ValueError("檔案不存在")
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        data = load_safe_yaml(path.read_text(encoding="utf-8"))
     except Exception as exc:
         raise ValueError(f"{label} 無法讀取：{path}（{exc}）") from exc
     if data is None:
@@ -322,7 +330,7 @@ def _read_primary_job_selection(run_dir: Path, category_ids: set[str]) -> dict |
 
 def _load_yaml_if_exists(path: Path):
     try:
-        return yaml.safe_load(path.read_text(encoding="utf-8")) if path.is_file() else None
+        return load_safe_yaml(path.read_text(encoding="utf-8")) if path.is_file() else None
     except (OSError, yaml.YAMLError):
         return None
 
@@ -407,7 +415,7 @@ def _main_journey_recheck(argv: list[str]) -> int:
         result_path = args.out / "journey_recheck.yaml"
         evidence_path = args.out / "evidence.yaml"
         state_path = args.out / "run.json"
-        existing_entries = list(args.out.iterdir()) if args.out.exists() else []
+        existing_entries = run_lock.content_entries(args.out)
         existing_state = {}
         if state_path.exists():
             try:
@@ -661,7 +669,7 @@ def _main_generate(argv: list[str]) -> int:
             journey_data = stages.journey_from_case(case)
             _write_yaml(args.out / "journey.yaml", journey_data)
             state["stages"]["journey"] = "case_confirmed"
-        runtime_case = stages.case_with_journey(case, journey_data)
+        runtime_case = stages.case_with_journey(case, journey_data, {e.get("id") for e in evidence if isinstance(e, dict) and e.get("id")})
         # 讓 run 目錄自己帶完整案例邊界，`sbp-gen reference --run <dir>` 事後補跑時
         # 不用依賴原始 --case 檔案的路徑還存在（design.md 決定一）。
         _write_yaml(args.out / "case.yaml", runtime_case)
@@ -864,14 +872,21 @@ def _main_reference(argv: list[str]) -> int:
 
 
 def _main_implementation_research(argv: list[str]) -> int:
-    """`sbp-gen implementation-research --run <dir>`——pre-blueprint-implementation-research：
-    研究者在服務藍圖站勾選落地研究問題、按「開始落地研究」時執行的那一個工作。
-    只跑目前這組已採用解方與勾選問題的作業（伺服器已先寫好 running 的作業紀錄），
-    結果是 complete／no_admissible／failed 之一，寫在作業目錄裡；不建立 SBP。"""
+    """`sbp-gen implementation-research --run <dir>`——built-in-implementation-research：
+    建立 SBP 工作裡的內建落地研究，依目前已採用解方、選定 HMW 與目標 Persona 產生問題。
+    沒有採用解方就略過；同一組輸入已經研究完就沿用，不重查。結果是 complete／
+    no_admissible／failed 之一，寫在作業目錄裡；不建立 SBP。"""
     from . import implementation_research
     p = argparse.ArgumentParser(prog="sbp-gen implementation-research", description="建立 SBP 前的落地研究")
     p.add_argument("--run", required=True, type=Path, dest="run_dir")
     args = p.parse_args(argv)
+    if not implementation_research.snapshot(args.run_dir)["ticked_question_ids"]:
+        print("落地研究：沒有採用的解方，略過")
+        return 0
+    finished = implementation_research.current_operation(args.run_dir)
+    if finished and finished.get("state") in ("complete", implementation_research.NO_ADMISSIBLE):
+        print(f"落地研究：沿用同一組輸入的結果（{finished['state']}）")
+        return 0
     try:
         operation = implementation_research.run(args.run_dir)
     except implementation_research.ImplementationResearchError as exc:
@@ -1040,7 +1055,7 @@ def _main_coding_candidates(argv: list[str]) -> int:
     raw_text, manifest = _read_raw(args.input)
     source_digest = hashlib.sha256(raw_text.encode("utf-8")).hexdigest()
     state_path = args.out / "run.json"
-    if args.out.exists() and any(args.out.iterdir()) and not state_path.is_file():
+    if run_lock.content_entries(args.out) and not state_path.is_file():
         print("輸出位置已存在但不是可續作的編碼 run。", file=sys.stderr)
         return 1
     state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.is_file() else {}
@@ -1298,11 +1313,26 @@ def _main_category_properties(argv: list[str]) -> int:
         case = yaml.safe_load(case_path.read_text(encoding="utf-8")) or {}
         case_id = case.get("case_id") or case_id
 
+    # Rejected attempts are kept for diagnosis beside the runs, never inside
+    # this run's research artifacts (same place as align's and open coding's).
+    diagnostics_dir = (run_dir.parent / "_diagnostics" / run_dir.name
+                       / f"category-properties-{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}")
+    # resume-category-properties-units: validated categories are kept here, as
+    # rejected attempts are kept under _diagnostics, until the product is written.
+    checkpoint_dir = run_dir.parent / "_partial" / run_dir.name / "category_properties"
     opts = {"case_id": case_id, "max_tokens": args.max_tokens,
-            "category_properties_model": args.model, "category_properties_effort": args.effort}
+            "category_properties_model": args.model, "category_properties_effort": args.effort,
+            "diagnostics_dir": str(diagnostics_dir), "checkpoint_dir": str(checkpoint_dir),
+            "category_properties_method_version": hmw_formation.METHOD_VERSIONS["category_properties"]}
     try:
         data, usage = stages.category_properties(axial_data, evidence, opts)
         _write_yaml(run_dir / "category_properties.yaml", data)
+        shutil.rmtree(checkpoint_dir, ignore_errors=True)
+        for folder in (checkpoint_dir.parent, checkpoint_dir.parent.parent):
+            try:
+                folder.rmdir()
+            except OSError:
+                break  # still holds saved units of another step or run
         # Lens steps can run concurrently in HMW formation: write only this
         # step's own keys, never the whole state read at the start.
         run_state_file.record_stage(run_json_path, "category_properties", state_key="category_properties_state",
@@ -1500,7 +1530,7 @@ def _main_persona_matrix(argv: list[str]) -> int:
         scope = hmw_scope_module.resolve(run_dir)
         data, usage = stages.persona_matrix(
             evidence, categories_doc_full, opts, selected_axes=selected_axes, core_category=core_category,
-            hmw_scope=scope,
+            hmw_scope=scope, attribution=source_attribution.load(run_dir),
         )
         if scope:
             data["framed_by"] = {"primary_hmw_selection": hmw_scope_module.digest(scope)}
@@ -1517,6 +1547,61 @@ def _main_persona_matrix(argv: list[str]) -> int:
         _persist(run_json_path, run_state)
         print(f"Persona Matrix 失敗，run 其他狀態不受影響：{exc}", file=sys.stderr)
         return 1
+
+
+def _main_source_attribution(argv: list[str]) -> int:
+    """`sbp-gen source-attribution --run <dir> [--input <raw dir>] [--confirm 來源=...] [--show]`
+    -- speaker-attribution-for-persona: draft each source's participants and
+    read every excerpt's speaker from explicit marks in the raw text, into
+    `source_attribution.yaml`; evidence.yaml is not touched. A confirmation is
+    `來源=single`, `來源=unknown` or `來源=multiple:人數:標記,標記` (人數 may be
+    `?`). Entries the researcher confirmed before are kept. `--show` prints the
+    Persona quality summary for the run's current Persona Matrix."""
+    p = argparse.ArgumentParser(prog="sbp-gen source-attribution", description="來源受訪人數與講者對照")
+    p.add_argument("--run", required=True, type=Path, dest="run_dir")
+    p.add_argument("--input", type=Path, default=None, dest="raw_dir")
+    p.add_argument("--confirm", action="append", default=[])
+    p.add_argument("--show", action="store_true")
+    args = p.parse_args(argv)
+
+    run_dir = args.run_dir
+    evidence_path = run_dir / "evidence.yaml"
+    if not evidence_path.exists():
+        print(f"{evidence_path} 不存在，無法建立來源與講者對照。", file=sys.stderr)
+        return 1
+    evidence = yaml.safe_load(evidence_path.read_text(encoding="utf-8")) or []
+    run_state = json.loads((run_dir / "run.json").read_text(encoding="utf-8")) if (run_dir / "run.json").exists() else {}
+    raw_dir = args.raw_dir
+    if raw_dir is None and run_state.get("selected_case"):
+        raw_dir = Path(run_state["selected_case"]).parent / "raw"
+    if raw_dir is None or not raw_dir.is_dir():
+        print("找不到這個 run 的原始資料夾；用 --input 指定。", file=sys.stderr)
+        return 1
+    raw_text, _manifest = _read_raw(raw_dir)
+    case_id = (yaml.safe_load((run_dir / "case.yaml").read_text(encoding="utf-8")) or {}).get("case_id") \
+        if (run_dir / "case.yaml").exists() else run_dir.name
+    doc = source_attribution.merge_draft(source_attribution.load(run_dir),
+                                         source_attribution.draft_sources(evidence, raw_text),
+                                         source_attribution.derive_speakers(evidence, raw_text), case_id)
+    try:
+        for item in args.confirm:
+            source, _, value = item.partition("=")
+            kind, _, rest = value.partition(":")
+            count, _, labels = rest.partition(":")
+            source_attribution.confirm(doc, source.strip(), kind.strip(),
+                                       int(count) if count.strip().isdigit() else None,
+                                       [x.strip() for x in labels.split(",") if x.strip()])
+    except ValueError as exc:
+        print(f"沒有寫入：{exc}", file=sys.stderr)
+        return 1
+    source_attribution.save(run_dir, doc)
+    print(f"完成：{run_dir / source_attribution.FILENAME}（{len(doc['sources'])} 份來源、"
+          f"{len(doc['speakers'])} 則證據有講者標記）")
+    if args.show:
+        persona_path = run_dir / "persona_matrix.yaml"
+        persona_doc = yaml.safe_load(persona_path.read_text(encoding="utf-8")) if persona_path.exists() else None
+        print(json.dumps(source_attribution.attribution_report(persona_doc, evidence, doc), ensure_ascii=False, indent=1))
+    return 0
 
 
 def _main_persona_content(argv: list[str]) -> int:
@@ -1958,6 +2043,19 @@ def _main_journey(argv: list[str]) -> int:
     return 0
 
 
+
+def record_solution_formation(run_state: dict, journey: dict, output: dict, hmw_digest: str | None) -> None:
+    """solution-reconfirmation: record, per developed step, the HMW the Solution
+    was formed under and the step/Solution it was formed for (run.json only;
+    journey_proposal.yaml keeps its structure)."""
+    from . import solution_applicability as applicability
+    developed = {m.get("step_id") for m in output.get("moments") or [] if isinstance(m, dict)}
+    records = run_state.setdefault(applicability.FORMATION_KEY, {})
+    now = applicability.now_iso()
+    for step in applicability.primary_steps(journey):
+        if step.get("id") in developed:
+            records[step["id"]] = applicability.formation_record(step, hmw_digest, now)
+
 def _main_journey_solutions(argv: list[str]) -> int:
     """`sbp-gen journey-solutions --run <dir>` (cjm-experience-and-moment-solutions):
     develop Solutions only for the Journey moments the researcher selected
@@ -1990,8 +2088,9 @@ def _main_journey_solutions(argv: list[str]) -> int:
     opts = {"max_tokens": args.max_tokens, "journey_solutions_model": args.model,
             "journey_solutions_effort": args.effort}
     try:
+        formation_scope = hmw_scope_module.resolve(run_dir)
         output, usage = stages.journey_solutions(journey_data, evidence, opts, confirmed_persona=confirmed_persona,
-                                                 hmw_scope=hmw_scope_module.resolve(run_dir))
+                                                 hmw_scope=formation_scope)
         updated = stages.apply_journey_solutions(journey_data, output)
         evidence_ids = {e.get("id") for e in evidence if isinstance(e, dict) and e.get("id")}
         errors = stages._journey_errors(updated, evidence_ids, allow_split_stages=True)
@@ -1999,6 +2098,7 @@ def _main_journey_solutions(argv: list[str]) -> int:
             raise ValueError("寫回旅程後驗證沒有通過：" + "；".join(errors[:3]))
         _write_yaml(proposal_path, updated)
         run_state.setdefault("usage", {})["journey_solutions"] = usage
+        record_solution_formation(run_state, updated, output, hmw_scope_module.digest(formation_scope))
         run_state["journey_solutions_state"] = "complete"
         run_state.pop("journey_solutions_failure", None)
         _persist(run_json_path, run_state)
@@ -2116,42 +2216,59 @@ def _main_structure(argv: list[str]) -> int:
     p.add_argument("--model", default=None)
     p.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"], default=None)
     p.add_argument("--researcher-note", default=None, dest="researcher_note")
+    p.add_argument("--performance-trace", action="store_true", help="另存本次資料準備、模型呼叫、驗證與寫入耗時")
     args = p.parse_args(argv)
 
+    if not args.performance_trace:
+        return _execute_structure(args)
+    directory = args.run_dir.parent / "_diagnostics" / args.run_dir.name / "performance"
+    with perf.capture("structure", directory) as trace:
+        result = _execute_structure(args)
+        trace.outcome = "succeeded" if result == 0 else "failed"
+        return result
+
+
+def _execute_structure(args) -> int:
     run_dir = args.run_dir
-    required = [
-        ("evidence.yaml", None),
-        ("conflicts.yaml", "`sbp-gen compare --run {run_dir}`"),
-        ("case.yaml", None),
-        ("journey.yaml", "`sbp-gen journey --run {run_dir} --confirm-file <研究者確認過的檔案>`"),
-    ]
-    for filename, hint in required:
-        path = run_dir / filename
-        if not path.exists():
-            if hint:
-                print(f"{path} 不存在，無法建立現況藍圖——先跑過 {hint.format(run_dir=run_dir)}。", file=sys.stderr)
-            else:
-                print(f"{path} 不存在，無法建立現況藍圖——先跑過主要生成指令，"
-                      f"拿到帶 {filename} 的 run 目錄再回來跑。", file=sys.stderr)
-            return 1
+    with perf.phase('prepare', operation='read_inputs'):
+        required = [
+            ("evidence.yaml", None),
+            ("conflicts.yaml", "`sbp-gen compare --run {run_dir}`"),
+            ("case.yaml", None),
+            ("journey.yaml", "`sbp-gen journey --run {run_dir} --confirm-file <研究者確認過的檔案>`"),
+        ]
+        for filename, hint in required:
+            path = run_dir / filename
+            if not path.exists():
+                if hint:
+                    print(f"{path} 不存在，無法建立現況藍圖——先跑過 {hint.format(run_dir=run_dir)}。", file=sys.stderr)
+                else:
+                    print(f"{path} 不存在，無法建立現況藍圖——先跑過主要生成指令，"
+                          f"拿到帶 {filename} 的 run 目錄再回來跑。", file=sys.stderr)
+                return 1
 
-    run_json_path = run_dir / "run.json"
-    run_state = json.loads(run_json_path.read_text(encoding="utf-8")) if run_json_path.exists() else {}
-    evidence = yaml.safe_load((run_dir / "evidence.yaml").read_text(encoding="utf-8")) or []
-    conflicts = yaml.safe_load((run_dir / "conflicts.yaml").read_text(encoding="utf-8")) or []
-    case = yaml.safe_load((run_dir / "case.yaml").read_text(encoding="utf-8")) or {}
-    journey_data = yaml.safe_load((run_dir / "journey.yaml").read_text(encoding="utf-8")) or {}
+        run_json_path = run_dir / "run.json"
+        run_state = json.loads(run_json_path.read_text(encoding="utf-8")) if run_json_path.exists() else {}
+        evidence = yaml.safe_load((run_dir / "evidence.yaml").read_text(encoding="utf-8")) or []
+        conflicts = yaml.safe_load((run_dir / "conflicts.yaml").read_text(encoding="utf-8")) or []
+        case = yaml.safe_load((run_dir / "case.yaml").read_text(encoding="utf-8")) or {}
+        journey_data = yaml.safe_load((run_dir / "journey.yaml").read_text(encoding="utf-8")) or {}
 
-    opts = {"max_tokens": args.max_tokens, "structure_model": args.model, "structure_effort": args.effort}
+    # Rejected attempts are kept for diagnosis beside the runs, as open coding does.
+    diagnostics_dir = (run_dir.parent / "_diagnostics" / run_dir.name
+                       / f"structure-{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}")
+    opts = {"max_tokens": args.max_tokens, "structure_model": args.model, "structure_effort": args.effort,
+            "diagnostics_dir": str(diagnostics_dir)}
     try:
-        runtime_case = stages.case_with_journey(case, journey_data)
-        axial_path = run_dir / "axial_coding.yaml"
-        axial_doc = (yaml.safe_load(axial_path.read_text(encoding="utf-8")) or {}) if axial_path.exists() else {}
-        # pre-blueprint-implementation-research: only claims the researcher
-        # selected in the current, reviewed research; empty otherwise.
-        from . import implementation_research
-        external_references = (implementation_research.accepted_references(run_dir)
-                               if stages.journey_has_solutions(journey_data) else [])
+        with perf.phase('prepare', operation='resolve_inputs'):
+            runtime_case = stages.case_with_journey(case, journey_data, {e.get("id") for e in evidence if isinstance(e, dict) and e.get("id")})
+            axial_path = run_dir / "axial_coding.yaml"
+            axial_doc = (yaml.safe_load(axial_path.read_text(encoding="utf-8")) or {}) if axial_path.exists() else {}
+            # pre-blueprint-implementation-research: only claims the researcher
+            # selected in the current, reviewed research; empty otherwise.
+            from . import implementation_research
+            external_references = (implementation_research.accepted_references(run_dir)
+                                   if stages.journey_has_solutions(journey_data) else [])
         graph, usage = stages.structure(evidence, conflicts, runtime_case, opts, args.researcher_note, journey_data,
                                         coding_categories=axial_doc.get("categories"),
                                         external_references=external_references)
@@ -2167,13 +2284,16 @@ def _main_structure(argv: list[str]) -> int:
         print(f"現況藍圖建立失敗，run 其他狀態不受影響：{exc}", file=sys.stderr)
         return 1
 
-    evidence_ids = {e["id"] for e in evidence}
-    draft = stages.project(
-        graph, None, conflicts, runtime_case, journey_data=journey_data,
-        annotations=graph.get("annotations"), evidence=evidence,
-    )
-    errors = V.structural_errors(draft, V.load_schema("sbp-draft")) + V.projection_errors(
-        draft, evidence_ids, runtime_case, journey=journey_data)
+    with perf.phase('validation', operation='projection') as observation:
+        evidence_ids = {e["id"] for e in evidence}
+        draft = stages.project(
+            graph, None, conflicts, runtime_case, journey_data=journey_data,
+            annotations=graph.get("annotations"), evidence=evidence,
+        )
+        errors = V.structural_errors(draft, V.load_schema("sbp-draft")) + V.projection_errors(
+            draft, evidence_ids, runtime_case, journey=journey_data)
+        if observation is not None:
+            observation.update(error_count=len(errors), errors=[str(e) for e in errors[:20]])
     if errors:
         run_state["structure_state"] = "failed"
         run_state["structure_failure"] = "投影契約無效：" + "; ".join(errors)
@@ -2184,8 +2304,9 @@ def _main_structure(argv: list[str]) -> int:
     _write_yaml(run_dir / "sbp_draft.yaml", draft)
     # track-sbp-upstream-freshness：記下這份藍圖實際依據的上游內容；之後不改寫。
     from . import sbp_basis
-    run_state["sbp_basis"] = sbp_basis.basis_after_build(stages.structure_input_view(
-        evidence, runtime_case, journey_data, axial_doc.get("categories"), external_references))
+    with perf.phase('validation', operation='basis_fingerprint'):
+        run_state["sbp_basis"] = sbp_basis.basis_after_build(stages.structure_input_view(
+            evidence, runtime_case, journey_data, axial_doc.get("categories"), external_references))
     _persist(run_json_path, run_state)
     print(f"完成：{run_dir / 'service_graph.yaml'}（{len(graph.get('nodes') or [])} nodes）、"
           f"{run_dir / 'sbp_draft.yaml'}（{len(draft.get('cells') or [])} cells）")
@@ -2299,15 +2420,20 @@ def _main_how_might_we(argv: list[str]) -> int:
                                            selections, selective_doc)
         _record_narrative_framing(data, selection_doc)
         _write_yaml(run_dir / "hmw.yaml", data)
-        run_state.setdefault("usage", {})["how_might_we"] = usage
-        run_state["hmw_state"] = "complete"
-        _persist(run_json_path, run_state)
+
+        # run-state-write-integrity: this step runs in an HMW-formation worker
+        # thread; it changes only its own keys, in one transaction.
+        def completed(state: dict) -> None:
+            state.setdefault("usage", {})["how_might_we"] = usage
+            state["hmw_state"] = "complete"
+        run_state_file.update(run_json_path, completed)
         print(f"完成：{run_dir / 'hmw.yaml'} 產生 {len(data.get('entries') or [])} 則 HMW")
         return 0
     except Exception as exc:
-        run_state["hmw_state"] = "failed"
-        run_state["hmw_failure"] = str(exc)
-        _persist(run_json_path, run_state)
+        def failed(state: dict) -> None:
+            state["hmw_state"] = "failed"
+            state["hmw_failure"] = str(exc)
+        run_state_file.update(run_json_path, failed)
         print(f"How Might We 失敗，run 其他狀態不受影響：{exc}", file=sys.stderr)
         return 1
 
@@ -2921,16 +3047,18 @@ def _main_primary_hmw(argv: list[str]) -> int:
                 return 0
             _record_narrative_framing(data, narrative_job_selection)
             _write_yaml(run_dir / "primary_hmw_candidates.yaml", data)
-            run_state.setdefault("usage", {})["primary_hmw_candidates"] = usage
-            run_state["primary_hmw_candidates_state"] = "complete"
-            _persist(run_json_path, run_state)
+            def completed(state: dict) -> None:
+                state.setdefault("usage", {})["primary_hmw_candidates"] = usage
+                state["primary_hmw_candidates_state"] = "complete"
+            run_state_file.update(run_json_path, completed)
             print(f"完成：{run_dir / 'primary_hmw_candidates.yaml'} 產生 "
                   f"{len(data.get('candidates') or [])} 則候選主要 HMW")
             return 0
         except Exception as exc:
-            run_state["primary_hmw_candidates_state"] = "failed"
-            run_state["primary_hmw_candidates_failure"] = str(exc)
-            _persist(run_json_path, run_state)
+            def failed(state: dict, failure: str = str(exc)) -> None:
+                state["primary_hmw_candidates_state"] = "failed"
+                state["primary_hmw_candidates_failure"] = failure
+            run_state_file.update(run_json_path, failed)
             print(f"主要 HMW 候選失敗，run 其他狀態不受影響：{exc}", file=sys.stderr)
             return 1
 
@@ -3575,6 +3703,7 @@ SUBCOMMANDS = {
     "category-properties": "_main_category_properties",
     "axial-coding": "_main_axial_coding",
     "persona-matrix": "_main_persona_matrix",
+    "source-attribution": "_main_source_attribution",
     "persona-content": "_main_persona_content",
     "jtbd": "_main_jtbd",
     "job-map": "_main_job_map",
@@ -3623,6 +3752,55 @@ def _run_dir_from_argv(argv: list[str]) -> Path | None:
     return None
 
 
+# run-state-write-integrity: every command that names a run directory takes the
+# project lock at its entry point, before it reads anything -- adopting the
+# descriptor the server handed over, or taking it without waiting when run from
+# the command line. These subcommands never write run.json or
+# journey_proposal.yaml (their outputs are other files), so they skip the lock
+# and stay available while a job holds it; if one ever tried to write a state
+# file, run_files would refuse because it owns no lock.
+_UNLOCKED_SUBCOMMANDS = frozenset({
+    "journey-annotations", "chart-guides", "as-is-research",
+    "implementation-research", "to-be", "to-be-revision",
+})
+def _flag_value(argv: list[str], flags: tuple[str, ...]) -> Path | None:
+    for index, token in enumerate(argv):
+        if token in flags and index + 1 < len(argv):
+            return Path(argv[index + 1])
+        for flag in flags:
+            if token.startswith(f"{flag}="):
+                return Path(token.split("=", 1)[1])
+    return None
+
+
+def _lock_dir_from_argv(argv: list[str]) -> Path | None:
+    """The run directory a command writes: `--out` when given (e.g. a journey
+    recheck reads `--run` but writes its own `--out`), else `--run`/`--run-dir`."""
+    return _flag_value(argv, ("--out",)) or _flag_value(argv, _RUN_DIR_FLAGS)
+
+
+def _with_run_lock(command):
+    import functools
+
+    @functools.wraps(command)
+    def locked(argv: list[str], *args, **kwargs):
+        run_dir = _lock_dir_from_argv(argv)
+        if run_dir is None:
+            return command(argv, *args, **kwargs)
+        try:
+            lease = run_lock.adopt_or_acquire(run_dir)
+        except run_lock.RunLockBusy as busy:
+            print(str(busy), file=sys.stderr)
+            return run_lock.RUN_LOCK_BUSY_EXIT
+        try:
+            return command(argv, *args, **kwargs)
+        finally:
+            lease.release()
+
+    locked.run_lock_wrapped = True
+    return locked
+
+
 def _dispatch(argv: list[str]) -> int:
     # 進入點是在呼叫當下才從模組取出來的，不是 import 時就綁進表格：測試靠
     # monkeypatch 換掉模組屬性來確認路由走對了哪一支，綁死函式物件會讓那些
@@ -3650,6 +3828,25 @@ def main() -> int:
 
     run_dir = _run_dir_from_argv(argv)
     transport_llm.configure_workspace(run_dir)
+    # The provenance written after the command returns belongs to the same
+    # locked operation, so the lock spans both.
+    lease = None
+    # Every transported command records its provenance in run.json, including
+    # the ones that otherwise never write a state file.
+    if run_dir is not None:
+        try:
+            lease = run_lock.adopt_or_acquire(run_dir)
+        except run_lock.RunLockBusy as busy:
+            print(str(busy), file=sys.stderr)
+            return run_lock.RUN_LOCK_BUSY_EXIT
+    try:
+        return _transport_dispatch(argv, run_dir, transport_llm)
+    finally:
+        if lease is not None:
+            lease.release()
+
+
+def _transport_dispatch(argv: list[str], run_dir: Path | None, transport_llm) -> int:
     try:
         status = _dispatch(argv)
     except transport_llm.TransportSuspended as suspension:
@@ -3669,6 +3866,13 @@ def main() -> int:
     if status == 0 and done and run_dir is not None:
         transport_llm.record_provenance(run_dir / "run.json", done)
     return status
+
+
+for _subcommand, _entry_name in SUBCOMMANDS.items():
+    if _subcommand not in _UNLOCKED_SUBCOMMANDS:
+        globals()[_entry_name] = _with_run_lock(globals()[_entry_name])
+_main_generate = _with_run_lock(_main_generate)
+del _subcommand, _entry_name
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ two-screen and Journey-first behavior remains relevant only to legacy runs.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import base64
 import copy
 import contextvars
@@ -15,6 +16,7 @@ import email
 import email.policy
 import errno
 import hashlib
+import functools
 import io
 import json
 import os
@@ -39,6 +41,8 @@ import yaml
 
 REPO = Path(__file__).resolve().parent.parent.parent
 UI = Path(__file__).resolve().parent / "ui.html"
+# workbench-v3-frontend: prototype-v3 wired to the real system; served at / (and /v3), the previous interface at /classic.
+UI_V3 = Path(__file__).resolve().parent / "ui-v3.html"
 RELATION_LAYOUT = Path(__file__).resolve().parent / "relation_layout.js"
 WORKBENCH_CONTRACT = REPO / "design-system" / "desktop-workbench.yaml"
 DEFAULT_DATA_ROOT = REPO
@@ -88,6 +92,7 @@ PREVIEW_JOURNEY = [
 # sys.path 根，不新增依賴、不重複實作驗證規則（add-run-watch-mode design.md
 # 「Decision: Validity gate reuses validate_sbp」）。
 sys.path.insert(0, str(REPO / "tools"))
+from sbp_review import artifact_identity  # noqa: E402
 from sbp_review import auth as sbp_auth  # noqa: E402
 from sbp_review import client_deliverables  # noqa: E402
 from sbp_review import child_processes  # noqa: E402
@@ -95,14 +100,18 @@ from sbp_review import diagnostics as sbp_diagnostics  # noqa: E402
 from sbp_review import instance_lock as sbp_instance_lock  # noqa: E402
 from sbp_review import provider_setup as sbp_provider_setup  # noqa: E402
 import evidence_locator  # noqa: E402
+from yaml_loader import safe_load as load_safe_yaml  # noqa: E402
 import narrative_framing  # noqa: E402
 import hmw_scope  # noqa: E402
+import formation_basis  # noqa: E402
+from sbp_gen import solution_applicability as sbp_solution_applicability  # noqa: E402
 import pathnames  # noqa: E402
 import framework_points  # noqa: E402
 import storage_locations  # noqa: E402
 from internal_id_patterns import ID_PATTERN, readable_without_ids  # noqa: E402
 import validate_sbp as V  # noqa: E402
 from sbp_gen import ingest as sbp_ingest  # noqa: E402
+from sbp_gen import source_attribution as sbp_source_attribution  # noqa: E402
 from sbp_gen import coding_deliverable as sbp_coding_deliverable  # noqa: E402
 from sbp_gen import as_is_research as sbp_as_is_research  # noqa: E402
 from sbp_gen import decisions as sbp_decisions  # noqa: E402
@@ -110,6 +119,8 @@ from sbp_gen import axial_coding_edits as sbp_axial_coding_edits  # noqa: E402
 from sbp_gen import inference_reviews as sbp_inference_reviews  # noqa: E402
 from sbp_gen import gates as sbp_gates  # noqa: E402
 from sbp_gen import hmw_formation as sbp_hmw_formation  # noqa: E402
+from sbp_gen import run_files as sbp_run_files  # noqa: E402
+from sbp_gen import run_lock as sbp_run_lock  # noqa: E402
 from sbp_gen import improvement_goal_review as sbp_improvement_goal_review  # noqa: E402
 from sbp_gen import research_catalog_review as sbp_research_catalog_review  # noqa: E402
 from sbp_gen import research_review_record as sbp_research_review_record  # noqa: E402
@@ -198,48 +209,43 @@ def _is_ordered_subsequence(candidate: list, reference: tuple) -> bool:
 
 
 def _write_json_atomic(path: Path, value: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary_name = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", dir=path.parent,
-            prefix=path.name + ".", suffix=".tmp", delete=False,
-        ) as temporary:
-            temporary_name = temporary.name
-            json.dump(value, temporary, ensure_ascii=False, indent=2)
-            temporary.write("\n")
-            temporary.flush()
-            os.fsync(temporary.fileno())
-        os.replace(temporary_name, path)
-        temporary_name = None
-    finally:
-        if temporary_name is not None:
-            try:
-                Path(temporary_name).unlink()
-            except FileNotFoundError:
-                pass
+    # run-state-write-integrity: one implementation. For run.json the caller
+    # must own the project lock, and a malformed existing file is never replaced.
+    sbp_run_files.write_json_atomic(path, value)
 
 
 def _write_yaml_atomic(path: Path, value) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary_name = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", dir=path.parent,
-            prefix=path.name + ".", suffix=".tmp", delete=False,
-        ) as temporary:
-            temporary_name = temporary.name
-            yaml.safe_dump(value, temporary, allow_unicode=True, sort_keys=False)
-            temporary.flush()
-            os.fsync(temporary.fileno())
-        os.replace(temporary_name, path)
-        temporary_name = None
-    finally:
-        if temporary_name is not None:
-            try:
-                Path(temporary_name).unlink()
-            except FileNotFoundError:
-                pass
+    sbp_run_files.write_yaml_atomic(path, value)
+
+
+def _owns_project_lock(resolve):
+    """run-state-write-integrity: a function that reads a project's state and
+    writes it back owns that project's lock for its whole body, taken at entry
+    before anything is read (re-entered when the calling route already holds
+    it). Never waits: a held lock raises RunLockBusy."""
+    def decorate(function):
+        @functools.wraps(function)
+        def locked(*args, **kwargs):
+            run_dir = resolve(*args, **kwargs)
+            if run_dir is None:
+                return function(*args, **kwargs)
+            with sbp_run_lock.hold(run_dir):
+                return function(*args, **kwargs)
+        return locked
+    return decorate
+
+
+def _run_dir_argument(run_dir, *args, **kwargs):
+    return run_dir
+
+
+def _named_run_dir(run_name, *args, **kwargs):
+    safe = _safe_component(str(run_name or ""), "")
+    return RUNS_DIR / safe if safe and (RUNS_DIR / safe).is_dir() else None
+
+
+def _payload_run_dir(payload, *args, **kwargs):
+    return _named_run_dir(payload.get("run")) if isinstance(payload, dict) else None
 
 
 _FEEDBACK_CONTEXT_KEYS = {
@@ -357,7 +363,7 @@ class FrozenCorpusController:
 
     def _read_manifest(self) -> dict:
         try:
-            manifest = yaml.safe_load(self.manifest_path.read_text(encoding="utf-8"))
+            manifest = load_safe_yaml(self.manifest_path.read_text(encoding="utf-8"))
         except (OSError, yaml.YAMLError) as exc:
             raise FrozenCorpusConfigurationError(
                 f"frozen corpus manifest cannot be read: {exc}"
@@ -400,7 +406,7 @@ class FrozenCorpusController:
 
     def _materialize_case(self) -> None:
         source = self._assert_source_path("run/case.yaml")
-        case = yaml.safe_load(source.read_text(encoding="utf-8"))
+        case = load_safe_yaml(source.read_text(encoding="utf-8"))
         errors = V.structural_errors(case, V.load_schema("case")) + V.case_errors(case)
         if errors or case.get("case_id") != self.manifest["case_id"]:
             raise FrozenCorpusConfigurationError(
@@ -412,7 +418,7 @@ class FrozenCorpusController:
     def _load_checkpoint(self, checkpoint_id: str) -> dict:
         relative = self.manifest["checkpoints"].get(checkpoint_id)
         path = self._assert_source_path(relative)
-        checkpoint = yaml.safe_load(path.read_text(encoding="utf-8"))
+        checkpoint = load_safe_yaml(path.read_text(encoding="utf-8"))
         required = {
             "schema_version", "case_id", "scenario_id", "stable_identities",
             "checkpoint_id", "stage", "current_artifacts", "review_decisions",
@@ -441,7 +447,7 @@ class FrozenCorpusController:
             if artifact_type not in self.ARTIFACT_FILES:
                 raise FrozenCorpusPublicationError(f"unsupported frozen artifact: {artifact_type}")
             path = self._assert_source_path(relative)
-            artifacts[artifact_type] = yaml.safe_load(path.read_text(encoding="utf-8"))
+            artifacts[artifact_type] = load_safe_yaml(path.read_text(encoding="utf-8"))
         return artifacts
 
     def _content_errors(self, artifact_type: str, content, artifacts: dict) -> list[str]:
@@ -489,7 +495,7 @@ class FrozenCorpusController:
     def _current_versions(self) -> dict[str, str]:
         if not self.registry_path.is_file():
             return {}
-        registry = yaml.safe_load(self.registry_path.read_text(encoding="utf-8"))
+        registry = load_safe_yaml(self.registry_path.read_text(encoding="utf-8"))
         records = {
             item["version_id"]: item for item in registry.get("versions", [])
             if isinstance(item, dict) and item.get("version_id")
@@ -559,7 +565,7 @@ class FrozenCorpusController:
                 "expectations": [],
                 "other_scenarios": [],
             }
-        case = yaml.safe_load((
+        case = load_safe_yaml((
             self.data_root / "cases" / self.manifest["case_id"] / "case.yaml"
         ).read_text(encoding="utf-8"))
         graph = artifacts["as_is_graph"]
@@ -579,7 +585,7 @@ class FrozenCorpusController:
         # canonical case schema intentionally has no improvement goal, so the
         # frozen fixture carries that goal in its canonical To-be bundle and we
         # materialize it only in this production-shaped worker input.
-        run_case = yaml.safe_load((
+        run_case = load_safe_yaml((
             self.data_root / "cases" / self.manifest["case_id"] / "case.yaml"
         ).read_text(encoding="utf-8"))
         run_case["improvement_goal"] = artifacts["to_be_bundle"]["improvement_goal"]
@@ -712,7 +718,7 @@ class FrozenCorpusController:
                     result={"to_be_version_id": versions["to_be_bundle"]},
                     error=None,
                 )
-            registry = yaml.safe_load(self.registry_path.read_text(encoding="utf-8"))
+            registry = load_safe_yaml(self.registry_path.read_text(encoding="utf-8"))
             record = next(
                 item for item in registry["versions"]
                 if item["version_id"] == versions["to_be_bundle"]
@@ -736,7 +742,9 @@ class FrozenCorpusController:
     def publish_checkpoint(
         self, checkpoint_id: str, *, expected_previous_fingerprint: str | None
     ) -> dict:
-        with self._lock:
+        # run-state-write-integrity: the corpus run's run.json is a state file;
+        # the publication (and its rollback) owns the project lock throughout.
+        with self._lock, sbp_run_lock.hold(self.run_dir):
             return self._publish_checkpoint(
                 checkpoint_id,
                 expected_previous_fingerprint=expected_previous_fingerprint,
@@ -805,9 +813,14 @@ class FrozenCorpusController:
                 reverse=True,
             ):
                 if path not in before:
-                    path.unlink()
+                    if sbp_run_files.is_state_file(path):
+                        sbp_run_files.restore(path, None)
+                    else:
+                        path.unlink()
             for path, prior in before.items():
-                if prior is None:
+                if sbp_run_files.is_state_file(path):
+                    sbp_run_files.restore(path, prior)
+                elif prior is None:
                     try:
                         path.unlink()
                     except FileNotFoundError:
@@ -1037,7 +1050,7 @@ DEFERRED_DELIVERY_MESSAGE = "這份產出不在目前版本的範圍內。"
 # thing they all share, so it doubles as the human-readable "answer" shown in
 # navigation without inventing a per-mechanism label resolver), and a short
 # visible label. merge-primary-job-into-stage-two folded 主要 Job into
-# selective-coding, so the 主軸編碼與顧客任務選擇 entry carries both.
+# selective-coding, so the JTBD entry carries both.
 # merge-persona-matrix-selection-into-one-screen folded segmentation-axes and
 # target-segmentation into one nav stage the same way. The merged entry
 # reports decided/undecided from primary_target alone (not segmentation_axes)
@@ -1050,7 +1063,7 @@ DEFERRED_DELIVERY_MESSAGE = "這份產出不在目前版本的範圍內。"
 # route-current-stage-through-framework-points below must stay in the same
 # order as this one.
 FRAMEWORK_POINT_STAGES = (
-    ("selective-coding", "narrative_job", "rationale", "資料與編碼"),
+    ("selective-coding", "narrative_job", "rationale", "JTBD"),
     ("primary-hmw", "primary_hmw", "rationale", "HMW"),
     ("persona-target-selection", "primary_target", "primary_rationale", "Persona"),
 )
@@ -1298,7 +1311,7 @@ def _project_workbench_contract(path: Path = WORKBENCH_CONTRACT) -> dict:
         candidate_confirmation = contract.get("journey_candidate_confirmation")
         if not isinstance(candidate_confirmation, dict) or not all(
             isinstance(candidate_confirmation.get(key), dict) and candidate_confirmation[key].get("label")
-            for key in ("confirm_action", "continue_action")
+            for key in ("confirm_action", "continue_action", "build_action")
         ):
             raise WorkbenchContractError("journey candidate confirmation is incomplete")
 
@@ -1497,6 +1510,7 @@ def _derive_workbench_runtime(
     to_be_stale: bool = False,
     validation_detail: dict | None = None,
     operative_goal: str | None = None,
+    sbp_solutions_state: str | None = None,
     case_context: dict | None = None,
     journey_state: str | None = None,
     framework_point_stages: list[dict] | None = None,
@@ -1586,7 +1600,20 @@ def _derive_workbench_runtime(
             "as_is_blocked": not journey_confirmed,
         })
 
-    if not journey_confirmed:
+    if not journey_confirmed and review_state == "reviewed" and as_is_present:
+        # solution-reconfirmation: a blueprint confirmed earlier stays readable while
+        # the journey is not reconfirmed -- read-only, never shown as current.
+        runtime.append({
+            "id": "review-as-is",
+            "availability": "current" if current_stage == "review-as-is" else "available",
+            "status": "upstream-unresolved",
+            "primary_action_available": False,
+            "lifecycle_certainty": lifecycle_state or "legacy",
+            "operative_goal": operative_goal,
+            "advisory_findings": [],
+        })
+        runtime.append(_blocked_runtime_stage(stages_by_id["review-to-be"]))
+    elif not journey_confirmed:
         runtime.append(_blocked_runtime_stage(stages_by_id["review-as-is"]))
         runtime.append(_blocked_runtime_stage(stages_by_id["review-to-be"]))
     else:
@@ -1605,6 +1632,15 @@ def _derive_workbench_runtime(
             as_is_status = "confirmed"
         else:
             as_is_status = "pending-confirmation" if as_is_present else "processing"
+        # solution-reconfirmation: unresolved Solutions make the blueprint read-only;
+        # Solutions reconfirmed after its confirmation keep it identifiable as earlier.
+        # Only a blueprint confirmed before becomes "upstream-unresolved"; a running job
+        # or a failed generation keeps its own status.
+        if sbp_solutions_state == "unresolved" and review_state == "reviewed" \
+                and as_is_status in {"confirmed", "update-required", "pending-confirmation"}:
+            as_is_status = "upstream-unresolved"
+        elif sbp_solutions_state == "reconsidered" and as_is_status == "confirmed":
+            as_is_status = "upstream-reconsidered"
         # 「產出失敗」有兩個完全不同的來源：背景作業失敗，以及存下來的藍圖沒通過
         # 驗證。以前兩者收斂成同一個狀態詞、而且驗證這一路完全沒有說明，於是研究者
         # 看到的是一張完整的圖被標成失敗、確認鍵是灰的、沒有任何理由。兩種來源各自
@@ -1625,7 +1661,9 @@ def _derive_workbench_runtime(
             "primary_action_available": bool(
                 proposal_eligible
                 and as_is_present
-                and as_is_status in {"pending-confirmation", "update-required", "generation-failed"}
+                and sbp_solutions_state != "unresolved"
+                and as_is_status in {"pending-confirmation", "update-required", "generation-failed",
+                                     "upstream-reconsidered"}
             ),
             "lifecycle_certainty": lifecycle_state or "legacy",
             "operative_goal": operative_goal,
@@ -2084,6 +2122,7 @@ def _runtime_for_preview(contract: dict, preview_run: dict | None, preview_case:
         to_be_stale=to_be_is_stale,
         validation_detail=validation_detail,
         operative_goal=operative_goal,
+        sbp_solutions_state=_sbp_solutions_state(run_dir) if run_dir else None,
         journey_state=journey_state,
         fresh_as_is_path=bool(run_dir and _journey_is_candidate_path(run_dir)),
         case_context={
@@ -2175,7 +2214,9 @@ def _ui_status() -> dict:
 
 def _static_asset(path: str) -> tuple[bytes, str, dict[str, str]] | None:
     """Return review assets with the cache policy used by the HTTP handler."""
-    if path == "/":
+    # v3-becomes-root: the prototype-v3 workbench is the default page; the
+    # previous interface stays whole at /classic (PDF export prints from it).
+    if path == "/classic":
         document = UI.read_bytes().replace(
             WORKBENCH_TOKEN_PLACEHOLDER, _workbench_token_style().encode("utf-8"), 1,
         )
@@ -2183,6 +2224,11 @@ def _static_asset(path: str) -> tuple[bytes, str, dict[str, str]] | None:
             "Cache-Control": "no-store, max-age=0",
             "X-SBP-UI-Version": _ui_status()["version"],
         }
+    if path in ("/", "/v3"):
+        document = UI_V3.read_bytes().replace(
+            WORKBENCH_TOKEN_PLACEHOLDER, _workbench_token_style().encode("utf-8"), 1,
+        )
+        return document, "text/html; charset=utf-8", {"Cache-Control": "no-store, max-age=0"}
     if path == "/relation_layout.js":
         return RELATION_LAYOUT.read_bytes(), "text/javascript; charset=utf-8", {
             "Cache-Control": "no-store",
@@ -2233,6 +2279,7 @@ def _project_job_status() -> dict:
     with _job_lock:
         projected_job = dict(_job)
         projected_job.pop("proc", None)
+        projected_job.pop("run_lock", None)  # the job's project lease (run-state-write-integrity)
         projected_job.pop("owner_actor_id", None)
         projected_job.pop("case_ref", None)
         started = projected_job.pop("started_monotonic", None)
@@ -2287,14 +2334,46 @@ def _cancel_running_job() -> dict:
         _job["state"] = "cancelled"
         _job["phase"] = "已取消"
         _job["log"].append("[已取消] 研究者手動取消")
-        kind, out = _job.get("kind"), _job.get("out")
-    if kind == HMW_FORMATION_OPERATION_KIND:
-        _mark_hmw_formation_cancelled(out)
+    # run-state-write-integrity: HMW formation's own "cancelled" record is
+    # written by the job thread once the worker has exited (it owns the
+    # project lock until then), not here while the worker may still write.
     return {"ok": True, "state": "cancelled"}
 
 
+# run-state-write-integrity: in-process jobs that never write a project's
+# run.json / journey_proposal.yaml run without the project lock.
+_UNLOCKED_JOB_KINDS = frozenset({
+    sbp_to_be.OPERATION_KIND, sbp_as_is_research.OPERATION_KIND,
+    CHART_GUIDE_OPERATION_KIND, IMPLEMENTATION_RESEARCH_OPERATION_KIND,
+})
+JOB_START_BUSY_MESSAGE = "目前無法開始。此專案仍有其他工作正在執行，可能是先前未結束的背景分析。請稍後再試。"
+
+
 def _replace_job(**values) -> None:
-    """Replace, rather than merge, typed operation state under the shared lock."""
+    """Replace, rather than merge, typed operation state under the shared lock.
+
+    Registering a running project job takes that project's lock first, without
+    waiting (`RunLockBusy` leaves the job record untouched). The lease is kept
+    in `_job["run_lock"]`; `_start_job_thread` hands it to the job thread, which
+    releases it after its last write."""
+    lease = None
+    previous = _job.get("run_lock")
+    lock_dir = values.pop("lock_dir", None)
+    if values.get("state") == "running" and values.get("kind") not in _UNLOCKED_JOB_KINDS and values.get("out"):
+        target = Path(lock_dir) if lock_dir is not None else RUNS_DIR / str(values["out"])
+        if (previous is not None and previous.held_by_current_thread()
+                and previous.run_dir == os.path.realpath(target)):
+            # A job thread continuing with a follow-up job on the same project
+            # (Selective Coding -> JTBD candidates) keeps the lease it holds;
+            # its thread releases it once, at the very end.
+            lease = previous
+        else:
+            try:
+                lease = sbp_run_lock.acquire(target)
+            except sbp_run_lock.RunLockBusy:
+                raise sbp_run_lock.RunLockBusy(JOB_START_BUSY_MESSAGE) from None
+    if previous is not None and previous is not lease and not previous.adopted:
+        previous.release()  # registered but never handed to a job thread
     owner_actor_id = values.pop("owner_actor_id", None)
     if owner_actor_id is None:
         owner_actor_id = _current_validation_actor().get("actor_id")
@@ -2310,11 +2389,41 @@ def _replace_job(**values) -> None:
         "owner_actor_id": owner_actor_id,
     })
     _job.update(values)
+    if lease is not None:
+        _job["run_lock"] = lease
     if values.get("state") == "running":
         _job["started_monotonic"] = time.monotonic()
         summary = _REQUEST_EXECUTION_SUMMARY.get()
         if summary and "execution" not in values:
             _job["execution"] = summary
+
+
+def _start_job_thread(target, args: tuple = ()) -> None:
+    """Start a registered job's thread. The job's project lease (if any) moves
+    to that thread and is released only after `target` has returned, i.e.
+    after the job's last post-run write."""
+    with _job_lock:
+        lease = _job.get("run_lock")
+
+    def run() -> None:
+        if lease is not None:
+            lease.adopt_current_thread()
+        try:
+            target(*args)
+        finally:
+            if lease is not None:
+                with _job_lock:
+                    if _job.get("run_lock") is lease:
+                        _job.pop("run_lock", None)
+                lease.release()
+
+    threading.Thread(target=run, daemon=True).start()
+
+
+def _current_job_lease():
+    """The running job's project lease, for handing to its `sbp_gen` child."""
+    with _job_lock:
+        return _job.get("run_lock")
 
 
 def _recheck_failure_projection() -> dict:
@@ -2508,7 +2617,7 @@ def _validated_recheck_result(context: dict, *, require_server_admission: bool =
         return None
     state_path = result_dir / "run.json"
     if not state_path.exists():
-        if any(result_dir.iterdir()):
+        if sbp_run_lock.content_entries(result_dir):
             raise JourneyRecheckConflict("輸出識別已有不完整內容，請使用新的重查名稱。")
         return None
     try:
@@ -2868,7 +2977,7 @@ RETIRED_CASE_GOAL_REFUSAL = (
 
 
 def _load(path: Path):
-    return yaml.safe_load(path.read_text(encoding="utf-8"))
+    return load_safe_yaml(path.read_text(encoding="utf-8"))
 
 
 def _discover_cases() -> list[dict]:
@@ -3130,7 +3239,10 @@ def _persona_matrix_projection(run_name: str) -> tuple[dict, int]:
             "confirmed_axis_ids": confirmed_axis_ids,
             "default_axis_ids": default_axis_ids,
             "default_basis": (pair or {}).get("basis") if default_axis_ids else None,
-            "hmw_framing": {"state": framing}}, 200
+            "hmw_framing": {"state": framing},
+            # speaker-attribution-for-persona: read-only quality summary; never changes the matrix.
+            "attribution": sbp_source_attribution.attribution_report(
+                matrix, records, sbp_source_attribution.load(run_dir))}, 200
 
 
 EXECUTOR_LABELS = {"codex": "Codex", "claude": "Claude Code"}
@@ -3934,7 +4046,7 @@ def _staged_judgements(run_dir: Path) -> list[dict]:
     if not path.is_file():
         return []
     try:
-        staged = yaml.safe_load(path.read_text(encoding="utf-8"))
+        staged = load_safe_yaml(path.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001 - 讀不起來當作沒有，不要讓暫存變成失敗原因
         return []
     return [item for item in (staged or []) if isinstance(item, dict)]
@@ -4075,6 +4187,7 @@ def _blueprint_round_content(run_dir: Path, version_id: str) -> dict:
     return _load(snapshot) or {}
 
 
+@_owns_project_lock(_run_dir_argument)
 def _select_blueprint_round(run_dir: Path, version_id: str) -> dict:
     """Make the round the researcher is looking at the one that gets frozen.
 
@@ -4166,6 +4279,7 @@ _JUDGEMENT_APPLIERS = {
 }
 
 
+@_owns_project_lock(_run_dir_argument)
 def _apply_staged_judgements(run_dir: Path, *, recheck=None) -> dict | None:
     """Write the staged judgements into the graph, re-project, publish one round.
 
@@ -4245,6 +4359,7 @@ def _apply_staged_judgements(run_dir: Path, *, recheck=None) -> dict | None:
         raise
 
 
+@_owns_project_lock(_run_dir_argument)
 def _publish_applied_round(run_dir: Path, graph: dict, draft: dict, evidence: list, journey: dict,
                             case: dict, before: dict, staged: list[dict], recheck) -> dict:
     """The publish/registry/snapshot half of `_apply_staged_judgements`,
@@ -4369,7 +4484,7 @@ def _adoptable_run_content(run_dir: Path, state: dict) -> tuple[str, list, dict,
         journey_path = run_dir / "journey.yaml"
     if not journey_path.exists():
         raise RunAdoptionRejected("找不到這個 run 的歷程檔案。")
-    journey = yaml.safe_load(journey_path.read_text(encoding="utf-8"))
+    journey = load_safe_yaml(journey_path.read_text(encoding="utf-8"))
     evidence_ids = {item["id"] for item in evidence if isinstance(item, dict) and "id" in item}
     journey_errors = V.structural_errors(journey, V.load_schema("journey")) + sbp_stages._journey_errors(
         journey, evidence_ids, require_confirmed=True
@@ -4379,7 +4494,7 @@ def _adoptable_run_content(run_dir: Path, state: dict) -> tuple[str, list, dict,
     graph_path = run_dir / "service_graph.yaml"
     if not graph_path.exists():
         raise RunAdoptionRejected("找不到這個 run 的服務藍圖檔案。")
-    graph = yaml.safe_load(graph_path.read_text(encoding="utf-8"))
+    graph = load_safe_yaml(graph_path.read_text(encoding="utf-8"))
     graph_errors = V.structural_errors(graph, V.load_schema("service-graph"))
     if graph_errors:
         raise RunAdoptionRejected("這個 run 的服務藍圖不符合系統能讀的格式：" + "；".join(graph_errors[:3]))
@@ -4456,7 +4571,7 @@ def _sync_run_improvement_goal(run_dir: Path, state: dict) -> None:
     anchor = next((i for i, line in enumerate(lines) if line.startswith("case_id:")), len(lines) - 1)
     lines.insert(anchor + 1, rendered)
     updated = "\n".join(lines).rstrip("\n") + "\n"
-    reparsed = yaml.safe_load(updated)
+    reparsed = load_safe_yaml(updated)
     if not isinstance(reparsed, dict) or reparsed.get("improvement_goal") != goal:
         return
     temporary = snapshot_path.with_suffix(".yaml.tmp")
@@ -4464,6 +4579,7 @@ def _sync_run_improvement_goal(run_dir: Path, state: dict) -> None:
     os.replace(temporary, snapshot_path)
 
 
+@_owns_project_lock(_run_dir_argument)
 def _adopt_run_into_registry(run_dir: Path, state: dict) -> dict | None:
     """Register a run's existing content as a lifecycle baseline, once.
 
@@ -5132,7 +5248,7 @@ def _execution_for_context(context: dict) -> sbp_execution.ExecutionConfig:
 
 def _exception_text(error: BaseException) -> str:
     """Researcher-safe text for a handler's generic failure branch."""
-    if isinstance(error, sbp_execution.ExecutionConfigError):
+    if isinstance(error, (sbp_execution.ExecutionConfigError, sbp_run_lock.RunLockBusy)):
         return str(error)
     return f"{type(error).__name__}: {error}"
 
@@ -5265,7 +5381,7 @@ def _as_is_research_projection(run_name: object) -> dict:
             raise AsIsResearchPrerequisiteRejected("服務藍圖已更新。")
         result_ids = set((operation.get("result") or {}).values())
         if result_ids:
-            registry = yaml.safe_load(baseline.registry_path.read_text(encoding="utf-8"))
+            registry = load_safe_yaml(baseline.registry_path.read_text(encoding="utf-8"))
             states = sbp_lifecycle.resolve_lifecycle(registry)
             if any(states.get(version_id) != "current" for version_id in result_ids):
                 raise AsIsResearchPrerequisiteRejected("調研結果已不是目前版本。")
@@ -6100,6 +6216,7 @@ def _enqueue_as_is_research(
     return 202, sbp_as_is_research.project_operation(operation)
 
 
+@_owns_project_lock(_named_run_dir)
 def _mark_run_reviewed(run_name: str | None, review_state: str | None, reviewer: object = "") -> dict:
     """更新一個 run 的 `review_state`；只動這一個欄位與下面這兩個附屬欄位，不碰
     `generation_state`／`origin`／`quality_state`／`reference_state`
@@ -6123,7 +6240,7 @@ def _mark_run_reviewed(run_name: str | None, review_state: str | None, reviewer:
     run_json_path = run_dir / "run.json" if run_dir else None
     if not safe_name or not run_json_path.exists():
         raise ReviewRunNotFound(f"找不到 run: {run_name}")
-    state = json.loads(run_json_path.read_text(encoding="utf-8"))
+    state = sbp_run_files.read_state(run_json_path)
     state["review_state"] = review_state
     if review_state == "reviewed":
         state["reviewed_at"] = dt.datetime.now().isoformat(timespec="seconds")
@@ -6142,7 +6259,7 @@ def _mark_run_reviewed(run_name: str | None, review_state: str | None, reviewer:
         state.pop("reviewed_with_open_findings", None)
         state.pop("reviewed_artifact_fingerprint", None)
         state.pop("reviewer", None)
-    run_json_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    _write_json_atomic(run_json_path, state)
     return {"ok": True}
 
 
@@ -6176,7 +6293,7 @@ def _set_cell_coverage(run_name: str | None, step: object, layer: object, covera
         raise ReviewRunNotFound(f"找不到 run: {run_name}")
     if coverage_state == "confirmed_absent" and not (isinstance(absence_evidence_ref, str) and absence_evidence_ref.strip()):
         raise CellCoverageRejected("標記「本來就不會發生」需要先選一條證據佐證")
-    draft = yaml.safe_load(draft_path.read_text(encoding="utf-8")) or {}
+    draft = load_safe_yaml(draft_path.read_text(encoding="utf-8")) or {}
     cell = next((c for c in draft.get("cells") or [] if c.get("step") == step and c.get("layer") == layer), None)
     if cell is None:
         raise ReviewRunNotFound(f"run {run_name} 沒有 step={step} layer={layer} 這一格")
@@ -6212,7 +6329,7 @@ def _set_muted_inference_flag(run_name: str | None, node_id: object, muted: obje
     draft_path = run_dir / "sbp_draft.yaml" if run_dir else None
     if not safe_name or not draft_path.exists():
         raise ReviewRunNotFound(f"找不到 run: {run_name}")
-    draft = yaml.safe_load(draft_path.read_text(encoding="utf-8")) or {}
+    draft = load_safe_yaml(draft_path.read_text(encoding="utf-8")) or {}
     node = next((n for n in (draft.get("graph") or {}).get("nodes") or [] if n.get("id") == node_id), None)
     if node is None:
         raise ReviewRunNotFound(f"run {run_name} 沒有 node_id={node_id} 這個節點")
@@ -6239,7 +6356,7 @@ def _set_muted_inference_relation(run_name: str | None, relation_id: object, mut
     draft_path = run_dir / "sbp_draft.yaml" if run_dir else None
     if not safe_name or not draft_path.exists():
         raise ReviewRunNotFound(f"找不到 run: {run_name}")
-    draft = yaml.safe_load(draft_path.read_text(encoding="utf-8")) or {}
+    draft = load_safe_yaml(draft_path.read_text(encoding="utf-8")) or {}
     relation = next((r for r in draft.get("relations") or [] if r.get("id") == relation_id), None)
     if relation is None:
         raise ReviewRunNotFound(f"run {run_name} 沒有 relation_id={relation_id} 這條關係")
@@ -6272,6 +6389,7 @@ def _decode_data_url(value: object, expected: str) -> bytes:
         raise VersionSaveRejected("匯出檔格式不正確，請重新儲存版本") from exc
 
 
+@_owns_project_lock(_named_run_dir)
 def _save_reviewed_version(run_name: str | None, name: object, *, notes: object = "", reviewer: object = "",
                           svg_data: object = None, png_data: object = None) -> dict:
     """Create an immutable, atomically-published version bundle for one run."""
@@ -6741,6 +6859,7 @@ def _new_journey_internal_id(prefix: str, used: set[str]) -> str:
     return candidate
 
 
+@_owns_project_lock(_payload_run_dir)
 def _journey_operation_payload(payload: object) -> dict:
     """Apply one existing Phase 3 operation through the canonical commit path."""
     if not isinstance(payload, dict):
@@ -6949,6 +7068,7 @@ def _journey_step_evidence_views(steps: list[dict], evidence_by_id: dict[str, di
                 "role": record.get("role") or record.get("participant_role") or "研究來源",
                 "locator": record.get("locator") or "",
                 "text": record.get("text") or record.get("excerpt") or "",
+                "source": record.get("source") or "",
             })
         views.append({"evidence": records, "unresolved_count": unresolved})
     return views
@@ -7172,12 +7292,82 @@ def _journey_build_state(run_dir: Path) -> dict | None:
 # fingerprint of the candidate that was confirmed, so the Journey counts as
 # confirmed only while the current candidate still matches it. Confirming
 # writes those two files and starts nothing.
-def _journey_candidate_digest(proposal: dict) -> str:
+# sbp-solution-adoption-and-core-problem (2026-10-19 researcher ruling): Solutions
+# are developed and adopted at the SBP station, so confirming the CJM covers the
+# journey and its core problems, not the Solutions recorded on its steps.
+JOURNEY_SOLUTION_SIDE_FIELDS = ("solution_candidates", "selected_solution_ids", "solution_analysis", "solution_basis")
+JOURNEY_SOLUTION_SIDE_KINDS = {"solution", "delivery", "solution_candidate", "solution_selection",
+                               "candidate_delivery", "candidate_delivery_add"}
+
+
+def _journey_candidate_legacy_digest(proposal: dict) -> str:
+    """The CJM digest recorded before the ruling (it also covered Solutions)."""
     comparable = copy.deepcopy(proposal)
     for scenario in comparable.get("scenarios") or []:
         if isinstance(scenario, dict):
             scenario.pop("status", None)
     return sbp_lifecycle.canonical_content_digest(comparable)
+
+
+def _journey_candidate_digest(proposal: dict) -> str:
+    comparable = copy.deepcopy(proposal)
+    for scenario in comparable.get("scenarios") or []:
+        if isinstance(scenario, dict):
+            scenario.pop("status", None)
+            for step in scenario.get("steps") or []:
+                if isinstance(step, dict):
+                    for field in JOURNEY_SOLUTION_SIDE_FIELDS:
+                        step.pop(field, None)
+    return sbp_lifecycle.canonical_content_digest(comparable)
+
+
+def _upgrade_legacy_journey_confirmation(run_dir: Path, proposal: dict) -> None:
+    """A CJM confirmed under the earlier digest stays confirmed when its
+    Solutions are next edited: before that edit, the record is rewritten to the
+    current digest of the very proposal it confirmed."""
+    state_path = run_dir / "run.json"
+    try:
+        state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.is_file() else {}
+    except (OSError, ValueError):
+        return
+    record = state.get("journey_confirmation") or {}
+    if record and record.get("proposal_digest") == _journey_candidate_legacy_digest(proposal) \
+            and record.get("proposal_digest") != _journey_candidate_digest(proposal):
+        state["journey_confirmation"] = {**record, "proposal_digest": _journey_candidate_digest(proposal)}
+        _write_json_atomic(state_path, state)
+
+
+@_owns_project_lock(_run_dir_argument)
+def _sync_confirmed_solutions(run_dir: Path) -> None:
+    """While the CJM stays confirmed, Solutions developed, adopted or edited at
+    the SBP station are carried onto the confirmed journey the blueprint is
+    built from, so its freshness sees them."""
+    if _journey_confirmation(run_dir)["state"] != "confirmed":
+        return
+    proposal = _load(run_dir / "journey_proposal.yaml") or {}
+    journey_path = run_dir / "journey.yaml"
+    journey = _load(journey_path) if journey_path.is_file() else None
+    if not isinstance(journey, dict):
+        return
+    def steps_of(doc: dict) -> list:
+        scenario = next((s for s in doc.get("scenarios") or []
+                         if isinstance(s, dict) and s.get("id") == doc.get("primary_scenario")), {}) or {}
+        return [step for step in scenario.get("steps") or [] if isinstance(step, dict)]
+    source = {step.get("id"): step for step in steps_of(proposal)}
+    changed = False
+    for step in steps_of(journey):
+        origin = source.get(step.get("id"))
+        if origin is None:
+            continue
+        for field in JOURNEY_SOLUTION_SIDE_FIELDS:
+            if origin.get(field) != step.get(field):
+                if field in origin:
+                    step[field] = copy.deepcopy(origin[field])
+                else:
+                    step.pop(field, None)
+                changed = True
+    if changed:
+        _write_yaml_atomic(journey_path, journey)
 
 
 def _persona_lens_digest(run_dir: Path) -> str | None:
@@ -7204,13 +7394,6 @@ def _run_state(run_dir: Path) -> dict:
     return state if isinstance(state, dict) else {}
 
 
-def _write_run_state(run_dir: Path, state: dict) -> None:
-    path = run_dir / "run.json"
-    tmp = path.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp.replace(path)
-
-
 def _persona_hmw_retained(run_dir: Path) -> bool:
     """resolve-stale-at-researcher-gates: the researcher kept the Persona
     against the HMW that is selected now."""
@@ -7228,6 +7411,7 @@ def _persona_hmw_framing(run_dir: Path) -> str:
     return "retained" if _persona_hmw_retained(run_dir) else "stale"
 
 
+@_owns_project_lock(_run_dir_argument)
 def _retain_persona_against_hmw(run_dir: Path) -> dict:
     """「保留目前 Persona」: no model call, no Persona change; records that the
     current Persona is accepted against the HMW selected now."""
@@ -7236,13 +7420,13 @@ def _retain_persona_against_hmw(run_dir: Path) -> dict:
         raise StaleDecisionRejected("還沒有 Persona，沒有需要保留的內容。")
     if _persona_hmw_framing(run_dir) != "stale":
         raise StaleDecisionRejected("Persona 目前沒有需要決定保留或重新產生的 HMW 變更。")
-    state = _run_state(run_dir)
-    state["persona_hmw_basis"] = {"retained_against_hmw_digest": hmw_scope.current_digest(run_dir),
-                                  "retained_at": dt.datetime.now().isoformat(timespec="seconds")}
-    _write_run_state(run_dir, state)
+    with sbp_run_files.transaction(run_dir / "run.json") as state:
+        state["persona_hmw_basis"] = {"retained_against_hmw_digest": hmw_scope.current_digest(run_dir),
+                                      "retained_at": dt.datetime.now().isoformat(timespec="seconds")}
     return {"hmw_framing": {"state": _persona_hmw_framing(run_dir)}}
 
 
+@_owns_project_lock(_run_dir_argument)
 def _retain_journey_against_persona(run_dir: Path) -> dict:
     """「保留目前顧客旅程」: no model call, no Journey change; records that the
     current Journey is accepted against the Persona confirmed now. The
@@ -7252,14 +7436,13 @@ def _retain_journey_against_persona(run_dir: Path) -> dict:
     now = _persona_lens_digest(run_dir)
     if not now:
         raise StaleDecisionRejected("Persona 還沒確認目前這一版，請先回到 Persona 確認。")
-    state = _run_state(run_dir)
-    lens = dict(state.get("journey_persona_lens") or {})
-    if not lens.get("persona_digest"):
-        raise StaleDecisionRejected("這份顧客旅程沒有記錄是依哪一份 Persona 建立的，請依目前 Persona 重新建立。")
-    lens["retained_against_persona_digest"] = now
-    lens["retained_at"] = dt.datetime.now().isoformat(timespec="seconds")
-    state["journey_persona_lens"] = lens
-    _write_run_state(run_dir, state)
+    with sbp_run_files.transaction(run_dir / "run.json") as state:
+        lens = dict(state.get("journey_persona_lens") or {})
+        if not lens.get("persona_digest"):
+            raise StaleDecisionRejected("這份顧客旅程沒有記錄是依哪一份 Persona 建立的，請依目前 Persona 重新建立。")
+        lens["retained_against_persona_digest"] = now
+        lens["retained_at"] = dt.datetime.now().isoformat(timespec="seconds")
+        state["journey_persona_lens"] = lens
     return {"journey_current": _journey_persona_current(run_dir)}
 
 
@@ -7298,7 +7481,8 @@ def _journey_confirmation(run_dir: Path) -> dict:
             "journey_confirmation") or {}
     except (OSError, ValueError):
         recorded = {}
-    confirmed = bool(recorded) and recorded.get("proposal_digest") == digest and (run_dir / "journey.yaml").is_file()
+    confirmed = bool(recorded) and recorded.get("proposal_digest") in (digest, _journey_candidate_legacy_digest(proposal)) \
+        and (run_dir / "journey.yaml").is_file()
     if not _journey_persona_current(run_dir):
         # The CJM was built through another Persona; it stays readable but is not
         # current, so nothing downstream (SBP) treats it as confirmed.
@@ -7321,6 +7505,7 @@ def _journey_candidate_evidence_ids(run_dir: Path) -> set[str]:
     return {item.get("id") for item in evidence or [] if isinstance(item, dict) and item.get("id")}
 
 
+@_owns_project_lock(_run_dir_argument)
 def _confirm_journey_candidate(run_dir: Path, journey_digest: object) -> dict:
     if not _journey_is_candidate_path(run_dir):
         raise JourneyCandidateRejected("這份產出沒有待確認的旅程候選。")
@@ -7338,9 +7523,8 @@ def _confirm_journey_candidate(run_dir: Path, journey_digest: object) -> dict:
                                         allow_split_stages=_journey_uses_solution_selection(run_dir))
     if errors:
         raise JourneyCandidateRejected("沒有確認：" + "；".join(errors[:3]))
-    blockers = _journey_moment_solution_blockers(proposal)
-    if blockers:
-        raise JourneyCandidateRejected("沒有確認：" + "；".join(blockers[:3]))
+    # sbp-solution-adoption-and-core-problem: a core problem without a Solution, or a
+    # stale adopted Solution, no longer refuses the CJM; it refuses building the SBP.
     now = dt.datetime.now().isoformat(timespec="seconds")
     _write_yaml_atomic(run_dir / "journey.yaml", confirmed)
     state_path = run_dir / "run.json"
@@ -7363,9 +7547,12 @@ JOURNEY_CANDIDATE_EDIT_KINDS = {"step_label", "stage_label", "action", "solution
                                 "pain_point", "pain_point_add", "satisfaction_item", "satisfaction_item_add",
                                 # accepted-surface restoration (2026-09-27 rework-journey-station):
                                 # ←→ / 刪除 on a step, and 步驟之間可插入.
-                                "move_step", "delete_step", "insert_step"}
+                                "move_step", "delete_step", "insert_step",
+                                # sbp-solution-adoption-and-core-problem: the researcher rewrites the core problem.
+                                "core_problem"}
 
 
+@_owns_project_lock(_run_dir_argument)
 def _edit_journey_candidate(run_dir: Path, payload: dict) -> dict:
     """Rewrite one text on the candidate. Evidence refs and Channel never
     change; clearing an action, solution or touchpoint removes that item."""
@@ -7382,6 +7569,8 @@ def _edit_journey_candidate(run_dir: Path, payload: dict) -> dict:
                      if isinstance(s, dict) and s.get("id") == proposal.get("primary_scenario")), None)
     if scenario is None:
         raise JourneyCandidateRejected("找不到主要旅程。")
+    if kind in JOURNEY_SOLUTION_SIDE_KINDS:
+        _upgrade_legacy_journey_confirmation(run_dir, proposal)
 
     def pick(items: list, index: object) -> dict:
         if not isinstance(index, int) or not 0 <= index < len(items):
@@ -7469,6 +7658,13 @@ def _edit_journey_candidate(run_dir: Path, payload: dict) -> dict:
             if kind == "emotion" and "develop_solution" not in step and step.get("solution_candidates") \
                     and not sbp_stages._journey_step_is_problematic(step):
                 raise JourneyCandidateRejected("這一步已有候選做法；請先保留痛點或負面情緒，再調整候選做法。")
+        elif kind == "core_problem":
+            if "develop_solution" not in step:
+                raise JourneyCandidateRejected("這份舊格式的旅程沒有核心問題可以改。")
+            if value:
+                step["core_problem"] = value
+            else:
+                step.pop("core_problem", None)
         elif kind == "develop_moment":
             if "develop_solution" not in step:
                 raise JourneyCandidateRejected("這份旅程的解方是跟旅程一起起草的，不用另外選時刻。")
@@ -7612,6 +7808,8 @@ def _edit_journey_candidate(run_dir: Path, payload: dict) -> dict:
     if errors:
         raise JourneyCandidateRejected("沒有寫入：" + "；".join(errors[:3]))
     _write_yaml_atomic(path, proposal)
+    if kind in JOURNEY_SOLUTION_SIDE_KINDS or kind == "develop_moment":
+        _sync_confirmed_solutions(run_dir)
     return _journey_channel_map_response(run_dir)
 
 
@@ -7640,21 +7838,28 @@ def _solution_analysis_view(value: object) -> dict | None:
             "constraints": [str(item) for item in value.get("constraints") or [] if str(item).strip()]}
 
 
-def _journey_moment_solution_blockers(proposal: dict) -> list[str]:
+def _journey_moment_solution_blockers(proposal: dict, run_dir: Path | None = None) -> list[str]:
     """What keeps a moment-selection CJM from being confirmed: a selected moment
     with no Solutions yet, or an adopted Solution developed from a step that has
     since changed. Older CJMs never carry `develop_solution` and pass."""
     scenario = next((s for s in proposal.get("scenarios") or []
                      if isinstance(s, dict) and s.get("id") == proposal.get("primary_scenario")), {}) or {}
+    # solution-reconfirmation: only a changed step the researcher has not kept or
+    # redeveloped refuses Journey confirmation; an HMW change alone never does.
+    if run_dir is not None:
+        applicability = sbp_solution_applicability.journey_applicability(run_dir, proposal)
+    else:
+        applicability = {step.get("id"): {"reasons": ["step_changed"]} for step in scenario.get("steps") or []
+                         if isinstance(step, dict) and sbp_stages.journey_step_solutions_stale(step)}
     blockers = []
     for step in scenario.get("steps") or []:
         if not isinstance(step, dict) or step.get("develop_solution") is not True:
             continue
         label = step.get("label") or ""
         if not step.get("solution_candidates"):
-            blockers.append(f"「{label}」選了要發展解方，但還沒有發展；請按「發展解方」或取消這一刻。")
-        elif step.get("selected_solution_ids") and sbp_stages.journey_step_solutions_stale(step):
-            blockers.append(f"「{label}」改過了，已採用的解方是根據改之前的內容發展的；請重新發展或取消採用。")
+            blockers.append(f"「{label}」納入了要解決，但還沒有發展解方；請在服務藍圖產生體驗維度，或在顧客旅程取消納入。")
+        elif step.get("selected_solution_ids") and "step_changed" in (applicability.get(step.get("id")) or {}).get("reasons", []):
+            blockers.append(f"「{label}」改過了，已採用的解方是根據改之前的內容發展的；請選「保留目前解方」或重新發展。")
     return blockers
 
 
@@ -7677,6 +7882,7 @@ def _journey_candidate_response(run_dir: Path, build: dict) -> dict:
     ]
     if any("solution_candidates" in step for step in steps):
         confirmation = _journey_confirmation(run_dir)
+        applicability = sbp_solution_applicability.journey_applicability(run_dir, proposal)
 
         def analytical_refs(step: dict) -> list[str]:
             refs = list(step.get("evidence_refs") or [])
@@ -7700,6 +7906,9 @@ def _journey_candidate_response(run_dir: Path, build: dict) -> dict:
             "journey_confirmed": confirmation["state"] == "confirmed",
             "header": {
                 "primary_hmw": _primary_hmw_statement(run_dir) or JOURNEY_MAP_NOT_CHOSEN_YET,
+                # formation-time-basis-display: the HMW this journey was formed from, verified by
+                # the digest its build recorded, or "unknown"; primary_hmw stays the current choice.
+                "topic": formation_basis.journey_formation_hmw(run_dir),
                 "primary_target": _primary_target_name(run_dir) or JOURNEY_MAP_NOT_CHOSEN_YET,
             },
             "stages": [{"id": stage.get("id"), "label": stage.get("label")}
@@ -7721,7 +7930,11 @@ def _journey_candidate_response(run_dir: Path, build: dict) -> dict:
                        "moment_selection": "develop_solution" in step,
                        "develop_solution": step.get("develop_solution") is True,
                        "solution_analysis": _solution_analysis_view(step.get("solution_analysis")),
-                       "solutions_stale": sbp_stages.journey_step_solutions_stale(step),
+                       # sbp-solution-adoption-and-core-problem: the researcher's own core problem, when written.
+                       "core_problem": step.get("core_problem") or None,
+                       # solution-reconfirmation: one applicability function decides it.
+                       "solutions_stale": (applicability.get(step.get("id")) or {}).get("state") == "needs_reconfirmation",
+                       "solution_applicability": applicability.get(step.get("id")),
                        }
                       for i, step in enumerate(steps, 1)],
         }
@@ -7748,6 +7961,7 @@ def _journey_candidate_response(run_dir: Path, build: dict) -> dict:
         "journey_confirmed": confirmation["state"] == "confirmed",
         "header": {
             "primary_hmw": _primary_hmw_statement(run_dir) or JOURNEY_MAP_NOT_CHOSEN_YET,
+            "topic": formation_basis.journey_formation_hmw(run_dir),
             "primary_target": _primary_target_name(run_dir) or JOURNEY_MAP_NOT_CHOSEN_YET,
         },
         "stages": [{"id": stage.get("id"), "label": stage.get("label")}
@@ -7836,6 +8050,7 @@ def _journey_channel_map_response(run_dir: Path) -> dict:
         "journey_confirmed": (scenario or {}).get("status") == "confirmed",
         "header": {
             "primary_hmw": _primary_hmw_statement(run_dir) or JOURNEY_MAP_NOT_CHOSEN_YET,
+            "topic": formation_basis.journey_formation_hmw(run_dir),
             "primary_target": _primary_target_name(run_dir) or JOURNEY_MAP_NOT_CHOSEN_YET,
         },
         "steps": [{"step": i, "id": step.get("id") or "", "label": label, "stage_id": step.get("stage_id")} for i, (step, label) in enumerate(zip(steps, step_labels), 1)],
@@ -8041,8 +8256,12 @@ def _axial_coding_review_response(run_dir: Path) -> dict:
         }
     adjustments = _load_axial_coding_adjustments(run_dir)
     excluded_refs = set(adjustments.get("excluded_evidence_refs") or [])
+    open_concepts = _open_coding_concepts(run_dir)
+    # One response shares one quote lookup; never retain it between requests.
+    quote_context = {"concepts": {c.get("id"): c for c in open_concepts or []},
+                     "evidence": evidence_by_id}
     concepts_by_category = _project_axial_category_concepts(
-        categories, _open_coding_concepts(run_dir), evidence_by_id
+        categories, open_concepts, evidence_by_id
     )
     conflicts_path = run_dir / "conflicts.yaml"
     conflicts = (_load(conflicts_path) or []) if conflicts_path.is_file() else []
@@ -8066,7 +8285,8 @@ def _axial_coding_review_response(run_dir: Path) -> dict:
         picked = [ref for ref in category.get("representative_evidence_refs") or [] if ref in evidence_by_id]
         if category.get("representative_quote_refs"):
             # converge-coding-contracts: the member open codes' readable quotes.
-            view["representative_quotes"] = _open_code_quote_views(run_dir, category["representative_quote_refs"])
+            view["representative_quotes"] = _open_code_quote_views(
+                run_dir, category["representative_quote_refs"], context=quote_context)
         elif picked:
             view["representative_quotes"] = [
                 {"text": evidence_by_id[ref].get("text") or "", "role": evidence_by_id[ref].get("role") or ""}
@@ -8080,14 +8300,15 @@ def _axial_coding_review_response(run_dir: Path) -> dict:
         category_views.append(view)
     # evidence-basis-inspection: the JTBD basis reuses the theme quotes this
     # response already resolves, instead of re-reading the coding per candidate.
-    selective_view = _selective_themes_view(run_dir, categories, evidence_by_id)
+    selective_view = _selective_themes_view(run_dir, categories, evidence_by_id, quote_context=quote_context)
     return {
         "state": "ready",
         "categories": category_views,
         "formation_note": doc.get("formation_note") or "",
         "research_purpose": _research_purpose_view(run_dir),
+        "sources": _run_source_names(run_dir),
         "selective_themes": selective_view,
-        "open_codes": _open_codes_by_source(_open_coding_concepts(run_dir), evidence_by_id),
+        "open_codes": _open_codes_by_source(open_concepts, evidence_by_id),
         "backlog": _axial_coding_backlog(categories, evidence_by_id, excluded_refs),
         "regenerate_core_category_command": _regenerate_core_category_command(run_dir),
         "narrative": _selective_coding_narrative_view(run_dir),
@@ -8100,18 +8321,47 @@ def _axial_coding_review_response(run_dir: Path) -> dict:
 
 
 def _run_case_folder(run_dir: Path) -> Path | None:
-    """The case folder a run was coded from (run.json `selected_case`)."""
+    """The case folder a run was coded from (run.json `selected_case`).
+
+    secure-data-root-writes: the stored pointer is honored only when it resolves
+    (symbolic links and `..` included) inside the active data root's cases/.
+    A copied or restored corpus keeps the absolute paths it was coded with, so
+    an outside pointer is treated as no recorded folder and callers fall back
+    to their own lookup inside the data root; the stored value is not rewritten.
+    """
     try:
         state = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
     selected = state.get("selected_case")
-    if not selected:
+    if not isinstance(selected, str) or not selected.strip():
         return None
     path = Path(selected)
     if not path.is_absolute():
         path = _active_data_root() / path
-    return path.parent if path.parent.is_dir() else None
+    try:
+        resolved = path.resolve()
+    except (OSError, RuntimeError):
+        return None
+    if _active_cases_dir().resolve() not in resolved.parents:
+        return None
+    return resolved.parent if resolved.parent.is_dir() else None
+
+
+def _run_source_names(run_dir: Path) -> list[str] | None:
+    """separate-evidence-pool: the documents this run read, from its own
+    source_manifest.yaml -- the raw material, kept apart from the open codes
+    derived from it. None when the run recorded no readable manifest."""
+    try:
+        manifest = _load(run_dir / "source_manifest.yaml")
+    except Exception:
+        return None
+    sources = manifest.get("sources") if isinstance(manifest, dict) else None
+    if not isinstance(sources, list):
+        return None
+    names = [Path(str(source.get("filename"))).stem for source in sources
+             if isinstance(source, dict) and str(source.get("filename") or "").strip()]
+    return list(dict.fromkeys(names))
 
 
 def _research_purpose_view(run_dir: Path) -> dict:
@@ -8124,27 +8374,46 @@ def _research_purpose_view(run_dir: Path) -> dict:
     return {"text": text}
 
 
-def _open_code_quote_views(run_dir: Path, code_ids: list) -> list[dict]:
+def _open_code_quote_views(run_dir: Path, code_ids: list, *, context: dict | None = None) -> list[dict]:
     """converge-coding-contracts: chosen open codes' readable quotes as the
     station shows them (text, optional question, the speaker -- the cited
     evidence's shared label when more specific -- and the segment's
     location). The quote text is never rewritten here."""
     from sbp_gen import semantic_segments as sbp_segments
-    concepts = {c.get("id"): c for c in _open_coding_concepts(run_dir) or []}
-    segments = sbp_segments.segments_by_id(sbp_segments.load(run_dir))
-    # readable-quote-presentation: the speaker prefers the cited evidence's label.
-    evidence_by_id = {e["id"]: e for e in (evidence_locator.locate_evidence(run_dir)[0] or [])
-                      if isinstance(e, dict) and e.get("id")} if code_ids else {}
+    if context is None:
+        context = {"concepts": {c.get("id"): c for c in _open_coding_concepts(run_dir) or []},
+                   "evidence": {e["id"]: e for e in (evidence_locator.locate_evidence(run_dir)[0] or [])
+                                if isinstance(e, dict) and e.get("id")} if code_ids else {}}
+    if "segments" not in context:
+        context["segments"] = sbp_segments.segments_by_id(sbp_segments.load(run_dir))
+    concepts, segments, evidence_by_id = context["concepts"], context["segments"], context["evidence"]
     views = []
     for ref in code_ids or []:
-        view = sbp_segments.quote_view(concepts.get(ref) or {}, segments, evidence_by_id)
+        code = concepts.get(ref) or {}
+        view = sbp_segments.quote_view(code, segments, evidence_by_id)
         if view:
             views.append({"text": view["answer"], "role": view["role"], "locator": view["locator"],
+                          "source": _open_code_source(code, evidence_by_id),
                           **({"question": view["question"]} if view.get("question") else {})})
     return views
 
 
-def _selective_themes_view(run_dir: Path, categories: list[dict], evidence_by_id: dict) -> dict:
+def _open_code_source(code: dict, evidence_by_id: dict) -> str:
+    """readable-source-location: the stored file(s) an open code's quote can be
+    traced back to -- the cited evidence's `source`, distinct and in first-seen
+    order, else the transcript the code was coded from. Read-only display data.
+    Each source is reduced to its file name before joining, so the screen,
+    which keeps only the text after the last folder separator, lists them all."""
+    sources: list[str] = []
+    for ref in code.get("evidence_refs") or []:
+        value = re.split(r"[\\/]", str((evidence_by_id.get(ref) or {}).get("source") or "").strip())[-1]
+        if value and value not in sources:
+            sources.append(value)
+    return "、".join(sources) or str(code.get("source") or "").strip()
+
+
+def _selective_themes_view(run_dir: Path, categories: list[dict], evidence_by_id: dict,
+                           *, quote_context: dict | None = None) -> dict:
     """The first station's selective section: state plus themes with names,
     never internal ids as display text (ids are kept only for edits)."""
     view = dict(sbp_selective.freshness(run_dir))
@@ -8158,20 +8427,27 @@ def _selective_themes_view(run_dir: Path, categories: list[dict], evidence_by_id
     if doc is None:
         return view
     names = {c.get("id"): c.get("category_name") or c.get("label") or "" for c in categories}
-    concepts = {c.get("id"): c for c in _open_coding_concepts(run_dir) or []}
+    concepts = (quote_context["concepts"] if quote_context is not None else
+                {c.get("id"): c for c in _open_coding_concepts(run_dir) or []})
     view["themes"] = [{
         "id": theme.get("id"), "tier": theme.get("tier"), "name": theme.get("name"),
         "core_sentence": theme.get("core_sentence"), "insight": theme.get("insight"),
         "key_insights": list(theme.get("key_insights") or []),
         "axial_names": [names.get(ref, "") for ref in theme.get("axial_refs") or [] if names.get(ref)],
         "open_code_names": [concepts[ref].get("name") for ref in theme.get("concept_refs") or [] if ref in concepts],
-        "quotes": (_open_code_quote_views(run_dir, theme["representative_quote_refs"])
+        "quotes": (_open_code_quote_views(run_dir, theme["representative_quote_refs"], context=quote_context)
                    if theme.get("representative_quote_refs") else
                    [{"role": evidence_by_id[ref].get("role") or "", "text": evidence_by_id[ref].get("text") or "",
-                     "locator": evidence_by_id[ref].get("locator") or ""}
+                     "locator": evidence_by_id[ref].get("locator") or "",
+                     "source": evidence_by_id[ref].get("source") or ""}
                     for ref in theme.get("representative_evidence_refs") or [] if ref in evidence_by_id]),
     } for theme in doc.get("themes") or [] if isinstance(theme, dict)]
     return view
+
+
+def _research_purpose_case_folder(case_id: object) -> Path | None:
+    case = next((c for c in _discover_cases() if c.get("case_id") == case_id), None) if case_id else None
+    return (_active_data_root() / case["path"]).parent if case and case.get("path") else None
 
 
 def _handle_research_purpose(handler, payload: object) -> None:
@@ -8192,15 +8468,32 @@ def _handle_research_purpose(handler, payload: object) -> None:
             folder = (_active_data_root() / case["path"]).parent
     if folder is None and run_dir is None:
         return handler._send({"error": "找不到這個案例。"}, 404)
+    # cross-project-state-isolation: the purpose is case-level research input. Its identity
+    # is the case folder's purpose (the one the screen read by case_id), checked under the
+    # case folder's lock -- and the run's lock too when the run also receives a copy.
+    target = folder if folder is not None else run_dir
     try:
-        if folder is not None:
-            sbp_selective.write_purpose(folder, payload.get("text"))
-        if run_dir is not None:
-            sbp_selective.write_purpose(run_dir, payload.get("text"))
+        with contextlib.ExitStack() as locks:
+            for directory in (folder, run_dir):
+                if directory is not None:
+                    locks.enter_context(sbp_run_lock.hold(directory))
+            try:
+                artifact_identity.check(target, "research-purpose", payload.get("basis"))
+            except artifact_identity.StaleBasis:
+                body, status = artifact_identity.refusal()
+                return handler._send(body, status)
+            if folder is not None:
+                sbp_selective.write_purpose(folder, payload.get("text"))
+            if run_dir is not None:
+                sbp_selective.write_purpose(run_dir, payload.get("text"))
+            identities = {"research-purpose": artifact_identity.compute(target, "research-purpose")}
+    except sbp_run_lock.RunLockBusy:
+        return handler._send({"error": sbp_run_lock.BUSY_MESSAGE, "reason": "project_busy"}, 409)
     except sbp_selective.SelectiveError as exc:
         return handler._send({"error": str(exc)}, 409)
     return handler._send({"research_purpose": {"text": str(payload.get("text") or "").strip()},
-                          "selective_themes": dict(sbp_selective.freshness(run_dir)) if run_dir else None})
+                          "selective_themes": dict(sbp_selective.freshness(run_dir)) if run_dir else None,
+                          "identities": identities})
 
 
 def _run_selective_themes_cli(run_dir: Path, execution: sbp_execution.ExecutionConfig) -> None:
@@ -8270,7 +8563,7 @@ def _handle_generate_selective_themes(handler, payload: object) -> None:
             return handler._send({"error": f"目前已有{_job_kind_active_phrase(_job.get('kind'))}正在進行，完成後再試。"}, 409)
         _replace_job(kind=SELECTIVE_THEMES_OPERATION_KIND, state="running", phase="正在形成選擇編碼",
                      log=[], out=run_dir.name, output_identity=run_dir.name)
-    threading.Thread(target=_run_selective_themes_cli, args=(run_dir, execution), daemon=True).start()
+    _start_job_thread(_run_selective_themes_cli, (run_dir, execution))
     return handler._send({"ok": True, "kind": SELECTIVE_THEMES_OPERATION_KIND, "state": "running"}, 202)
 
 
@@ -8314,7 +8607,8 @@ def _open_codes_by_source(concepts: list[dict] | None, evidence_by_id: dict) -> 
             "name": concept.get("name") or "",
             "description": concept.get("description") or "",
             "quotes": [{"role": evidence_by_id[ref].get("role") or "", "text": evidence_by_id[ref].get("text") or "",
-                        "locator": evidence_by_id[ref].get("locator") or ""}
+                        "locator": evidence_by_id[ref].get("locator") or "",
+                        "source": evidence_by_id[ref].get("source") or ""}
                        for ref in concept.get("evidence_refs") or [] if ref in evidence_by_id],
         })
     return groups
@@ -8377,6 +8671,9 @@ def _jtbd_candidate_basis(candidate: dict, themes: dict, quotes: dict) -> dict |
         for quote in quotes.get(ref) or []:
             if len(evidence) >= framework_points.BASIS_EVIDENCE_LIMIT:
                 break
+            # readable-source-location: the basis is a judgement aid, not a provenance
+            # trace -- the coding station's quotes carry a source file; the basis does not.
+            quote = {key: value for key, value in quote.items() if key != "source"}
             if quote not in evidence:
                 evidence.append(quote)
     meaning = str(candidate.get("rationale") or "").strip()
@@ -8471,7 +8768,7 @@ def _handle_generate_jtbd_candidates(handler, payload: object) -> None:
             return handler._send({"error": f"目前已有{_job_kind_active_phrase(_job.get('kind'))}正在進行，完成後再試。"}, 409)
         _replace_job(kind=JTBD_CANDIDATES_OPERATION_KIND, state="running", phase="正在形成顧客任務候選",
                      log=[], out=run_dir.name, output_identity=run_dir.name)
-    threading.Thread(target=_run_jtbd_candidates_cli, args=(run_dir, execution), daemon=True).start()
+    _start_job_thread(_run_jtbd_candidates_cli, (run_dir, execution))
     return handler._send({"ok": True, "kind": JTBD_CANDIDATES_OPERATION_KIND, "state": "running"}, 202)
 
 
@@ -8498,11 +8795,12 @@ def _record_narrative_job_selection(run_dir: Path, answer: dict) -> dict:
         yaml.dump(answer, tmp, allow_unicode=True)
         tmp_path = tmp.name
     try:
-        result = child_processes.run(
-            [sys.executable, "-m", "sbp_gen", "narrative-job-selection",
-             "--run", str(run_dir), "--selection-file", tmp_path],
-            cwd=str(REPO / "tools"), capture_output=True, text=True,
-        )
+        with sbp_run_lock.hold(run_dir) as lease:
+            result = child_processes.run(
+                [sys.executable, "-m", "sbp_gen", "narrative-job-selection",
+                 "--run", str(run_dir), "--selection-file", tmp_path],
+                cwd=str(REPO / "tools"), capture_output=True, text=True, run_lock=lease,
+            )
     finally:
         Path(tmp_path).unlink(missing_ok=True)
     return {"ok": result.returncode == 0, "stdout": result.stdout, "stderr": result.stderr}
@@ -8647,7 +8945,10 @@ def _framework_point_select(mechanism: str, body: dict) -> tuple[dict, int]:
     if not isinstance(answer, dict):
         return {"error": "answer 必須是物件。"}, 400
     try:
-        return framework_points.run_selection_cli(mechanism, RUNS_DIR / run_name, answer), 200
+        result = framework_points.run_selection_cli(mechanism, RUNS_DIR / run_name, answer)
+        if result.get("busy"):
+            return {"error": result["stderr"], "reason": "project_busy"}, 409
+        return result, 200
     except Exception as exc:  # noqa: BLE001 - CLI 失敗原話要照實回給研究者
         return {"error": str(exc)}, 400
 
@@ -8847,23 +9148,37 @@ def _analyse_graph(run_dir: Path, draft: dict, evidence: dict, conflicts: list, 
         result["topology_flags"] = _topology_flags_view(draft.get("topology_flags"), scenario)
     if draft.get("external_references"):
         result["external_references"] = [dict(ref) for ref in draft["external_references"] if isinstance(ref, dict)]
+    result.update(_carry_through_view(draft, journey, scenario))
     return result
+
+
+def _solution_on_step(scenario: dict | None, solution_ref, step_ref) -> dict:
+    """An adopted Solution's text and its step name, as the pending list shows them."""
+    step = next((s for s in (scenario or {}).get("steps") or [] if isinstance(s, dict) and s.get("id") == step_ref), {})
+    solution = next((c for c in step.get("solution_candidates") or []
+                     if isinstance(c, dict) and c.get("id") == solution_ref), {})
+    return {"solution": str(solution.get("text") or "").strip(), "step": str(step.get("label") or "").strip()}
 
 
 def _topology_flags_view(flags: list, scenario: dict | None) -> list[dict]:
     """to-be-blueprint-generation: each flagged Solution with its text and the
     step name, for the pending-confirmation list."""
-    steps = {step.get("id"): step for step in (scenario or {}).get("steps") or [] if isinstance(step, dict)}
-    view = []
-    for flag in flags or []:
-        if not isinstance(flag, dict):
-            continue
-        step = steps.get(flag.get("step_ref")) or {}
-        solution = next((c for c in step.get("solution_candidates") or []
-                         if isinstance(c, dict) and c.get("id") == flag.get("solution_ref")), {})
-        view.append({"solution": str(solution.get("text") or "").strip(), "step": str(step.get("label") or "").strip(),
-                     "reason": str(flag.get("reason") or "").strip()})
-    return view
+    return [{**_solution_on_step(scenario, flag.get("solution_ref"), flag.get("step_ref")),
+             "reason": str(flag.get("reason") or "").strip()}
+            for flag in flags or [] if isinstance(flag, dict)]
+
+
+def _carry_through_view(draft: dict, journey: dict, scenario: dict | None) -> dict:
+    """to-be-solution-carry-through: adopted Solutions the displayed To-be
+    blueprint does not carry, a non-blocking pending item. The key is present
+    only when non-empty; an older blueprint has none."""
+    graph = {"meta": draft.get("meta") or {}, "nodes": (draft.get("graph") or {}).get("nodes", []),
+             "topology_flags": draft.get("topology_flags") or [],
+             "external_references": draft.get("external_references") or []}
+    adopted = V.to_be_adopted_solutions(journey)
+    uncarried = [_solution_on_step(scenario, solution_id, adopted.get(solution_id))
+                 for solution_id, state in V.to_be_solution_coverage(graph, journey).items() if state == "not_carried"]
+    return {"uncarried_solutions": uncarried} if uncarried else {}
 
 
 def _resolve_briefing(run_dir: Path, evidence: dict, viewed_nodes: dict, conflicts: list) -> dict | None:
@@ -9374,6 +9689,7 @@ def _run_journey_recheck_cli(context: dict) -> None:
             _job["phase"] = "處理中"
         proc = child_processes.spawn(
             cmd,
+            run_lock=_current_job_lease(),
             cwd=REPO / "tools",
             env=_execution_for_context(context).child_environment(),
             stdout=subprocess.PIPE,
@@ -9398,16 +9714,13 @@ def _run_journey_recheck_cli(context: dict) -> None:
         if projection is None:
             raise JourneyRecheckNotFound("CLI 完成但沒有可確認的完整結果。")
         state_path = context["result_dir"] / "run.json"
-        state = json.loads(state_path.read_text(encoding="utf-8"))
-        state.update({
-            "server_admitted": True,
-            "selected_case": context["case_ref"],
-            "source_evidence": context["evidence_ref"],
-            "result_digest": projection["result_digest"],
-        })
-        temp_state = state_path.with_name("run.json.tmp")
-        temp_state.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
-        os.replace(temp_state, state_path)
+        with sbp_run_files.transaction(state_path) as state:
+            state.update({
+                "server_admitted": True,
+                "selected_case": context["case_ref"],
+                "source_evidence": context["evidence_ref"],
+                "result_digest": projection["result_digest"],
+            })
         with _job_lock:
             _job.update(
                 state="done",
@@ -9504,6 +9817,7 @@ def _run_stage_cli(
     try:
         proc = child_processes.spawn(
             cmd, cwd=REPO / "tools", env=env,
+            run_lock=_current_job_lease(),
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
         )
         with _job_lock:
@@ -9595,8 +9909,11 @@ def _run_hmw_formation_cli(run_dir: Path, execution: sbp_execution.ExecutionConf
         return
     with _job_lock:
         _job["proc"] = None
-        if _job.get("state") == "cancelled":
-            return
+        cancelled = _job.get("state") == "cancelled"
+    if cancelled:
+        _mark_hmw_formation_cancelled(run_dir.name)
+        return
+    with _job_lock:
         if code == TRANSPORT_SUSPENDED_EXIT:
             _job["state"] = "waiting_for_model"
             _job["phase"] = "已經把提示詞準備好，等模型回覆"
@@ -9676,7 +9993,7 @@ def _handle_build_journey(handler, payload: object) -> None:
         _replace_job(kind=JOURNEY_GENERATION_OPERATION_KIND, state="running", phase="正在建立顧客旅程",
                      log=[], out=run_dir.name, output_identity=run_dir.name)
     backup = _preserve_superseded_journey(run_dir) if build["state"] == "persona_changed" else None
-    threading.Thread(target=_run_journey_generation_cli, args=(run_dir, execution, backup), daemon=True).start()
+    _start_job_thread(_run_journey_generation_cli, (run_dir, execution, backup))
     return handler._send({"ok": True, "kind": JOURNEY_GENERATION_OPERATION_KIND, "state": "running"}, 202)
 
 
@@ -9689,6 +10006,10 @@ def _run_journey_solutions_cli(run_dir: Path, execution: sbp_execution.Execution
             _job["state"] = "failed"
             _job["phase"] = f"發展解方沒有跑起來：{exc}"
         return
+    # sbp-solution-adoption-and-core-problem: Solutions developed while the CJM stays
+    # confirmed reach the confirmed journey the SBP is built from, before the job reads as done.
+    if code == 0:
+        _sync_confirmed_solutions(run_dir)
     with _job_lock:
         _job["proc"] = None
         if _job.get("state") == "cancelled":
@@ -9777,7 +10098,7 @@ def _handle_draft_chart_guide(handler, payload: object) -> None:
             return handler._send({"error": f"目前已有{_job_kind_active_phrase(_job.get('kind'))}正在進行，完成後再試。"}, 409)
         _replace_job(kind=CHART_GUIDE_OPERATION_KIND, state="running", phase="正在起草導讀",
                      log=[], out=run_dir.name, output_identity=f"{run_dir.name}:{kind}")
-    threading.Thread(target=_run_chart_guide_cli, args=(run_dir, kind, execution), daemon=True).start()
+    _start_job_thread(_run_chart_guide_cli, (run_dir, kind, execution))
     return handler._send({"ok": True, "kind": CHART_GUIDE_OPERATION_KIND, "state": "running"}, 202)
 
 
@@ -9814,12 +10135,14 @@ def _handle_build_journey_solutions(handler, payload: object) -> None:
         execution = _execution_for_payload(payload, allow_legacy=False)
     except sbp_execution.ExecutionConfigError as exc:
         return handler._send({"reason": "runner_unavailable", "error": str(exc)}, 400)
+    # A CJM confirmed under the earlier digest stays confirmed through this development.
+    _upgrade_legacy_journey_confirmation(run_dir, _load(run_dir / "journey_proposal.yaml") or {})
     with _job_lock:
         if _job.get("state") == "running":
             return handler._send({"error": f"目前已有{_job_kind_active_phrase(_job.get('kind'))}正在進行，完成後再試。"}, 409)
         _replace_job(kind=JOURNEY_SOLUTIONS_OPERATION_KIND, state="running", phase="正在發展解方",
                      log=[], out=run_dir.name, output_identity=run_dir.name)
-    threading.Thread(target=_run_journey_solutions_cli, args=(run_dir, execution), daemon=True).start()
+    _start_job_thread(_run_journey_solutions_cli, (run_dir, execution))
     return handler._send({"ok": True, "kind": JOURNEY_SOLUTIONS_OPERATION_KIND, "state": "running"}, 202)
 
 
@@ -9833,11 +10156,19 @@ def _as_is_build_state(run_dir: Path) -> dict | None:
     if _journey_confirmation(run_dir)["state"] != "confirmed":
         return {"state": "not_eligible", "available": False,
                 "reason": "顧客旅程還沒確認目前這一版，請先回到顧客旅程確認後再產生服務藍圖。"}
+    # sbp-solution-adoption-and-core-problem: moments without a Solution, or stale adopted
+    # Solutions, now refuse the build instead of the CJM confirmation.
+    blockers = _journey_moment_solution_blockers(_journey_working_copy(run_dir), run_dir)
+    if blockers:
+        return {"state": "not_eligible", "available": False, "reason": blockers[0]}
     research = _implementation_research_gate(run_dir)
+    # cjm-builds-sbp: the station must know a solution-selection run without
+    # waiting for the journey view, since such a run is built from the CJM.
+    solution_selection = sbp_stages.journey_uses_solution_selection(_load(run_dir / "journey.yaml") or {})
     if research and research["state"] in sbp_implementation_research.BLOCKING:
         return {"state": "research_unresolved", "available": False, "reason": research["reason"],
-                "research_blocked": True}
-    return {"state": "eligible", "available": True, "reason": None}
+                "research_blocked": True, "solution_selection": solution_selection}
+    return {"state": "eligible", "available": True, "reason": None, "solution_selection": solution_selection}
 
 
 # pre-blueprint-implementation-research：建立 SBP 前可選的落地研究。開始了就要
@@ -9981,7 +10312,7 @@ def _handle_implementation_research(handler, action: str, payload: object) -> No
                 IR.begin(run_dir)
                 _replace_job(kind=IMPLEMENTATION_RESEARCH_OPERATION_KIND, state="running", phase="正在進行落地研究",
                              log=[], out=run_dir.name, output_identity=run_dir.name)
-            threading.Thread(target=_run_implementation_research_cli, args=(run_dir, execution), daemon=True).start()
+            _start_job_thread(_run_implementation_research_cli, (run_dir, execution))
             return handler._send({"ok": True, "kind": IMPLEMENTATION_RESEARCH_OPERATION_KIND, "state": "running"}, 202)
         else:
             return handler._send({"error": "不認得的落地研究動作。"}, 404)
@@ -10032,6 +10363,11 @@ def _as_is_confirmation(run_dir: Path) -> dict | None:
         # The next Golden Path decision (Improvement Goal) is eligible only
         # while both the As-is and the Journey it was built from are current.
         "downstream_eligible": confirmed and journey_current,
+        # solution-reconfirmation: `unresolved` (read-only, cannot be confirmed for the
+        # current inputs) or `reconsidered` (Solutions were reconfirmed after this
+        # blueprint was confirmed; it stays identifiable as earlier until confirmed again).
+        "upstream": "unresolved" if _sbp_upstream_block_reason(run_dir) else _sbp_solutions_state(run_dir),
+        "upstream_reason": _sbp_upstream_block_reason(run_dir),
     }
 
 
@@ -10039,9 +10375,79 @@ class AsIsConfirmationRejected(Exception):
     pass
 
 
+# solution-reconfirmation ----------------------------------------------------
+class SolutionReconfirmRejected(ValueError):
+    pass
+
+
+def _journey_working_copy(run_dir: Path) -> dict:
+    for name in ("journey_proposal.yaml", "journey.yaml"):
+        doc = _load(run_dir / name) if (run_dir / name).is_file() else None
+        if isinstance(doc, dict):
+            return doc
+    return {}
+
+
+@_owns_project_lock(_run_dir_argument)
+def _reconfirm_solution(run_dir: Path, payload: dict) -> dict:
+    """「保留目前解方」: append one reconfirmation bound to exactly what the screen
+    showed. No model call; `solution_basis`, the Solution and earlier records stay."""
+    journey = _journey_working_copy(run_dir)
+    step_id = payload.get("step_id")
+    step = next((st for st in sbp_solution_applicability.primary_steps(journey) if st.get("id") == step_id), None)
+    if step is None or not sbp_solution_applicability.has_adopted_solution(step):
+        raise SolutionReconfirmRejected("這一步沒有已採用的解方。")
+    current = sbp_solution_applicability.journey_applicability(run_dir, journey)[step_id]
+    if current["state"] == "current":
+        raise SolutionReconfirmRejected("這一步的解方目前不需要重新確認。")
+    if (payload.get("step_digest") != current["step_digest"] or payload.get("hmw_digest") != current["hmw_digest"]
+            or payload.get("solution_ids") != current["solution_ids"]):
+        raise SolutionReconfirmRejected("畫面上的內容不是最新版本，請重新載入後再保留。")
+    state_path = run_dir / "run.json"
+    state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.is_file() else {}
+    records = state.setdefault(sbp_solution_applicability.RECONFIRMATIONS_KEY, {}).setdefault(step_id, [])
+    records.append(sbp_solution_applicability.reconfirmation_record(
+        step, current["hmw_digest"], sbp_solution_applicability.now_iso()))
+    _write_json_atomic(state_path, state)
+    return {"solution_applicability": sbp_solution_applicability.journey_applicability(run_dir, journey)[step_id]}
+
+
+def _sbp_solutions_state(run_dir: Path | None) -> str | None:
+    """`unresolved` while an adopted Solution needs reconfirmation; `reconsidered`
+    when Solutions were reconfirmed after the blueprint was last confirmed (the
+    blueprint then stays identifiable as built before that); otherwise None."""
+    if run_dir is None or not _journey_uses_solution_selection(run_dir):
+        return None
+    journey = _journey_working_copy(run_dir)
+    if sbp_solution_applicability.unresolved(run_dir, journey):
+        return "unresolved"
+    state = sbp_solution_applicability.run_state(run_dir)
+    reviewed = sbp_solution_applicability.parse_time(state.get("reviewed_at")) if state.get("review_state") == "reviewed" else None
+    latest = sbp_solution_applicability.latest_reconfirmation_at(run_dir, journey)
+    return "reconsidered" if reviewed and latest and latest > reviewed else None
+
+
+def _sbp_upstream_block_reason(run_dir: Path) -> str | None:
+    """Why the blueprint cannot be confirmed, kept or regenerated against the
+    current inputs right now; None when nothing upstream is unresolved."""
+    if not _journey_uses_solution_selection(run_dir):
+        return None
+    if _journey_confirmation(run_dir)["state"] != "confirmed":
+        return "顧客旅程有變更還沒確認，請先回到顧客旅程確認。"
+    blockers = _journey_moment_solution_blockers(_journey_working_copy(run_dir), run_dir)
+    if blockers:
+        return blockers[0]
+    if _sbp_solutions_state(run_dir) == "unresolved":
+        return "有已採用的解方需要重新確認，請選「保留目前解方」或重新發展。"
+    return None
+
+
 def _confirm_as_is(run_dir: Path, fingerprint: object) -> dict:
     current = _as_is_confirmation(run_dir)
     name = "SBP" if _journey_uses_solution_selection(run_dir) else "服務藍圖"
+    blocked = _sbp_upstream_block_reason(run_dir)
+    if blocked:
+        raise AsIsConfirmationRejected(blocked)
     if current is None:
         raise AsIsConfirmationRejected(f"這份產出沒有可以在這裡確認的{name}。")
     if fingerprint != current["fingerprint"]:
@@ -10213,6 +10619,38 @@ def _save_research_review(run_dir: Path, decisions: object) -> dict:
     return {"goal": _improvement_goal_gate(run_dir)}
 
 
+def _research_review_files(run_dir: Path) -> tuple[str, ...]:
+    """cross-project-state-isolation: the research review is decided on the current
+    research catalog; its file depends on the research operation."""
+    try:
+        context = _fresh_research_catalog(run_dir)
+    except Exception:  # noqa: BLE001 - no current catalog: the review file alone
+        context = None
+    catalog = (context or {}).get("catalog_path")
+    return ((str(catalog),) if catalog else ()) + (sbp_research_catalog_review.REVIEW_FILENAME,)
+
+
+artifact_identity.RESOLVERS["research-review"] = _research_review_files
+
+
+def _implementation_research_files(run_dir: Path) -> tuple[str, ...]:
+    """cross-project-state-isolation: the claim review is decided on the current
+    operation's catalog; which operation is current depends on the ticked questions."""
+    IR = sbp_implementation_research
+    base = artifact_identity.ARTIFACTS["implementation-research"]
+    try:
+        operation = IR.current_operation(run_dir)
+    except Exception:  # noqa: BLE001 - no readable operation: the decision files alone
+        operation = None
+    if not operation or not operation.get("digest"):
+        return base
+    folder = f"{IR.DIRNAME}/{operation['digest']}"
+    return base + (f"{folder}/{IR.OPERATION_FILENAME}", f"{folder}/{IR.CATALOG_FILENAME}")
+
+
+artifact_identity.RESOLVERS["implementation-research"] = _implementation_research_files
+
+
 def _fresh_research_projection(run_dir: Path) -> dict | None:
     if sbp_as_is_research.load_current_operation(run_dir) is None:
         return None
@@ -10226,6 +10664,7 @@ class ImprovementGoalRejected(Exception):
     pass
 
 
+@_owns_project_lock(_run_dir_argument)
 def _confirm_improvement_goal(run_dir: Path, operative_goal: object) -> dict:
     gate = _improvement_goal_gate(run_dir)
     if gate is None:
@@ -10240,9 +10679,49 @@ def _confirm_improvement_goal(run_dir: Path, operative_goal: object) -> dict:
     return {"goal": _improvement_goal_gate(run_dir)}
 
 
+def _research_search_supported(mode: str, executor: str | None) -> bool:
+    """external-research-honest-status: whether an execution method can search
+    the web, read from the shipped CLI runner itself (API and relay can)."""
+    if mode != "cli":
+        return True
+    from cli_runners import claude as claude_runner, codex as codex_runner
+    runner = {"codex": codex_runner.CodexRunner, "claude": claude_runner.ClaudeRunner}.get(executor or "codex")
+    return bool(getattr(runner, "supports_web_search", False))
+
+
+def _external_research_status_view(run_dir: Path) -> dict:
+    """What external research actually happened, from its operation record, and
+    which execution methods can search -- so the journey station can say before
+    建立藍圖 that this build will not research."""
+    try:
+        status = sbp_implementation_research.research_status(
+            run_dir, job_active=_implementation_research_job_active(run_dir))
+    except Exception:  # noqa: BLE001 - a run without the inputs simply has no status
+        status = {"state": "not_applicable"}
+    return {"external_research": status,
+            "research_search": {"codex": _research_search_supported("cli", "codex"),
+                                "claude": _research_search_supported("cli", "claude"),
+                                "openai": _research_search_supported("api", None)}}
+
+
 def _run_as_is_blueprint_cli(run_dir: Path, execution: sbp_execution.ExecutionConfig) -> None:
     fresh_sbp = _journey_uses_solution_selection(run_dir)
-    steps = (("compare", "比對說法"), ("structure", "建立 SBP" if fresh_sbp else "產生服務藍圖"))
+    # built-in-implementation-research: a solution-selection build researches
+    # before generating; research never stops the build.
+    steps = (("compare", "比對說法"),) + ((("implementation-research", "落地研究"),) if fresh_sbp else ()) \
+        + (("structure", "建立 SBP" if fresh_sbp else "產生服務藍圖"),)
+    optional = {"implementation-research"}
+    if fresh_sbp and not _research_search_supported(execution.mode, execution.executor):
+        # external-research-honest-status: no web search, no research -- record
+        # why (a finished research is reused) and build from the case alone.
+        steps = tuple(step for step in steps if step[0] != "implementation-research")
+        try:
+            sbp_implementation_research.record_search_unavailable(run_dir)
+        except Exception as exc:  # noqa: BLE001 - the record never stops the build
+            with _job_lock:
+                _job["log"].append(f"未能記錄外部研究狀態：{exc}")
+        with _job_lock:
+            _job["log"].append("目前的 AI 執行方式不支援網路搜尋，這次未執行外部研究")
     for command, label in steps:
         cmd = [sys.executable, "-m", "sbp_gen", command, "--run", str(run_dir)]
         try:
@@ -10260,6 +10739,9 @@ def _run_as_is_blueprint_cli(run_dir: Path, execution: sbp_execution.ExecutionCo
                 _job["state"] = "waiting_for_model"
                 _job["phase"] = "已經把提示詞準備好，等模型回覆"
                 return
+            if code != 0 and command in optional:
+                _job["log"].append(f"{label}沒有完成，這次不帶參考資料")
+                continue
             if code != 0:
                 _job["state"] = "failed"
                 _job["phase"] = f"{label}沒有完成"
@@ -10276,10 +10758,14 @@ def _handle_generate_as_is(handler, payload: object) -> None:
         run_dir = _axial_coding_run_dir(payload.get("run"))
     except ReviewRunNotFound as exc:
         return handler._send({"error": str(exc)}, 404)
+    blocked = _sbp_upstream_block_reason(run_dir)
+    if blocked:
+        return handler._send({"error": blocked}, 409)
     regenerate = payload.get("regenerate") is True
     if regenerate:
         # track-sbp-upstream-freshness：只有上游真的改過，研究者明確要求才重新產生。
-        if sbp_basis.sbp_freshness(run_dir)["state"] != "stale":
+        # solution-reconfirmation：解方在藍圖確認後重新確認過，也算研究者可以選擇重新產生。
+        if sbp_basis.sbp_freshness(run_dir)["state"] != "stale" and _sbp_solutions_state(run_dir) != "reconsidered":
             return handler._send({"error": "服務藍圖目前沒有需要重新產生的變更。"}, 409)
         research = _implementation_research_gate(run_dir)
         if research and research["state"] in sbp_implementation_research.BLOCKING:
@@ -10303,7 +10789,7 @@ def _handle_generate_as_is(handler, payload: object) -> None:
                      log=[], out=run_dir.name, output_identity=run_dir.name)
     if regenerate:
         sbp_basis.backup_before_regenerate(run_dir)
-    threading.Thread(target=_run_as_is_blueprint_cli, args=(run_dir, execution), daemon=True).start()
+    _start_job_thread(_run_as_is_blueprint_cli, (run_dir, execution))
     return handler._send({"ok": True, "kind": AS_IS_BLUEPRINT_OPERATION_KIND, "state": "running"}, 202)
 
 
@@ -10328,7 +10814,7 @@ def _handle_form_hmw(handler, payload: object) -> None:
             return handler._send({"ok": True, "state": "done"}, 200)
         _replace_job(kind=HMW_FORMATION_OPERATION_KIND, state="running", phase="正在準備形成 HMW",
                      log=[], out=run_dir.name, output_identity=run_dir.name)
-    threading.Thread(target=_run_hmw_formation_cli, args=(run_dir, execution), daemon=True).start()
+    _start_job_thread(_run_hmw_formation_cli, (run_dir, execution))
     return handler._send({"ok": True, "kind": HMW_FORMATION_OPERATION_KIND, "state": "running"}, 202)
 
 
@@ -10349,7 +10835,7 @@ def _stream_stage(
     with _job_lock:
         _job["phase"] = f"正在跑{plain_name}"
         _job["log"].append(f"$ {' '.join(cmd[2:])}")
-    proc = child_processes.spawn(cmd, cwd=REPO / "tools", env=env,
+    proc = child_processes.spawn(cmd, run_lock=_current_job_lease(), cwd=REPO / "tools", env=env,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
     with _job_lock:
         _job["proc"] = proc
@@ -10527,6 +11013,7 @@ def _run_persona_content_cli(
     try:
         proc = child_processes.spawn(
             cmd,
+            run_lock=_current_job_lease(),
             cwd=REPO / "tools",
             env=_require_execution(execution).child_environment(),
             stdout=subprocess.PIPE,
@@ -10622,7 +11109,7 @@ def _fresh_coding_context(payload: object) -> dict:
     digest = hashlib.sha256(source_text.encode("utf-8")).hexdigest()
     run_dir = RUNS_DIR / out
     state_path = run_dir / "run.json"
-    if run_dir.exists() and any(run_dir.iterdir()) and not state_path.is_file():
+    if sbp_run_lock.content_entries(run_dir) and not state_path.is_file():
         raise FreshCodingRequestRejected("這個產出名稱已有其他研究內容，請換一個名稱。", 409)
     if state_path.is_file():
         try:
@@ -10649,6 +11136,7 @@ def _run_fresh_coding_cli(context: dict, execution: sbp_execution.ExecutionConfi
     try:
         proc = child_processes.spawn(
             cmd, cwd=REPO / "tools", env=_require_execution(execution).child_environment(),
+            run_lock=_current_job_lease(),
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
         )
         with _job_lock:
@@ -10659,18 +11147,21 @@ def _run_fresh_coding_cli(context: dict, execution: sbp_execution.ExecutionConfi
         code = proc.wait()
         with _job_lock:
             _job["exit_code"] = code
-            if _job.get("state") == "cancelled":
+            cancelled = _job.get("state") == "cancelled"
+            if cancelled:
                 _job["proc"] = None
-                state_path = context["run_dir"] / "run.json"
-                if state_path.is_file():
-                    try:
-                        state = json.loads(state_path.read_text(encoding="utf-8"))
+        if cancelled:
+            # Written after the worker exited and outside the job-state lock.
+            state_path = context["run_dir"] / "run.json"
+            if state_path.is_file():
+                try:
+                    with sbp_run_files.transaction(state_path) as state:
                         state.update(coding_state="cancelled", active_stage=None,
                                      coding_failure="研究者已取消這一輪編碼。")
-                        state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
-                    except (OSError, json.JSONDecodeError):
-                        pass
-                return
+                except (OSError, sbp_run_files.RunStateUnreadable):
+                    pass
+            return
+        with _job_lock:
             _job["state"] = "done" if code == 0 else "failed"
             _job["phase"] = "等待研究者選擇顧客任務" if code == 0 else "編碼未完成"
             _job["proc"] = None
@@ -10743,6 +11234,7 @@ def _run_cli(
     try:
         proc = child_processes.spawn(
             cmd,
+            run_lock=_current_job_lease(),
             cwd=REPO / "tools",
             env=_require_execution(execution).child_environment(),
             stdout=subprocess.PIPE,
@@ -10791,18 +11283,17 @@ def _run_cli(
         # confirmed journey can never be replaced by a stale UI summary.
         run_json = RUNS_DIR / out_name / "run.json"
         if journey_digest and run_json.exists():
-            state = json.loads(run_json.read_text(encoding="utf-8"))
-            state["confirmed_journey_digest"] = journey_digest
-            state["as_is_input_projection_digest"] = journey_projection_digest
-            state["confirmed_journey_file"] = "journey_confirmed_input.yaml"
-            state["selected_case"] = case_path
-            if confirmation_context:
-                state["journey_confirmation_source"] = confirmation_context.get("source")
-                state["journey_baseline_run"] = confirmation_context.get("baseline_run")
-                if confirmation_context.get("recheck_result"):
-                    state["recheck_result"] = confirmation_context["recheck_result"]
-                    state["recheck_result_digest"] = confirmation_context.get("recheck_result_digest")
-            run_json.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+            with sbp_run_files.transaction(run_json) as state:
+                state["confirmed_journey_digest"] = journey_digest
+                state["as_is_input_projection_digest"] = journey_projection_digest
+                state["confirmed_journey_file"] = "journey_confirmed_input.yaml"
+                state["selected_case"] = case_path
+                if confirmation_context:
+                    state["journey_confirmation_source"] = confirmation_context.get("source")
+                    state["journey_baseline_run"] = confirmation_context.get("baseline_run")
+                    if confirmation_context.get("recheck_result"):
+                        state["recheck_result"] = confirmation_context["recheck_result"]
+                        state["recheck_result_digest"] = confirmation_context.get("recheck_result_digest")
     except Exception as e:  # pragma: no cover
         with _job_lock:
             _job["log"].append(f"[例外] {e}")
@@ -11067,11 +11558,187 @@ def _render_research_deliverables(run_name: object, ids: list[str], output_forma
     return buffer.getvalue(), "application/zip", "research-deliverables.zip"
 
 
+# cross-project-state-isolation: research-decision writes and the artifact whose
+# identity their `basis` must match. Item ids (R-2, HMW-1, step-1-1) repeat across
+# projects, so these writes are applied only when the basis names this project's
+# current content; checked under the project lock before the handler runs.
+_IDENTITY_ROUTES = {
+    "/api/inference-review": "inference-reviews",
+    "/api/cell-coverage": "blueprint",
+    "/api/sbp-basis/retain": "blueprint",
+    "/api/primary-hmw-picker/select": "primary-hmw",
+    "/api/axial-coding-review/pair-selection": "jtbd-selection",
+    "/api/selective-themes/edit": "selective-themes",
+    "/api/persona-content/field": "persona",
+    "/api/persona/hmw-basis/retain": "persona",
+    "/api/persona-matrix/segmentation-axes-picker/select": "segmentation-axes",
+    "/api/persona-matrix/target-segmentation-picker/select": "target-segmentation",
+    "/api/journey-candidate/field": "journey",
+    # Moving, deleting or inserting a journey step is an edit of the journey on screen.
+    "/api/journey-operation": "journey",
+    "/api/journey-annotations": "journey-annotations",
+    "/api/journey/persona-basis/retain": "journey",
+    "/api/chart-guide/edit": "chart-guides",
+    # The research station is hidden in this release, but this write stays reachable.
+    "/api/research-review/save": "research-review",
+    # No current screen calls these, but they stay reachable research-decision writes.
+    "/api/axial-coding-review/assign": "axial-coding",
+    "/api/axial-coding-review/exclude": "axial-coding",
+    "/api/axial-coding-review/create-category": "axial-coding",
+    "/api/axial-coding-review/narrative": "axial-coding",
+    "/api/axial-coding/core-category-picker/select": "core-category",
+    "/api/journey-map/stage": "journey-map",
+    "/api/journey-map/apply": "journey-map",
+    "/api/review": "blueprint",
+    "/api/improvement-goal/confirm": "improvement-goal",
+    # Dispatched by prefix in _dispatch_post; listed here by exact path so they take the
+    # project lock and the identity check like every other decision. `start` is a job start.
+    "/api/implementation-research/select": "implementation-research",
+    "/api/implementation-research/skip": "implementation-research",
+    "/api/implementation-research/review": "implementation-research",
+}
+# The implementation-research actions, matched exactly: any other path under the prefix
+# (`/x/select`, `//select`) is not found, never dispatched by its last segment.
+_IMPLEMENTATION_RESEARCH_ROUTES = frozenset({
+    "/api/implementation-research/select",
+    "/api/implementation-research/skip",
+    "/api/implementation-research/review",
+    "/api/implementation-research/start",
+})
+# Retired research-decision writes: refused whatever the body, no file changes.
+_RETIRED_ROUTES = {
+    "/api/mute-inference-flag": "這個端點已退役，推斷的判斷請改用「合理／需要調整／證據不足」。",
+    "/api/mute-inference-relation": "這個端點已退役，推斷的判斷請改用「合理／需要調整／證據不足」。",
+    # 2026-09-27 walkthrough #11 retired 起草情緒與解決方式 from the journey station; its
+    # endpoint rewrote journey_annotations.yaml outside the project lock.
+    "/api/journey-annotations/draft": "這個端點已退役，旅程註記請在顧客旅程上直接編輯。",
+}
+# A confirmation (fingerprint-checked) that changes journey files: its reply
+# carries the new identities so the next legitimate edit is not refused.
+_IDENTITY_REFRESH_ROUTES = {
+    "/api/journey-candidate/confirm": ("journey", "journey-annotations"),
+}
+
+
+# The reads that put decision-bearing content on screen, with the query field that
+# names the run. The identity is computed before the handler reads the content, so
+# a write landing in between makes the identity older than the content, never
+# newer: the next decision is refused rather than applied to unseen content.
+_IDENTITY_READS = {
+    "/api/run": ("name", ("blueprint", "inference-reviews", "journey-map")),
+    "/api/primary-hmw-picker": ("run", ("primary-hmw",)),
+    "/api/axial-coding-review": ("run", ("selective-themes", "jtbd-selection", "axial-coding", "core-category")),
+    "/api/persona-content": ("run", ("persona",)),
+    "/api/persona-matrix/segmentation-axes-picker": ("run", ("segmentation-axes",)),
+    "/api/persona-matrix/target-segmentation-picker": ("run", ("target-segmentation",)),
+    "/api/journey-channel-map": ("run", ("journey", "journey-annotations", "journey-map")),
+    "/api/journey-proposal": ("run", ("journey", "journey-annotations")),
+    "/api/chart-guide": ("run", ("chart-guides",)),
+    "/api/as-is-research-detail": ("run", ("research-review",)),
+    "/api/improvement-goal": ("run", ("improvement-goal",)),
+    "/api/as-is-build": ("run", ("implementation-research",)),
+}
+
+
+def _identity_for_read(path: str, query: dict) -> dict | None:
+    if path == "/api/research-purpose":  # case-level: the identity is computed on the case folder
+        folder = _research_purpose_case_folder((query.get("case_id") or [""])[0])
+        return {"research-purpose": artifact_identity.compute(folder, "research-purpose")} if folder else None
+    entry = _IDENTITY_READS.get(path)
+    if entry is None:
+        return None
+    field, artifacts = entry
+    safe_name = _safe_component(str((query.get(field) or [""])[0]), "")
+    if not safe_name or not (RUNS_DIR / safe_name).is_dir():
+        return None
+    identities = artifact_identity.compute_many(RUNS_DIR / safe_name, artifacts)
+    if path == "/api/axial-coding-review":  # this screen also edits the case's research purpose
+        folder = _run_case_folder(RUNS_DIR / safe_name)
+        identities["research-purpose"] = artifact_identity.compute(folder or RUNS_DIR / safe_name, "research-purpose")
+    return identities
+
+
+# run-state-write-integrity: the POST routes that change a project's run.json
+# or journey_proposal.yaml. A route missing here still cannot overwrite silently:
+# the shared writer refuses any state write whose project lock is not owned.
+_STATE_WRITE_ROUTES = frozenset({
+    "/api/review",
+    "/api/as-is/confirm",
+    "/api/as-is-research",
+    "/api/save-version",
+    "/api/journey-map/apply",
+    "/api/journey-operation",
+    "/api/journey-candidate/field",
+    "/api/journey-candidate/confirm",
+    "/api/journey/solution-reconfirm",
+    "/api/sbp-basis/retain",
+    "/api/persona/hmw-basis/retain",
+    "/api/journey/persona-basis/retain",
+    "/api/improvement-goal/confirm",
+    "/api/axial-coding-review/pair-selection",
+    "/api/primary-hmw-picker/select",
+    "/api/axial-coding/core-category-picker/select",
+    "/api/persona-matrix/segmentation-axes-picker/select",
+    "/api/persona-matrix/target-segmentation-picker/select",
+    "/api/integrated-test/checkpoint",
+    *_IDENTITY_ROUTES,
+})
+
+
+def _state_write_run_dir(path: str, raw: bytes) -> Path | None:
+    if path == "/api/integrated-test/checkpoint":
+        return FROZEN_CORPUS.run_dir if FROZEN_CORPUS is not None else None
+    try:
+        payload = json.loads(raw or b"{}")
+    except ValueError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    try:
+        return _axial_coding_run_dir(payload.get("run"))
+    except ReviewRunNotFound:
+        return None
+
+
+def _project_busy_message(run_dir: Path) -> str:
+    """Name the job only when this server knows it is running for this
+    project; otherwise the neutral sentence (it never claims an orphan)."""
+    with _job_lock:
+        known = _job.get("state") == "running" and _job.get("out") == Path(run_dir).name
+        kind = _job.get("kind")
+    if known:
+        return f"目前無法儲存。此專案正在進行{_job_kind_active_phrase(kind)}，為避免覆蓋你的研究決定，請等它完成後再試。"
+    return sbp_run_lock.BUSY_MESSAGE
+
+
+def _state_files_unreadable(run_dir: Path) -> str | None:
+    for name in sorted(sbp_run_files.STATE_FILE_NAMES):
+        try:
+            sbp_run_files.read_state(Path(run_dir) / name)
+        except sbp_run_files.RunStateUnreadable as exc:
+            return str(exc)
+    return None
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):  # 安靜
         pass
 
     def _send(self, obj, status=200, *, headers=None):
+        # run-state-write-integrity: a handler's generic failure branch answering
+        # a held project lock (e.g. a job start) is a conflict, not a bad request.
+        if status >= 400 and isinstance(sys.exc_info()[1], sbp_run_lock.RunLockBusy):
+            status = 409
+            if isinstance(obj, dict):
+                obj = {**obj, "reason": "project_busy"}
+        # cross-project-state-isolation: a decision write that succeeded answers with
+        # the artifact's identity after the write, still under the project lock.
+        identity_after = getattr(self, "_identity_after", None)
+        if identity_after is not None and status < 300 and isinstance(obj, dict):
+            obj = {**obj, "identities": artifact_identity.compute_many(*identity_after)}
+        identity_read = getattr(self, "_identity_read", None)
+        if identity_read is not None and status < 300 and isinstance(obj, dict):
+            obj = {**obj, "identities": identity_read}
         body = json.dumps(obj, ensure_ascii=False).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -11216,10 +11883,12 @@ class Handler(BaseHTTPRequestHandler):
             self._request_user = user
             if not self._authorize_get(parsed.path, parse_qs(parsed.query), service, user):
                 return
+            self._identity_read = _identity_for_read(parsed.path, parse_qs(parsed.query))
             return self._do_GET()
         except (sbp_auth.AuthConfigurationError, sbp_auth.AuthServiceError) as exc:
             self._send({"error": str(exc)}, 503)
         finally:
+            self._identity_read = None
             if actor_token is not None:
                 _VALIDATION_ACTOR.reset(actor_token)
             if hasattr(self, "_request_user"):
@@ -11338,7 +12007,8 @@ class Handler(BaseHTTPRequestHandler):
                     self._send({"build": _as_is_build_state(RUNS_DIR / name),
                                 "confirmation": _as_is_confirmation(RUNS_DIR / name),
                                 "freshness": sbp_basis.sbp_freshness(RUNS_DIR / name),
-                                "implementation_research": _implementation_research_view(RUNS_DIR / name)})
+                                "implementation_research": _implementation_research_view(RUNS_DIR / name),
+                                **_external_research_status_view(RUNS_DIR / name)})
             elif u.path == "/api/persona-content":
                 name = q.get("run", [""])[0]
                 if not name or pathnames.reject(name):
@@ -11583,6 +12253,64 @@ class Handler(BaseHTTPRequestHandler):
                 del self._request_user
 
     def _do_POST(self):
+        path = urlparse(self.path).path
+        if path in _RETIRED_ROUTES:
+            try:  # keep a keep-alive connection in sync; the body is never parsed
+                self.rfile.read(int(self.headers.get("Content-Length", 0) or 0))
+            except (TypeError, ValueError):
+                pass
+            return self._send({"error": _RETIRED_ROUTES[path], "reason": "retired"}, 410)
+        try:
+            if path in _STATE_WRITE_ROUTES:
+                return self._locked_state_write(path)
+            return self._dispatch_post()
+        except sbp_run_lock.RunLockBusy as busy:
+            # A job start refused by a held project lock in a handler that has no
+            # failure branch of its own: still a plain, truthful answer.
+            return self._send({"error": str(busy), "reason": "project_busy"}, 409)
+
+    def _locked_state_write(self, path: str):
+        """run-state-write-integrity: a researcher write that changes a
+        project's run.json / journey_proposal.yaml runs under that project's
+        lock, taken here before the handler reads anything and held until it
+        has responded. No waiting: a held lock is a 409 with a plain reason."""
+        n = int(self.headers.get("Content-Length", 0) or 0)
+        raw = self.rfile.read(n)
+        self.rfile = io.BytesIO(raw)
+        run_dir = _state_write_run_dir(path, raw)
+        if run_dir is None:
+            if path in _IDENTITY_ROUTES:  # never apply a decision without its identity check
+                return self._send({"error": "找不到這份產出。"}, 404)
+            return self._dispatch_post()  # the handler reports its own not-found / bad request
+        try:
+            lease = sbp_run_lock.acquire(run_dir)
+        except sbp_run_lock.RunLockBusy:
+            return self._send({"error": _project_busy_message(run_dir), "reason": "project_busy"}, 409)
+        try:
+            unreadable = _state_files_unreadable(run_dir)
+            if unreadable:
+                return self._send({"error": unreadable, "reason": "state_unreadable"}, 409)
+            artifact = _IDENTITY_ROUTES.get(path)
+            if artifact is not None:
+                try:
+                    payload = json.loads(raw or b"{}")
+                except ValueError:
+                    payload = None
+                basis = payload.get("basis") if isinstance(payload, dict) else None
+                try:
+                    artifact_identity.check(run_dir, artifact, basis)
+                except artifact_identity.StaleBasis:
+                    body, status = artifact_identity.refusal()
+                    return self._send(body, status)
+                self._identity_after = (run_dir, artifact_identity.sharing(run_dir, artifact))
+            elif path in _IDENTITY_REFRESH_ROUTES:
+                self._identity_after = (run_dir, _IDENTITY_REFRESH_ROUTES[path])
+            return self._dispatch_post()
+        finally:
+            self._identity_after = None
+            lease.release()
+
+    def _dispatch_post(self):
         path = urlparse(self.path).path
         if path == "/api/auth/request-link":
             try:
@@ -11951,6 +12679,11 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 n = int(self.headers.get("Content-Length", 0))
                 payload = json.loads(self.rfile.read(n) or b"{}")
+                coverage_name = _safe_component(str(payload.get("run") or ""), "")
+                if coverage_name and (RUNS_DIR / coverage_name / "sbp_draft.yaml").is_file():
+                    blocked = _sbp_upstream_block_reason(RUNS_DIR / coverage_name)
+                    if blocked:  # solution-reconfirmation: the earlier blueprint is read-only
+                        return self._send({"error": blocked}, 409)
                 result = _set_cell_coverage(payload.get("run"), payload.get("step"), payload.get("layer"),
                                              payload.get("coverage_state"), payload.get("absence_evidence_ref"))
                 return self._send(result)
@@ -11992,6 +12725,9 @@ class Handler(BaseHTTPRequestHandler):
                 run_dir = RUNS_DIR / safe_name if safe_name else None
                 if run_dir is None or not (run_dir / "sbp_draft.yaml").is_file():
                     return self._send({"error": "找不到這份產出。"}, 404)
+                blocked = _sbp_upstream_block_reason(run_dir)
+                if blocked:  # solution-reconfirmation: the earlier blueprint is read-only
+                    return self._send({"error": blocked}, 409)
                 reviews = sbp_inference_reviews.record(
                     run_dir, payload.get("target"), payload.get("id"), payload.get("decision"), payload.get("note"))
                 return self._send({"ok": True, "decision": sbp_inference_reviews.decision(
@@ -12307,9 +13043,7 @@ class Handler(BaseHTTPRequestHandler):
                         kind=PERSONA_CONTENT_GENERATION_OPERATION_KIND, state="running", phase="重試中",
                         log=[], out=run_dir.name, output_identity=run_dir.name,
                     )
-                threading.Thread(
-                    target=_run_persona_rebuild, args=(run_dir, operation_id, execution), daemon=True
-                ).start()
+                _start_job_thread(_run_persona_rebuild, (run_dir, operation_id, execution))
                 return self._send({"started": True})
             except ReviewRunNotFound as e:
                 return self._send({"error": str(e)}, 404)
@@ -12339,8 +13073,7 @@ class Handler(BaseHTTPRequestHandler):
                                      phase="正在分析 Persona 分群", log=[], out=run_dir.name,
                                      output_identity=run_dir.name, artifact=artifact,
                                      segmentation_step=step)
-                    threading.Thread(target=_run_persona_segmentation_cli,
-                                     args=(run_dir, execution, step), daemon=True).start()
+                    _start_job_thread(_run_persona_segmentation_cli, (run_dir, execution, step))
                     return self._send({"started": True, "step": "Persona 分群分析"}, 202)
                 spec = STAGE_COMMANDS.get(artifact)
                 if spec is None:
@@ -12356,9 +13089,7 @@ class Handler(BaseHTTPRequestHandler):
                         phase=f"正在跑{plain_name}", log=[],
                         out=run_dir.name, output_identity=run_dir.name,
                     )
-                threading.Thread(
-                    target=_run_stage_cli, args=(cli, plain_name, run_dir, execution), daemon=True,
-                ).start()
+                _start_job_thread(_run_stage_cli, (cli, plain_name, run_dir, execution))
                 return self._send({"started": True, "step": plain_name})
             except Exception as e:
                 return self._send({"error": _exception_text(e)}, 400)
@@ -12397,11 +13128,7 @@ class Handler(BaseHTTPRequestHandler):
                         out=out_name,
                         output_identity=out_name,
                     )
-                threading.Thread(
-                    target=_run_persona_content_cli,
-                    args=(run_dir, out_name, execution),
-                    daemon=True,
-                ).start()
+                _start_job_thread(_run_persona_content_cli, (run_dir, out_name, execution))
                 return self._send({
                     "ok": True,
                     "kind": PERSONA_CONTENT_GENERATION_OPERATION_KIND,
@@ -12436,7 +13163,7 @@ class Handler(BaseHTTPRequestHandler):
                             _job.get("kind") == "journey_recheck"
                             and _job.get("request_digest") == context["request_digest"]
                         ):
-                            return self._send({**_job, "ok": True, "reused": True}, 202)
+                            return self._send({**{k: v for k, v in _job.items() if k != "run_lock"}, "ok": True, "reused": True}, 202)
                         active = _job_kind_active_phrase(_job.get("kind"))
                         return self._send({"error": f"目前已有{active}正在進行，完成後再試。"}, 409)
                     _replace_job(
@@ -12446,14 +13173,11 @@ class Handler(BaseHTTPRequestHandler):
                         log=[],
                         out=context["output_identity"],
                         output_identity=context["output_identity"],
+                        lock_dir=context["result_dir"],  # the recheck writes its own --out, not runs/<out>
                         result_endpoint=f"/api/journey-recheck?run={quote(context['output_identity'])}",
                         request_digest=context["request_digest"],
                     )
-                threading.Thread(
-                    target=_run_journey_recheck_cli,
-                    args=(context,),
-                    daemon=True,
-                ).start()
+                _start_job_thread(_run_journey_recheck_cli, (context,))
                 return self._send({
                     "ok": True,
                     "kind": "journey_recheck",
@@ -12587,7 +13311,7 @@ class Handler(BaseHTTPRequestHandler):
             except (ValueError, json.JSONDecodeError) as exc:
                 return self._send({"error": str(exc)}, 400)
             return _handle_generate_as_is(self, payload)
-        if path.startswith("/api/implementation-research/"):
+        if path in _IMPLEMENTATION_RESEARCH_ROUTES:
             try:
                 n = int(self.headers.get("Content-Length", 0))
                 payload = json.loads(self.rfile.read(n) or b"{}")
@@ -12631,11 +13355,28 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send({"error": str(exc)}, 409)
             except (ValueError, json.JSONDecodeError) as exc:
                 return self._send({"error": str(exc)}, 400)
+        if path == "/api/journey/solution-reconfirm":
+            try:
+                n = int(self.headers.get("Content-Length", 0))
+                payload = json.loads(self.rfile.read(n) or b"{}")
+                if not isinstance(payload, dict):
+                    raise SolutionReconfirmRejected("request body 必須是物件。")
+                run_dir = _axial_coding_run_dir(payload.get("run"))
+                return self._send(_reconfirm_solution(run_dir, payload))
+            except ReviewRunNotFound as exc:
+                return self._send({"error": str(exc)}, 404)
+            except SolutionReconfirmRejected as exc:
+                return self._send({"error": str(exc)}, 409)
+            except (ValueError, json.JSONDecodeError) as exc:
+                return self._send({"error": str(exc)}, 400)
         if path == "/api/sbp-basis/retain":
             try:
                 n = int(self.headers.get("Content-Length", 0))
                 payload = json.loads(self.rfile.read(n) or b"{}")
                 run_dir = _axial_coding_run_dir((payload or {}).get("run"))
+                blocked = _sbp_upstream_block_reason(run_dir)
+                if blocked:
+                    return self._send({"error": blocked}, 409)
                 return self._send({"freshness": sbp_basis.retain(run_dir)})
             except ReviewRunNotFound as exc:
                 return self._send({"error": str(exc)}, 404)
@@ -12690,7 +13431,7 @@ class Handler(BaseHTTPRequestHandler):
                     _replace_job(kind=FRESH_CODING_OPERATION_KIND, state="running",
                                  phase="正在準備編碼", log=[], out=context["out"],
                                  output_identity=context["out"], case_ref=context["case"])
-                threading.Thread(target=_run_fresh_coding_cli, args=(context, execution), daemon=True).start()
+                _start_job_thread(_run_fresh_coding_cli, (context, execution))
                 return self._send({"ok": True, "kind": FRESH_CODING_OPERATION_KIND,
                                    "state": "running", "out": context["out"]}, 202)
             except FreshCodingRequestRejected as exc:
@@ -12732,9 +13473,9 @@ class Handler(BaseHTTPRequestHandler):
                     out=payload["out"],
                     output_identity=payload["out"],
                 )
-            threading.Thread(
-                target=_run_cli,
-                args=(
+            _start_job_thread(
+                _run_cli,
+                (
                     payload["case"],
                     str(confirmation["evidence_path"]) if confirmation else (payload.get("from_evidence") or None),
                     payload["out"],
@@ -12747,8 +13488,7 @@ class Handler(BaseHTTPRequestHandler):
                     expected_routing_policy,
                     execution,
                 ),
-                daemon=True,
-            ).start()
+            )
             self._send({"ok": True})
         except Exception as e:
             self._send({"error": _exception_text(e)}, 400)
@@ -12760,12 +13500,15 @@ def resolve_bind_host(explicit_host: str | None) -> str:
 
 
 def _default_cli_runner_command() -> None:
-    """A local server started without SBP_CLI_RUNNER_COMMAND uses the shipped
-    Codex wrapper instead of failing every CLI call. It picks the wrapper only;
+    """A local server started without runner commands uses the shipped Codex
+    and Claude Code wrappers instead of failing every CLI call. It picks the wrapper only;
     the wrapper still fails closed when Codex is missing or not signed in."""
-    wrapper = Path(__file__).resolve().parents[1] / "cli_runners" / "codex.py"
-    if not (os.environ.get("SBP_CLI_RUNNER_COMMAND") or "").strip() and wrapper.is_file():
-        os.environ["SBP_CLI_RUNNER_COMMAND"] = f"{shlex.quote(sys.executable)} {shlex.quote(str(wrapper))}"
+    runners = Path(__file__).resolve().parents[1] / "cli_runners"
+    # default-claude-runner-on-source-start: Claude Code too, as `ditl-sbp start` does.
+    for variable, name in (("SBP_CLI_RUNNER_COMMAND", "codex.py"), ("SBP_CLI_RUNNER_COMMAND_CLAUDE", "claude.py")):
+        wrapper = runners / name
+        if not (os.environ.get(variable) or "").strip() and wrapper.is_file():
+            os.environ[variable] = f"{shlex.quote(sys.executable)} {shlex.quote(str(wrapper))}"
 
 
 class _ShutdownRequested(BaseException):

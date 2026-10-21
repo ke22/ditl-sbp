@@ -22,6 +22,8 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import narrative_framing  # noqa: E402
 from sbp_gen import hmw_formation  # noqa: E402
+from sbp_gen import run_lock  # noqa: E402
+from yaml_loader import safe_load as load_safe_yaml  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 TOOLS_DIR = REPO / "tools"
@@ -142,7 +144,7 @@ MECHANISMS = {
 def _load_yaml(path: Path):
     if not path.is_file():
         return None
-    return yaml.safe_load(path.read_text(encoding="utf-8"))
+    return load_safe_yaml(path.read_text(encoding="utf-8"))
 
 
 def discover_cases() -> list[dict]:
@@ -307,6 +309,16 @@ def _supporting_jtbds(refs, selected: list) -> list[dict]:
             continue
         out.append({key: item.get(key) or "" for key in ("situation", "progress", "motivation", "outcome")})
     return out
+
+
+def _hmw_card_jobs(refs, selected: list, verified: bool) -> dict:
+    """formation-time-basis-display: the JTBDs an HMW was formed from, all or
+    nothing. Listed only when the selection is verified unchanged and every
+    ref resolves; otherwise no sentence and `supporting_jtbds_unknown`."""
+    jobs = _supporting_jtbds(refs, selected) if verified else []
+    complete = verified and len(jobs) == len(refs or [])
+    return {"supporting_jtbds": jobs if complete else [],
+            "supporting_jtbds_unknown": bool(refs) and not complete}
 
 
 def _with_evidence(item: dict, refs, records) -> dict:
@@ -909,7 +921,12 @@ def resolve_run_response(mechanism: str, run_dir: Path) -> dict:
         # this read projection joins the canonical pair for the workbench
         # instead of leaving a blank tension field for the frontend to guess.
         import narrative_framing as _framing
+        import formation_basis as _formation
         selected_jtbds = _framing.load_selection(run_dir)
+        # formation-time-basis-display: JTBD-n refs point into the selection the
+        # HMW was formed from; read them against today's selection only when it
+        # is provably the same one, otherwise say the basis is unknown.
+        jtbd_basis_verified = _formation.hmw_jtbd_basis_verified(run_dir, hmw_doc)
         hmw_refs = {
             entry_id: list(entry.get("evidence_refs") or [])
             for entry_id, entry in hmw_entries.items()
@@ -932,8 +949,8 @@ def resolve_run_response(mechanism: str, run_dir: Path) -> dict:
                     "evidence_refs": hmw_refs.get(c.get("hmw_id"), []),
                     # 2026-10-03 (HMW v12): which selected JTBDs this framing was
                     # induced from, as the jobs' own words for the card.
-                    "supporting_jtbds": _supporting_jtbds(
-                        (hmw_entries.get(c.get("hmw_id")) or {}).get("supporting_jtbd_refs"), selected_jtbds),
+                    **_hmw_card_jobs((hmw_entries.get(c.get("hmw_id")) or {}).get("supporting_jtbd_refs"),
+                                     selected_jtbds, jtbd_basis_verified),
                 },
                 hmw_refs.get(c.get("hmw_id")), records)
             for c in (data.get("candidates") or [])
@@ -946,25 +963,29 @@ def resolve_run_response(mechanism: str, run_dir: Path) -> dict:
                 "supporting_jtbds": candidate.get("supporting_jtbds") or [],
                 "evidence": basis_evidence(candidate.get("evidence_refs"), records),
             }
+            if candidate.get("supporting_jtbds_unknown"):
+                basis["supporting_jtbds_unknown"] = True
             if any(basis.values()):
                 candidate["basis"] = basis
         # wire-primary-hmw-selection-submit: an existing selection is shown
         # on first render, not only right after a same-session submission.
         # A selection referencing an id absent from the current candidates
         # (or an invalid self-authored branch) is never surfaced as a chosen
-        # pair. A valid self-authored selection carries its own complete
-        # tension/HMW/evidence record and is therefore safe to show back.
+        # pair. A self-authored selection is shown back whenever it declares
+        # its statement (hmw-own-selection-readback): since 2026-09-27 the
+        # statement is the only field the station asks for, so rationale,
+        # tension, grounding and evidence come back as recorded or empty.
         selection_doc = _load_yaml_safe(run_dir / "primary_hmw_selection.yaml") or {}
         selected_id = selection_doc.get("hmw_id")
         selected = None
         if selected_id and any(c.get("hmw_id") == selected_id for c in candidates):
             selected = {"hmw_id": selected_id, "rationale": selection_doc.get("rationale")}
-        elif all(selection_doc.get(field) for field in ("tension", "statement", "rationale", "grounded_in")) and selection_doc.get("evidence_refs"):
+        elif not selected_id and str(selection_doc.get("statement") or "").strip():
             selected = {
                 "custom": True,
-                "tension": selection_doc.get("tension"),
+                "tension": selection_doc.get("tension") or "",
                 "statement": selection_doc.get("statement"),
-                "rationale": selection_doc.get("rationale"),
+                "rationale": selection_doc.get("rationale") or "",
                 "grounded_in": selection_doc.get("grounded_in"),
                 "evidence_refs": list(selection_doc.get("evidence_refs") or []),
             }
@@ -1185,16 +1206,24 @@ def run_selection_cli(mechanism: str, run_dir: Path, answer: dict) -> dict:
         yaml.dump(answer, tmp, allow_unicode=True)
         tmp_path = tmp.name
     try:
-        result = subprocess.run(
-            [
-                sys.executable, "-m", "sbp_gen", spec["cli"],
-                "--run", str(run_dir),
-                "--selection-file", tmp_path,
-            ],
-            cwd=str(TOOLS_DIR),
-            capture_output=True,
-            text=True,
-        )
+        # run-state-write-integrity: the selection command writes run.json; it
+        # runs under the caller's project lock (or takes it here), handed to
+        # the child rather than raced for.
+        try:
+            with run_lock.handoff(run_dir) as lock_kwargs:
+                result = subprocess.run(
+                    [
+                        sys.executable, "-m", "sbp_gen", spec["cli"],
+                        "--run", str(run_dir),
+                        "--selection-file", tmp_path,
+                    ],
+                    cwd=str(TOOLS_DIR),
+                    capture_output=True,
+                    text=True,
+                    **lock_kwargs,
+                )
+        except run_lock.RunLockBusy as busy:
+            return {"ok": False, "stdout": "", "stderr": str(busy), "busy": True}
     finally:
         Path(tmp_path).unlink(missing_ok=True)
     return {

@@ -46,7 +46,7 @@ action node（`kind: action`）除了上面這些，還要填 `actor_boundary`�
 
 ## Disposition 與體驗註記
 
-每一條輸入 evidence 必須在 `dispositions` 恰好出現一次。每則 disposition 用 `evidence_ref` 指向那條輸入證據，用 `status` 判定它的去向，用 `reason` 一句話說明為什麼判這個 status。各個 status 的意思：
+每一條輸入 evidence 必須在 `dispositions` 恰好出現一次。每則 disposition 只寫兩個欄位：用 `evidence_ref` 指向那條輸入證據，用 `status` 判定它的去向；不用寫 `reason`。各個 status 的意思：
 - `used`：這條證據支持了某個 action 或 artifact node 的 claim
 - `annotation`：這條證據形成一則體驗註記，不是服務動作
 - `duplicate`：跟另一條證據描述同一事件

@@ -285,8 +285,11 @@ class CodexRunner:
             # resolved value, not runtime-confirmed telemetry Codex handed
             # back (it doesn't; _usage_tokens is the one field that is real
             # per-call telemetry, read straight from Codex's own JSON events).
+            # Codex never reports which model ran, so the model is never confirmed.
+            source = "workbench" if model else ("executor_settings" if resolved_model else None)
             return RunnerReply(text=text, tokens=_usage_tokens(events or ""), model=resolved_model,
-                               usage=_usage_detail(events or "") or None, effort=resolved_effort)
+                               usage=_usage_detail(events or "") or None, effort=resolved_effort,
+                               model_source=source)
 
 
 def main() -> int:

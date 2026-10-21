@@ -1,0 +1,1603 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DITL service design workbench</title>
+<link rel="icon" type="image/png" sizes="64x64" href="data:image/png;base64,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">
+<!--workbench-tokens-->
+<style>
+/* workbench-v3-frontend: --wb-* tokens are injected by the server from design-system/desktop-workbench.yaml. */
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--wb-surface-app);color:var(--wb-text-primary);font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;font-size:var(--wb-type-body-size);line-height:1.7}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.45}
+:focus-visible{outline:2px solid var(--wb-accent);outline-offset:2px}
+.shell{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh}
+/* sidebar */
+.side{position:sticky;top:0;height:100vh;overflow:auto;padding:22px 14px;display:flex;flex-direction:column;gap:18px;border-right:1px solid var(--wb-border-subtle)}
+.brand{padding:0 10px;display:flex;flex-direction:column;gap:6px}.brand small{color:var(--wb-text-secondary);font-size:12px}
+.product-mark{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;letter-spacing:.045em;line-height:1.3}
+.product-mark img{flex:none;width:28px;height:28px}
+.app-copyright{margin-top:6px;padding-top:8px;border-top:1px solid var(--wb-border-subtle);color:var(--wb-text-muted);font-size:10.5px;letter-spacing:.04em;user-select:none}
+.side-group{display:flex;flex-direction:column;gap:2px}
+.side-label{font-size:12px;color:var(--wb-text-secondary);letter-spacing:var(--wb-label-tracking);padding:0 10px;margin-bottom:4px}
+.nav{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:8px;align-items:start;text-align:left;border:0;background:transparent;border-radius:10px;padding:8px 10px}
+.nav:hover{background:var(--wb-surface-hover)}
+.nav.on{background:var(--wb-surface-selected)}
+.nav .num{font-size:12px;font-weight:600;color:var(--wb-text-secondary);padding-top:2px}
+.nav.on .num{color:var(--wb-accent)}
+.nav b{display:block;font-size:14px;font-weight:600}
+.nav small{display:block;font-size:12px;color:var(--wb-text-secondary);line-height:1.45}
+.nav .mark{font-size:12px;padding-top:2px;color:var(--wb-status-confirmed)}
+.nav .mark.stale{color:var(--wb-fresh-stale)}
+.side-foot{margin-top:auto;border-top:1px solid var(--wb-border-subtle);padding:12px 10px 0;display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--wb-text-secondary)}
+.linkish{border:0;background:none;padding:0;text-align:left;text-decoration:underline;text-underline-offset:3px;font-size:12px;color:var(--wb-text-secondary)}
+/* main */
+.main{background:var(--wb-surface-work);min-width:0}
+.top{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 32px;border-bottom:1px solid var(--wb-border-subtle);font-size:13px;color:var(--wb-text-secondary)}
+.top b{color:var(--wb-text-primary);font-weight:600}
+.proto-tag{border:1px solid var(--wb-border-strong);border-radius:999px;padding:2px 10px;font-size:12px}
+.page{max-width:1480px;margin:0 auto;padding:28px 32px 80px}
+/* page head: purpose -> decision (two layers only) */
+.head{display:flex;justify-content:space-between;gap:24px;align-items:flex-end;padding-bottom:20px;margin-bottom:24px;border-bottom:1px solid var(--wb-border-subtle)}
+.head .purpose{font-size:13px;color:var(--wb-text-secondary);margin:0 0 6px}
+.head h1{font-size:26px;line-height:1.35;font-weight:600;margin:0}
+.decide{display:flex;flex-direction:column;align-items:flex-end;gap:6px;max-width:440px;text-align:right}
+.decide .consequence{font-size:13px;color:var(--wb-text-secondary)}
+.model-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}.model-table th,.model-table td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--wb-border-subtle,#e5e5e5);vertical-align:middle}.model-table .input{max-width:220px}
+.decide .blocked{font-size:13px;color:var(--wb-status-pending)}
+.primary{background:var(--wb-action-primary);color:var(--wb-action-primary-text);border:0;border-radius:10px;min-height:var(--wb-control-height);padding:0 20px;font-size:15px;font-weight:600}
+.primary:hover:not(:disabled){background:var(--wb-accent-hover)}
+.secondary{background:var(--wb-action-secondary);border:1px solid var(--wb-border-strong);border-radius:10px;min-height:38px;padding:0 14px;font-size:14px}
+.secondary:hover:not(:disabled){background:var(--wb-surface-hover)}
+.ghost{border:0;background:none;padding:2px 0;font-size:13px;font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.done-line{font-size:13px;color:var(--wb-status-confirmed);font-weight:600}
+/* notices */
+.notice{display:flex;gap:16px;align-items:center;justify-content:space-between;border:1px solid var(--wb-border-warning);background:var(--wb-status-pending-surface);border-radius:12px;padding:12px 16px;margin-bottom:20px;font-size:14px}
+.notice .acts{display:flex;gap:8px;flex:none}
+.hint{font-size:13px;color:var(--wb-text-secondary)}
+.hint.warn{color:var(--wb-status-pending)}
+/* sections */
+.sec{background:var(--wb-surface-raised);border:1px solid var(--wb-border-subtle);border-radius:var(--wb-radius-card);padding:20px 22px;margin-bottom:18px}
+.sec h2{font-size:18px;font-weight:600;margin:0 0 4px}
+.sec .sub{font-size:13px;color:var(--wb-text-secondary);margin:0 0 16px}
+.sec.locked{opacity:.55}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.field label{font-size:13px;font-weight:600}
+.input,.textarea{width:100%;border:1px solid var(--wb-border-strong);border-radius:10px;background:#fff;padding:10px 12px}
+.textarea{min-height:96px;resize:vertical;line-height:1.7}
+/* cards */
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.card{border:1px solid var(--wb-border-subtle);border-radius:12px;background:#fff;padding:16px;text-align:left;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card.pick{cursor:pointer}
+.card.pick:hover{background:var(--wb-surface-hover)}
+.card.on{border:2px solid var(--wb-border-selected);padding:15px;background:var(--wb-accent-tint)}
+.card .kicker{font-size:12px;color:var(--wb-text-secondary);display:flex;justify-content:space-between;gap:8px}
+.card h3{font-size:16px;font-weight:600;line-height:1.6;margin:0}
+.card p{margin:0;font-size:14px;color:var(--wb-text-secondary)}
+.card .foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tick{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--wb-border-strong);display:inline-grid;place-items:center;font-size:12px;color:transparent;flex:none}
+.on .tick{background:var(--wb-accent);border-color:var(--wb-accent);color:#fff}
+.radio{border-radius:50%}
+.tag{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--wb-border-subtle);background:var(--wb-surface-app);color:var(--wb-text-secondary);white-space:nowrap}
+.tag.inf{color:var(--wb-claim-inference);border-color:var(--wb-claim-inference);border-style:dashed;background:#fff}
+.tag.chg{color:var(--wb-to-be);border-color:var(--wb-to-be-border);background:var(--wb-to-be-surface)}
+.tag.flag{color:var(--wb-status-pending);border-color:var(--wb-status-pending);background:var(--wb-status-pending-surface)}
+.tag.ok{color:var(--wb-status-confirmed)}
+/* project / ai */
+.providers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.status-list{display:flex;flex-direction:column;gap:4px;font-size:13px}
+.status-list span::before{content:'○ ';color:var(--wb-text-muted)}
+.status-list span.yes::before{content:'● ';color:var(--wb-status-confirmed)}
+.filebox{border:1px dashed var(--wb-border-strong);border-radius:12px;padding:18px;display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--wb-surface-work)}
+/* coding */
+.phases{display:flex;flex-direction:column;gap:2px;margin-top:8px}
+.phase{display:grid;grid-template-columns:22px 160px minmax(0,1fr);gap:10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--wb-border-subtle);font-size:14px}
+.phase .dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--wb-border-strong);margin-top:6px}
+.phase.run .dot{border-color:var(--wb-status-processing);background:var(--wb-status-processing)}
+.phase.ok .dot{border-color:var(--wb-status-confirmed);background:var(--wb-status-confirmed)}
+.phase span{color:var(--wb-text-secondary)}
+.bar{height:6px;background:var(--wb-surface-app);border-radius:999px;overflow:hidden;margin-top:12px}
+.bar i{display:block;height:100%;background:var(--wb-status-processing)}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.stat{border:1px solid var(--wb-border-subtle);border-radius:12px;padding:14px}
+.stat b{display:block;font-size:22px;font-weight:600}
+.stat span{font-size:13px;color:var(--wb-text-secondary)}
+.theme-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.theme-list div{font-size:14px}.theme-list small{color:var(--wb-text-secondary)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--wb-border-subtle);margin:0 0 16px}
+.tab{border:0;background:none;padding:8px 14px 10px;font-size:14px;color:var(--wb-text-secondary);border-bottom:2px solid transparent;margin-bottom:-1px;text-align:left}
+.tab small{display:block;font-size:12px;font-weight:400}
+.tab.on{color:var(--wb-text-primary);font-weight:600;border-bottom-color:var(--wb-accent)}
+.oc-list{max-height:560px;overflow:auto;border:1px solid var(--wb-border-subtle);border-radius:10px;margin-top:10px}
+.oc{border-bottom:1px solid var(--wb-border-subtle);padding:10px 14px;font-size:14px}
+.oc summary{cursor:pointer}.oc summary span{color:var(--wb-text-secondary);margin-left:8px}
+.oc blockquote{margin:8px 0 4px;border-left:3px solid var(--wb-claim-evidence);padding-left:10px;line-height:1.8}
+.oc small{color:var(--wb-text-secondary);font-size:12px}
+.theme-card{border:1px solid var(--wb-border-subtle);border-radius:12px;background:#fff;padding:16px;display:flex;flex-direction:column;gap:8px}
+.theme-card h3{font-size:16px;margin:0}.theme-card p{margin:0;font-size:14px}
+.theme-card details{font-size:14px;color:var(--wb-text-secondary)}.theme-card ul{margin:6px 0 0;padding-left:18px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:0}
+.theme-card .row{flex-wrap:nowrap;align-items:flex-start;margin-top:auto}
+.theme-card .row .ghost{flex:none}
+.chip{border:1px solid var(--wb-border-strong);border-radius:999px;background:#fff;padding:2px 10px;font-size:12px}
+.chip:hover{background:var(--wb-surface-hover)}
+/* fill-in sentence templates (JTBD, HMW) */
+.fill{display:grid;gap:10px;margin-top:6px}
+.fill.jt{grid-template-columns:repeat(4,minmax(0,1fr))}.fill.hm{grid-template-columns:repeat(2,minmax(0,1fr))}
+.slot{display:flex;flex-direction:column;gap:4px;border-radius:10px;padding:10px 12px}
+.slot label{font-size:13px;font-weight:600}.slot label small{font-weight:400;color:var(--wb-text-secondary);margin-left:4px}
+.slot .input{background:#fff}
+.preview{margin-top:10px;font-size:15px;line-height:1.9}
+.preview .blank{color:var(--wb-text-muted)}
+.s-ctx{background:#e2eff4}.s-job{background:#e6eadc}.s-mot{background:#fbe3d8}.s-out{background:#fdf1d2}
+.s-who{background:#e2eff4}.s-cond{background:#e6eadc}.s-goal{background:#fdf1d2}
+mark{color:inherit;border-radius:3px;padding:0 2px}
+.card h3 mark,.card p mark{padding:0 1px}
+/* persona */
+.persona-wrap{display:grid;grid-template-columns:320px minmax(0,1fr);gap:18px}
+.axes{display:flex;flex-direction:column;gap:8px;max-height:560px;overflow:auto;padding-right:4px}
+.axis{border:1px solid var(--wb-border-subtle);border-radius:10px;padding:10px 12px;background:#fff}
+.axis.on{border-color:var(--wb-border-selected);background:var(--wb-accent-tint)}
+.axis label{display:flex;gap:8px;align-items:flex-start;font-size:14px;font-weight:600;cursor:pointer}
+.axis input{accent-color:var(--wb-accent);margin-top:5px}
+.axis .poles{font-size:12px;color:var(--wb-text-secondary);margin-top:4px;padding-left:22px}
+.plot{position:relative;height:440px;margin:28px 8px 34px 34px;border:1px solid var(--wb-border-strong);background:#fff}
+.plot::before,.plot::after{content:'';position:absolute;background:var(--wb-border-subtle);pointer-events:none}
+.plot::before{left:0;right:0;top:50%;height:1px}.plot::after{top:0;bottom:0;left:50%;width:1px}
+.quad{position:absolute;width:50%;height:50%;border:0;background:transparent}
+.quad:hover{background:var(--wb-surface-hover)}
+.quad.on{background:var(--wb-accent-tint);box-shadow:inset 0 0 0 2px var(--wb-border-selected)}
+.quad .qlabel{position:absolute;left:10px;top:8px;font-size:12px;color:var(--wb-text-secondary);text-align:left;max-width:90%}
+.dot-p{position:absolute;transform:translate(-50%,-50%);border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;z-index:2;padding:0}
+.dot-p i{width:12px;height:12px;border-radius:50%;background:var(--wb-text-primary);border:2px solid #fff;box-shadow:0 0 0 1px var(--wb-text-primary)}
+.dot-p b{font-weight:600;background:rgba(255,255,255,.9);padding:0 3px;border-radius:3px}
+.ax-x,.ax-y{position:absolute;font-size:12px;color:var(--wb-text-secondary)}
+.ax-x{bottom:-26px}.ax-x.l{left:0}.ax-x.r{right:0}
+.ax-y{left:-30px;writing-mode:vertical-rl;transform:rotate(180deg)}.ax-y.b{bottom:0}.ax-y.t{top:0}
+.ax-title{position:absolute;font-size:12px;font-weight:600}
+.persona-card{display:grid;grid-template-columns:300px minmax(0,1fr);gap:18px}
+.persona-id{background:var(--wb-surface-app);border-radius:12px;padding:18px}
+.persona-id h3{font-size:20px;margin:0 0 8px}
+.quote{border-left:3px solid var(--wb-claim-evidence);padding:4px 0 4px 12px;font-size:var(--wb-type-quote-size);line-height:var(--wb-type-quote-line);margin:12px 0}
+.quote small{display:block;font-size:12px;color:var(--wb-text-secondary)}
+.pfields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pfield{border:1px solid var(--wb-border-subtle);border-radius:10px;padding:10px 12px}
+.pfield.wide{grid-column:1/-1}
+.pfield label{font-size:12px;font-weight:600;color:var(--wb-text-secondary);display:flex;justify-content:space-between}
+.pfield textarea{width:100%;border:0;padding:4px 0 0;resize:vertical;min-height:72px;background:transparent;line-height:1.7;font-size:14px}
+.pfield textarea:focus{outline:none}
+.pfield:focus-within{border-color:var(--wb-border-selected)}
+/* journey + delivery + blueprint grids */
+.scroll{overflow:auto;border:1px solid var(--wb-border-subtle);border-radius:12px;background:#fff;max-height:78vh}
+.grid{display:grid;width:max-content}
+.cell{border-right:1px solid var(--wb-border-subtle);border-bottom:1px solid var(--wb-border-subtle);padding:10px;font-size:13px;line-height:1.6;min-width:0;background:#fff}
+.cell.lab{position:sticky;left:0;z-index:3;background:var(--wb-surface-app);font-weight:600;font-size:13px}
+.cell.lab small{display:block;font-weight:400;color:var(--wb-text-secondary);font-size:12px}
+.cell.headrow{position:sticky;top:0;z-index:2;background:var(--wb-surface-app)}
+.cell.headrow.lab{z-index:4}
+.cell.stage{background:var(--wb-surface-selected);font-size:12px;font-weight:600;color:var(--wb-text-secondary)}
+.cell.edit{cursor:pointer;text-align:left;border-top:0;border-left:0;display:block;width:100%}
+.cell.edit:hover{background:var(--wb-surface-hover)}
+.cell.pain{color:var(--wb-status-pending)}
+.cell .empty{color:var(--wb-text-muted)}
+.cell.dev{background:var(--wb-accent-tint)}
+.stepname b{display:block;font-size:14px;line-height:1.5}
+.stepname small{color:var(--wb-text-secondary)}
+/* emotion */
+.emo-cell{padding:0;position:relative}
+.emo-legend{display:flex;flex-direction:column;justify-content:space-between;height:120px;padding:10px 0}
+.emo-legend span{font-size:12px;font-weight:400;color:var(--wb-text-secondary);line-height:1}
+.emo-point{cursor:ns-resize}
+.emo-point:focus{outline:none}
+.emo-point:focus circle.halo{stroke-width:3;filter:drop-shadow(0 0 3px var(--wb-accent))}
+.cell.core{display:flex;flex-direction:column;gap:6px}
+.cell.core label{display:flex;gap:6px;align-items:center;font-size:12px;font-weight:600;cursor:pointer}
+.cell.core input{accent-color:var(--wb-accent)}
+.core-text{border:1px solid transparent;border-radius:8px;background:none;padding:4px;text-align:left;font-size:13px;line-height:1.6}
+.core-text:hover{border-color:var(--wb-border-strong);background:var(--wb-surface-hover)}
+.core-text .src{display:block;font-size:12px;color:var(--wb-text-secondary);margin-top:2px}
+.cell.core.dev{box-shadow:inset 0 0 0 2px var(--wb-border-selected)}
+/* delivery matrix */
+.dl-sol{display:flex;flex-direction:column;gap:8px;width:100%}
+.dl-sol+.dl-sol{border-top:1px dashed var(--wb-border-strong);padding-top:8px}
+.adopt{display:flex;align-items:center;gap:8px;border:0;background:none;padding:0;font-size:13px;font-weight:600;text-align:left}
+.dl-edit{display:block;width:100%;text-align:left;border:1px solid transparent;border-radius:8px;background:none;padding:6px;font-size:13px;line-height:1.6;min-height:56px}
+.dl-edit:hover:not(:disabled){border-color:var(--wb-border-strong);background:var(--wb-surface-hover)}
+.dl-edit .src{display:block;font-size:12px;color:var(--wb-text-secondary);margin-top:4px}
+/* blueprint */
+.node{display:block;width:100%;text-align:left;border:1px solid var(--wb-claim-evidence);border-radius:8px;background:#fff;padding:8px;font-size:13px;line-height:1.5;margin-bottom:6px}
+.node.inferred{border-style:dashed;border-color:var(--wb-claim-inference);background:var(--wb-surface-hover)}
+.node:hover{box-shadow:0 0 0 2px var(--wb-border-strong)}
+.node .meta{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.node .meta .tag{height:20px;font-size:11px;padding:0 6px}
+.lane-evidence{background:var(--wb-lane-evidence)}.lane-customer{background:var(--wb-lane-customer)}.lane-front{background:var(--wb-lane-front)}.lane-back{background:var(--wb-lane-back)}.lane-support{background:var(--wb-lane-support)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--wb-text-secondary);margin-top:10px;align-items:center}
+.legend .sw{display:inline-block;width:22px;height:14px;border-radius:4px;border:1px solid var(--wb-claim-evidence);vertical-align:-2px;margin-right:6px;background:#fff}
+.legend .sw.inf{border-style:dashed;border-color:var(--wb-claim-inference);background:var(--wb-surface-hover)}
+.conflicts{display:flex;flex-direction:column;gap:8px}
+.conflict{border:1px solid var(--wb-border-warning);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--wb-status-pending-surface)}
+.refs{display:flex;flex-direction:column;gap:8px}
+.ref{border:1px solid var(--wb-border-subtle);border-radius:10px;padding:10px 12px;font-size:14px}
+.ref small{display:block;color:var(--wb-text-secondary)}
+/* drawer */
+.overlay{position:fixed;inset:0;background:rgba(31,37,48,.28);display:flex;justify-content:flex-end;z-index:50}
+.drawer{width:min(560px,100vw);height:100vh;background:#fff;display:flex;flex-direction:column}
+.drawer header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:20px 24px;border-bottom:1px solid var(--wb-border-subtle)}
+.drawer header h2{font-size:18px;margin:0}
+.drawer header small{color:var(--wb-text-secondary);font-size:12px}
+.drawer .body{overflow:auto;padding:20px 24px 40px;display:flex;flex-direction:column;gap:14px}
+.close{border:0;background:var(--wb-surface-app);border-radius:8px;width:34px;height:34px;font-size:20px}
+.ev{border:1px solid var(--wb-border-subtle);border-radius:10px;padding:12px 14px}
+.ev .who{font-size:12px;color:var(--wb-text-secondary)}
+.ev blockquote{margin:6px 0 0;border-left:3px solid var(--wb-claim-evidence);padding-left:10px;font-size:15px;line-height:1.8}
+.ev details{margin-top:6px;font-size:12px;color:var(--wb-text-secondary)}
+.kv{font-size:14px}.kv b{display:block;font-size:12px;color:var(--wb-text-secondary);font-weight:600;margin-bottom:2px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--wb-action-dark);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;z-index:60}
+@media (max-width:1180px){.cards,.providers{grid-template-columns:1fr 1fr}.persona-wrap,.persona-card{grid-template-columns:1fr}}
+@media (max-width:980px){.shell{grid-template-columns:200px minmax(0,1fr)}.page{padding:22px 18px 60px}.head{flex-direction:column;align-items:flex-start}.decide{align-items:flex-start;text-align:left}.stats{grid-template-columns:1fr}}
+.product-mark::before{content:"";flex:none;width:28px;height:28px;background:url("data:image/png;base64,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") center/contain no-repeat}
+.versions{display:flex;flex-direction:column;gap:6px}
+.oc-group{position:sticky;top:0;z-index:1;background:var(--wb-surface-app);padding:6px 14px;font-size:12px;font-weight:600;color:var(--wb-text-secondary);border-bottom:1px solid var(--wb-border-subtle)}
+.oc small{display:block;margin-bottom:6px}
+a.linkish{color:var(--wb-text-secondary)}
+/* v3-blueprint-relations: relation lines on the blueprint grid, same values as ui.html's .as-is-grid-lines. */
+.as-is-grid{position:relative}
+.as-is-grid-lines{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;z-index:2}
+.as-is-grid-lines path{fill:none;stroke:#7d8594;stroke-width:1.2}
+.as-is-grid-lines path.is-inference{stroke-dasharray:4 3}
+.as-is-grid-lines marker path{fill:#7d8594;stroke:none}
+.legend-line{fill:none;stroke:#7d8594;stroke-width:1.2}.legend-line.is-inference{stroke-dasharray:4 3}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+'use strict';
+// workbench-v3-frontend (v3-frontend-read, 2026-10-19)：prototype-v3 的畫面接上真實系統。
+// 內容與選擇、確認狀態都來自伺服器；寫入走原介面同一支 API 與同一套寫入保護。
+const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=s=>document.querySelector(s);
+
+/* ---------- static definitions ---------- */
+const STATIONS=[
+ {id:'project',group:'準備',num:'·',name:'建立專案',purpose:'告訴系統這次研究什麼、用哪些資料',title:'這次要研究什麼？'},
+ {id:'ai',group:'準備',num:'·',name:'AI 設定',purpose:'選擇由哪一種 AI 幫你分析',title:'這次要用哪一種 AI 分析資料？'},
+ {id:'coding',group:'準備',num:'·',name:'資料與編碼',purpose:'AI 讀完資料，整理出可比較的模式',title:'讓 AI 整理研究資料'},
+ {id:'jtbd',group:'研究步驟',num:'01',name:'JTBD',purpose:'使用者想完成什麼',title:'這次要關注使用者想完成的哪件事？'},
+ {id:'hmw',group:'研究步驟',num:'02',name:'HMW',purpose:'這次要處理什麼問題',title:'這次要從哪個問題切入？'},
+ {id:'persona',group:'研究步驟',num:'03',name:'Persona',purpose:'主要為誰設計',title:'這次主要為哪一群人設計？'},
+ {id:'cjm',group:'研究步驟',num:'04',name:'顧客旅程地圖（CJM）',purpose:'現況經歷了什麼、核心問題在哪',title:'現況旅程是否可信？哪些是要解決的核心問題？'},
+ {id:'sbp',group:'研究步驟',num:'05',name:'服務藍圖（SBP）',purpose:'解方如何交付、服務如何運作',title:'針對核心問題，採用哪些解方？服務要怎麼運作？'},
+ {id:'output',group:'完成',num:'·',name:'輸出',purpose:'整理要交付的研究成果',title:'輸出研究成果'}
+];
+const RESEARCH=['jtbd','hmw','persona','cjm','sbp'];
+const EMOTION=[null,
+ {name:'極度不滿',feel:'憤怒、受挫、想放棄',read:'重大體驗斷點：顧客很可能在這一點流失，並留下負評。'},
+ {name:'不滿意',feel:'困惑、煩躁、覺得麻煩',read:'潛在痛點：顧客忍著繼續，但已累積負面印象。'},
+ {name:'無感／普通',feel:'平淡、理所當然、沒感覺',read:'標準體驗：沒做錯也沒有驚喜，通常是過渡階段。'},
+ {name:'滿意',feel:'順暢、放心、符合預期',read:'良好體驗：滿足了基本需求，過程舒適。'},
+ {name:'極度滿意',feel:'驚喜、感動、超乎預期',read:'關鍵亮點：創造忠誠與主動推薦的時刻。'}];
+const CHANNELS=[
+ {id:'people',name:'人員',desc:'透過人的服務與互動交付'},
+ {id:'physical_environment',name:'實體環境',desc:'透過實體空間及其配置交付'},
+ {id:'digital_tools',name:'數位工具',desc:'透過可操作的數位工具交付'},
+ {id:'digital_environments',name:'數位環境',desc:'透過數位介面、內容或服務環境交付'}];
+const LANES=[
+ {id:'實體證據',name:'顧客接觸得到的東西',cls:'lane-evidence'},
+ {id:'顧客行動',name:'顧客做的',cls:'lane-customer'},
+ {id:'前台行動',name:'前台行動',cls:'lane-front'},
+ {id:'後台行動',name:'後台行動',cls:'lane-back'},
+ {id:'支援流程',name:'支援流程',cls:'lane-support'}];
+const PFIELDS=[['description','一句話描述',true],['user_story','使用者故事',true],['context','情境'],['motivation_goal','動機與目標'],['decision_pattern','判斷方式'],['behavior_strategy','行為與策略'],['challenge','困難'],['need','需求']];
+const PROVIDERS=[
+ {id:'codex',name:'Codex',kind:'CLI',note:'用 ChatGPT 帳號登入。'},
+ {id:'claude',name:'Claude Code',kind:'CLI',note:'用 Claude 帳號登入。'},
+ {id:'openai',name:'OpenAI API',kind:'API',note:'貼上自己的 API key，依用量付費。'}];
+// 每一段對應 run 記錄的狀態欄位；整理研究資料記在 stages.align。
+const PHASES=[
+ ['整理研究資料','把上傳的文件切成可以定位、可以回查出處的段落。',m=>(m.stages||{}).align],
+ ['開放編碼','逐段標出受訪者的行為、想法與經驗，用接近原意的短句。',m=>m.open_coding_state],
+ ['主軸編碼','比較這些標記，整理出反覆出現的模式與彼此的關係。',m=>m.axial_coding_state],
+ ['選擇編碼','依研究目的，整合出核心現象與次要主題。',m=>m.selective_themes_state],
+ ['形成 JTBD 候選','從核心現象推出「使用者想完成什麼」，供你挑選。',m=>m.narrative_job_candidates_state]];
+
+/* ---------- state ---------- */
+// 研究內容與選擇都在伺服器；瀏覽器只記目前在哪一站、開了哪些面板。
+// 開啟中的專案與站放在網址 #，不寫進瀏覽器儲存空間。
+const blankJTBD=()=>({situation:'',progress:'',motivation:'',outcome:''});
+const blankHMW=()=>({who:'',goal:''});
+const S={
+ cur:null,station:'project',
+ projects:null,runs:[],provider:null,providerStatus:null,
+ codingTab:'selective',ocFilter:'',
+ jtbd:[],jtbdOwnOn:[],customJTBD:blankJTBD(),hmw:null,customHMW:blankHMW(),
+ draft:{name:'',purpose:'',files:[]},newCase:null,execution:{apiKey:''},models:{model:'',effort:'',stations:{}},
+ job:null,codingOut:null,codingFailure:null,busy:{},err:{},
+ axes:[],quadrant:null,emotion:{},develop:[],adopted:[],
+ deliverables:null,picked:{}
+};
+let H=null,steps=[],solById={};
+let drawer=null;
+function toast(msg){$('.toast')?.remove();const t=document.createElement('div');t.className='toast';t.setAttribute('role','status');t.textContent=msg;document.body.append(t);setTimeout(()=>t.remove(),2600)}
+function setErr(station,msg){S.err[station]=msg||null;render()}
+function errLine(station){return S.err[station]?`<p class="hint warn" role="alert">${esc(S.err[station])}</p>`:''}
+
+// ---- 以下與 ui.html 相同（test_workbench_v3_frontend.py 逐一比對），改的時候兩邊一起改 ----
+const STALE_BASIS_MESSAGE='畫面上的內容不是這個專案目前的版本，請重新載入後再做一次。';
+// 研究決定寫入的「處理中」：回應屬於舊專案時不會交回，所以換專案時一律放掉，新專案的按鈕不會卡住。
+const DECISION_BUSY_FLAGS=['asIsConfirmBusy','personaConfirmBusy','goalBusy','researchReviewBusy','journeyCandidateBusy',
+  'axialPairBusy','hmwSubmitBusy','personaHmwKeepBusy','journeyKeepBusy','solutionKeepBusy','irBusy'];
+function newProjectScope(){
+  S.switchGen=(S.switchGen||0)+1;S.identities={};S.writeChains={};S.unsavedInputs={};
+  DECISION_BUSY_FLAGS.forEach(flag=>{S[flag]=false;});S.irJob=null;
+}
+(function bindCurrentProject(){
+  let cur=S.cur;
+  Object.defineProperty(S,'cur',{enumerable:true,configurable:true,
+    get(){return cur;},
+    set(value){if(value!==cur){cur=value;newProjectScope();}}});
+})();
+function currentScope(){return {run:S.cur,gen:S.switchGen||0};}
+function scopeIsCurrent(scope){return !!scope&&scope.run===S.cur&&scope.gen===(S.switchGen||0);}
+const _staleReply=()=>new Promise(()=>{});
+function rememberIdentity(identity,scope){
+  if(identity&&identity.artifact&&scopeIsCurrent(scope))(S.identities||(S.identities={}))[identity.artifact]={identity,scope};
+}
+// 一次讀取或寫入可能帶回好幾份身份（依操作計算：同一份內容服務好幾種寫入）。
+function rememberIdentities(map,scope){Object.values(map||{}).forEach(identity=>rememberIdentity(identity,scope));}
+function noSaveText(message){const text=String(message||'').trim();return /^沒有存到/.test(text)?text:'沒有存到：'+text;}
+function basisFor(artifact){const entry=(S.identities||{})[artifact];return entry&&scopeIsCurrent(entry.scope)?entry.identity:null;}
+// 讀取：回應屬於已經不在畫面上的專案（或舊世代）就不交回。
+function scopedFetch(url,opts){
+  const scope=currentScope();
+  return fetch(url,opts).then(async response=>{
+    let data={};try{data=await response.json();}catch(_){}
+    if(!scopeIsCurrent(scope))return _staleReply();
+    if(response.ok&&data&&data.identities)rememberIdentities(data.identities,scope);
+    return {ok:response.ok,status:response.status,data};
+  },error=>{if(!scopeIsCurrent(scope))return _staleReply();throw error;});
+}
+function scopedJSON(url,opts){return scopedFetch(url,opts).then(reply=>reply.data);}
+function readableLocator(raw){
+  const PAGE_RANGE=/^(?:PDF\s*)?pp?\.\s*\d+(?:\s*[–—\-~]\s*\d+)?$/i;
+  const readable=part=>{
+    const s=part
+      .replace(/\[欄位\s*(\d+)\]\s*([^；]*)/g,(_,n,name)=>name.trim()||`表格第 ${n} 欄`)
+      .replace(/^欄位\s*\d+\s*[：:]\s*/,'')
+      .replace(/^欄位\s*\d+\s*(?=「)/,'')
+      .replace(/(\d{1,2}:\d{2}:\d{2}),\d{1,3}/g,'$1');
+    const pieces=s.split(/(：|／)/);
+    let out='';
+    for(let i=0;i<pieces.length;i+=2){
+      const text=pieces[i].trim();
+      if(!text||text==='Desc'||text==='Flow')continue;
+      out+=(out?pieces[i-1]:'')+text;
+    }
+    return out;
+  };
+  return String(raw||'').split('；').map(s=>s.trim()).filter(s=>s&&!PAGE_RANGE.test(s)).map(readable).filter(Boolean).join('；');
+}
+function withoutEvidenceIds(text,lookup){
+  // readable-source-location：第二個參數可以是 P0 的「編號→說話者」函式，也可以是
+  // reportIdLookup 回傳的 {speaker,solution}。
+  const speakerOf=typeof lookup==='function'?lookup:(lookup&&lookup.speaker);
+  const solutionOf=lookup&&typeof lookup==='object'&&lookup.solution;
+  // 藍圖節點編號（P-lookup、A-release）只換成畫面上同一份報告裡那張卡的名稱；
+  // 查不到名稱的照原樣留著，不猜、不刪。
+  const nodeIds=(lookup&&typeof lookup==='object'&&lookup.nodeIds)||[];
+  const nodeOf=lookup&&typeof lookup==='object'&&lookup.node;
+  // 多字元前綴（AXIS/CAT/HMW/JOB/PERSONA/QUADRANT/SRC/STEP）要跟
+  // tools/internal_id_patterns.py 的 MULTICHAR_ID_PREFIXES 保持一致——
+  // test_internal_id_patterns.py 會逐一核對這份清單真的出現在這個檔案裡，
+  // 兩邊漏改一個都會被抓到。2026-09-08 之前這裡只認 E-\d+，AXIS-01 這類
+  // 編號（人物矩陣畫面最常見的判準標籤）完全沒被這個函式處理過。留在函式
+  // 內部（不當模組層常數）：這個檔案的測試套件慣例是逐一抽出單一
+  // `function X(){...}` 區塊丟進獨立的 Node 執行環境驗證，放在外面會讓
+  // 這個常數在那些抽出來的區塊裡變成未定義。
+  const EVIDENCE_ID_SHAPE='(?:E|AXIS|CAT|HMW|JOB|JTBD|PERSONA|PROP|QUADRANT|SEG|SRC|STEP)-\\d+';
+  // 2026-10-16 P0：模型常把幾個編號並列後才接一個括號（「E-034、E-037（受訪者甲）」），
+  // 括號講的是整串的說話者；也常寫「沛欣在 E-343、E-344 說」，那裡的編號是
+  // 「哪一段話」的定位，不是主詞。以前逐個換成「某位受訪者」，句子變成
+  // 「沛欣在某位受訪者、某位受訪者說」。整串一起處理：有括號取括號，
+  // 「在＋編號」是定位詞組，整段拿掉；剩下的光編號查得到說話者就用說話者，
+  // 查不到退成「某則資料」——證據不一定是受訪者說的（也有走查記錄）。
+  const ID_LIST=EVIDENCE_ID_SHAPE+'(?:\\s*[、,，]\\s*'+EVIDENCE_ID_SHAPE+')*';
+  const E_LIST='\\bE-\\d+(?:\\s*[、,，]\\s*E-\\d+)*\\b';
+  // 2026-10-16 P1：同一張卡下方已經列出那條矛盾，「（見 C-003）」只是指向語，整段拿掉。
+  // 解方編號（step-1-2-SOL-1）換成解方本身的名稱；畫面上查不到名稱就說「已採用的解方」。
+  // 最後，伺服器 ID_SHAPE 的一到兩字母前綴（C-003、A-12…）換成「這一項」。
+  const CONFLICT='C-\\d+(?:\\s*[、,，]\\s*C-\\d+)*';
+  return String(text||'')
+    .replace(new RegExp('\\s*[（(]\\s*見\\s*'+CONFLICT+'\\s*[）)]','g'),'')
+    .replace(new RegExp('\\s*[，、,]\\s*見\\s*'+CONFLICT,'g'),'')
+    .replace(/\b[a-z]+(?:-\d+)+-SOL-\d+\b/g,id=>{
+      const name=String((solutionOf&&solutionOf(id))||'').trim().replace(/。$/,'');
+      return name?`解方「${name}」`:'已採用的解方';
+    })
+    .replace(nodeIds.length?new RegExp('(?<![A-Za-z0-9-])(?:'+nodeIds.map(id=>id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')(?![A-Za-z0-9-])','g'):/(?!)/g,id=>`「${nodeOf(id)}」`)
+    .replace(new RegExp(ID_LIST+'\\s*（([^）]*)）','g'),'$1')
+    .replace(new RegExp(ID_LIST+'\\s*\\(([^)]*)\\)','g'),'$1')
+    .replace(new RegExp('在\\s*'+ID_LIST+'\\s*(?:中|裡)?\\s*','g'),'')
+    .replace(new RegExp(E_LIST,'g'),list=>{
+      const names=[...new Set(list.match(/E-\d+/g).map(id=>(speakerOf&&speakerOf(id))||'某則資料'))];
+      return names.join('、');
+    })
+    .replace(new RegExp('\\b'+EVIDENCE_ID_SHAPE+'\\b','g'),'這一項')
+    .replace(/\b[A-Z]{1,2}-\d+\b/g,'這一項');
+}
+function reportIdLookup(report){
+  const names=new Map(),solutions=new Map(),nodes=new Map();
+  const add=(id,e)=>{
+    const name=((e&&e.provenance)||{}).participant_or_role||(e&&e.role)||'';
+    if(id&&name&&!names.has(id))names.set(id,name);
+  };
+  ((report&&report.conflicts)||[]).forEach(c=>(c.evidence||[]).forEach(e=>add(e.id,e)));
+  ((report&&report.nodes)||[]).forEach(n=>{
+    (n.claims||[]).forEach(cl=>add(cl.evidence_ref,cl));
+    const label=String(n.label||'').trim();
+    if(n.id&&label&&!nodes.has(n.id))nodes.set(n.id,label);
+    (n.anchor_display||[]).forEach(a=>{
+      if(a&&a.kind==='selected_solution'&&a.ref&&a.label&&!/^（找不到/.test(a.label)&&!solutions.has(a.ref))solutions.set(a.ref,a.label);
+    });
+  });
+  // 最長的編號先比對，A-re 不會吃掉 A-release 的前半。
+  const nodeIds=[...nodes.keys()].sort((a,b)=>b.length-a.length);
+  return {speaker:id=>names.get(id)||'',solution:id=>solutions.get(id)||'',node:id=>nodes.get(id)||'',nodeIds};
+}
+const TO_BE_UNCERTAINTY={bounded:'適用範圍有限定',uncertain:'還不確定能否套用',disputed:'來源之間有爭議'};
+const EXTERNAL_UNCERTAINTY_FALLBACKS=new Set(['Transferability to this service context has not been tested.','Transferability remains uncertain.']);
+function externalUncertaintyText(uncertainty){
+  const u=uncertainty||{},label=TO_BE_UNCERTAINTY[u.state]||'';
+  if(!label)return '';
+  const note=String(u.explanation||'').trim();
+  return note&&!EXTERNAL_UNCERTAINTY_FALLBACKS.has(note)?`${label}（${note}）`:label;
+}
+function inferenceOnlyCard(node){
+  const claims=node.claims||[];
+  return claims.length>0&&claims.every(cl=>cl.source_level==='inference')&&!node.muted_inference_flag;
+}
+// v3-setup-jtbd-hmw-writes：寫入保護、AI 執行設定、研究者看得懂的錯誤
+function decisionFetch(artifact,url,body){
+  // 排隊當下就記下專案與世代；輪到時已換專案就取消，舊專案的寫入不會在新專案送出。
+  const queued=currentScope();
+  const send=()=>{
+    if(!scopeIsCurrent(queued))return _staleReply();
+    const scope=currentScope(),basis=basisFor(artifact);
+    if(!basis)return Promise.resolve(_decisionReply(409,{error:STALE_BASIS_MESSAGE,reason:'stale_basis'}));
+    return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,basis})})
+      .then(async response=>{
+        let data={};try{data=await response.json();}catch(_){}
+        if(!scopeIsCurrent(scope))return _staleReply();
+        if(response.ok&&data&&data.identities)rememberIdentities(data.identities,scope);
+        if(data&&data.reason==='stale_basis'&&S.identities)delete S.identities[artifact];
+        return _decisionReply(response.status,data);
+      },error=>{if(!scopeIsCurrent(scope))return _staleReply();throw error;});
+  };
+  // 共用檔案的寫入（同一個 group）排在同一條佇列，後一筆用前一筆帶回來的新身份。
+  const known=basisFor(artifact),queue=(known&&known.group)||artifact;
+  const chains=S.writeChains||(S.writeChains={});
+  const next=(chains[queue]||Promise.resolve()).then(send,send);
+  chains[queue]=next.catch(()=>{});
+  return next;
+}
+function _decisionReply(status,data){return {ok:status>=200&&status<300,status,json:async()=>data};}
+function isStaleBasis(data){return !!data&&data.reason==='stale_basis';}
+const PROVIDER_LABELS={codex:'Codex',claude:'Claude Code',openai:'OpenAI API'};
+function checkCostNote(){return S.provider==='openai'?'只查詢 key 是否有效，不產生模型費用。':'會送出一個最小請求，可能使用少量額度。';}
+function executionPayload({retainKey=false}={}){
+  const selected=S.execution||{};
+  // 沒有選擇 provider 時不補任何預設：這個請求會被伺服器以「請先選擇 AI 執行方式」拒絕。
+  if(!S.provider)return {mode:'cli'};
+  if(S.provider!=='openai'){
+    const payload={mode:'cli',executor:S.provider};
+    if((selected.codexModel||'').trim())payload.codex_model=selected.codexModel.trim();
+    if(selected.codexEffort)payload.codex_effort=selected.codexEffort;
+    return payload;
+  }
+  const payload={mode:'api',provider:'openai',api_key:selected.apiKey||''};
+  if(!retainKey)clearPastedKey();
+  return payload;
+}
+function clearPastedKey(){
+  S.execution={...(S.execution||{}),apiKey:''};
+  const input=$('#execution-api-key');if(input)input.value='';
+}
+function researcherSafeError(value,fallback){
+  const text=String(value||'').trim();
+  const safe=fallback||'這個動作沒有完成，請稍後再試一次。';
+  if(!text)return safe;
+  if(/[\\/][\w.\-]*[\\/]|registry|lifecycle|traceback|stack trace|provider|\bmodel\b|schema|digest|gemini|localhost|127\.0\.0\.1|:\d{2,5}\b|\.(py|js|ya?ml|json)\b|模型|結構驗證/i.test(text))return safe;
+  return text.length>200?text.slice(0,200)+'…':text;
+}
+function researcherPhase(phase,fallback){
+  return typeof phase==='string'&&/[\u4e00-\u9fff]/.test(phase)?phase:fallback;
+}
+function researcherJobMessage(status){
+  if(status.state==='failed')return status.failure&&status.failure.what_happened||'產生未完成，請查看錯誤訊息。';
+  if(status.state==='done')return '已完成，正在開啟結果。';
+  return status.phase||'處理中';
+}
+function hmwCustomStatement(c){
+  const who=String(c&&c.who||'').trim(),goal=String(c&&c.goal||'').trim();
+  return who&&goal?`我們如何讓${who}的人，能${goal}？`:'';
+}
+// v3-persona-writes：確認類寫入
+function scopedPost(url,body){
+  return scopedFetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(reply=>_decisionReply(reply.status,reply.data));
+}
+// v3-blueprint-relations：服務藍圖格子上的關係線（原介面 2026-09-27 起的畫法）
+function drawAsIsGridLines(){
+  const d=S.report;if(!d)return;
+  document.querySelectorAll('.as-is-grid').forEach(grid=>{
+    const svg=grid.querySelector('.as-is-grid-lines');if(!svg)return;
+    const box=grid.getBoundingClientRect();
+    svg.setAttribute('width',grid.scrollWidth);svg.setAttribute('height',grid.scrollHeight);
+    const rect=id=>{const el=grid.querySelector(`[data-node="${CSS.escape(id)}"]`);if(!el)return null;const r=el.getBoundingClientRect();return {l:r.left-box.left,r:r.right-box.left,t:r.top-box.top,b:r.bottom-box.top};};
+    const paths=(d.relations||[]).map(rel=>{
+      const a=rect(rel.from),b=rect(rel.to);if(!a||!b)return '';
+      let path;
+      if(Math.abs((a.l+a.r)/2-(b.l+b.r)/2)<4){
+        const down=b.t>a.b;const x=(a.l+a.r)/2;
+        path=`M${x},${down?a.b:a.t} V${down?b.t:b.b}`;
+      }else{
+        const right=b.l>a.r;const sx=right?a.r:a.l,tx=right?b.l:b.r,sy=(a.t+a.b)/2,ty=(b.t+b.b)/2,mx=(sx+tx)/2;
+        path=`M${sx},${sy} H${mx} V${ty} H${tx}`;
+      }
+      return `<path d="${path}" class="${rel.source==='inference'?'is-inference':'is-evidence'}" marker-end="url(#as-is-arrow)"/>`;
+    }).join('');
+    svg.innerHTML=`<defs><marker id="as-is-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z"/></marker></defs>${paths}`;
+  });
+}
+// ---- 相同的部分到這裡 ----
+
+/* ---------- read adapters ---------- */
+const get=url=>scopedFetch(url).then(r=>r.ok?r.data:null,()=>null);
+const getPlain=url=>fetch(url).then(r=>r.ok?r.json():null).catch(()=>null);
+function emptyModel(run){return {run,loading:true,evidence:{},evKeys:{},seq:0,lookup:null,project:{label:'',purpose:'',files:[]},
+ coding:{open:[],axial:[],themes:[],state:'none'},jtbd:[],jtbdOwn:[],jtbdState:{},hmw:[],hmwOwn:null,
+ persona:{axes:[],subjects:[],personas:[],recorded_pair:[],recorded_quadrant:null},
+ journey:{label:'',goal:'',stages:[],steps:[]},sbp:{nodes:[],conflicts:[],references:[],built:false},status:{},meta:{}}}
+// 引用一律取 API 回傳的原文、說話者與位置；有證據編號就用編號當 key，沒有就給一個內部 key。
+function addEv(q,id){
+ if(!q||!String(q.text||'').trim())return null;
+ const e={text:String(q.text),role:q.role||q.speaker||'',locator:q.locator||'',source:q.source||'',question:q.question||''};
+ const dedupe=e.text+'|'+e.locator+'|'+e.role;
+ const key=id||H.evKeys[dedupe]||('q'+(++H.seq));
+ if(!H.evidence[key])H.evidence[key]=e;
+ if(!id)H.evKeys[dedupe]=key;
+ return key;
+}
+const evList=(qs,limit)=>(qs||[]).slice(0,limit||undefined).map(q=>addEv(q,q.evidence_ref||q.id)).filter(Boolean);
+const scrub=t=>withoutEvidenceIds(t||'',H&&H.lookup);
+const jobKey=j=>['situation','progress','motivation','outcome'].map(k=>String(j[k]||'').trim()).join('|');
+const runMeta=()=>((S.runs.find(r=>r.name===S.cur)||{}).meta)||{};
+// 矩陣的一格用兩條軸的端點表示（x＝第一條軸、y＝第二條；-1 低端、1 高端）；QUADRANT-* 編號由伺服器依端點決定。
+const quadKey=(x,y)=>`${x},${y}`;
+
+async function loadShell(){
+ const [boot,projects,sel]=await Promise.all([getPlain('/api/bootstrap'),getPlain('/api/projects'),getPlain('/api/provider-selection')]);
+ S.runs=(boot&&boot.runs)||[];S.projects=(projects&&projects.projects)||[];
+ S.provider=sel&&PROVIDERS.some(p=>p.id===sel.provider)?sel.provider:null;
+ loadProviderStatus();
+}
+function loadProviderStatus(){
+ S.providerStatus=null;
+ if(!S.provider||S.provider==='openai')return render();
+ const provider=S.provider;
+ getPlain('/api/provider-status?provider='+encodeURIComponent(provider)).then(r=>{if(S.provider===provider){S.providerStatus=r||{unavailable:true};render()}});
+}
+function projectOf(run){return (S.projects||[]).find(p=>(p.versions||[]).some(v=>v.name===run))||null}
+
+// keep：寫入之後重讀，舊內容留在畫面上直到新內容到齊。
+async function openProject(run,{keep=false}={}){
+ if(!run)return;
+ const fresh=!keep||S.cur!==run||!H;
+ S.cur=run;S.newCase=null;
+ if(fresh){H=emptyModel(run);H.project.label=(projectOf(run)||{}).name||run;drawer=null;S.err={};writeHash();render()}
+ const q='?run='+encodeURIComponent(run);
+ const [boot,axial,hmw,pm,pc,jm,report,deliv,asis]=await Promise.all([
+  getPlain('/api/bootstrap'),get('/api/axial-coding-review'+q),get('/api/primary-hmw-picker'+q),get('/api/persona-matrix/projection'+q),
+  get('/api/persona-content'+q),get('/api/journey-channel-map'+q),get('/api/run?name='+encodeURIComponent(run)),get('/api/research-deliverables'+q),get('/api/as-is-build'+q)]);
+ if(boot&&boot.runs)S.runs=boot.runs;
+ const project=projectOf(run);
+ let picks=null;
+ if(!fresh){picks={jtbdRec:JSON.stringify(H.jtbdRecorded||[]),hmwRec:JSON.stringify(H.hmwRecorded||null),jtbd:S.jtbd,own:S.jtbdOwnOn,cj:S.customJTBD,hmw:S.hmw,ch:S.customHMW};
+  H=emptyModel(run);H.project.label=(project||{}).name||run}
+ H.raw={axial:axial||{},hmw:hmw||{}};H.caseId=project?project.case_id:null;
+ H.lookup=report&&report.nodes?reportIdLookup(report):null;
+ H.meta=runMeta();
+ buildProject(project,axial);
+ if(!H.project.purpose&&project){const p=await get('/api/research-purpose?case_id='+encodeURIComponent(project.case_id));H.project.purpose=((p||{}).research_purpose||{}).text||''}
+ H.reportRaw=report;buildCoding(axial);buildJTBD(axial);buildHMW(hmw);buildPersona(pm,pc);buildJourney(jm,report);buildSBP(report,asis);
+ if(picks&&picks.jtbdRec===JSON.stringify(H.jtbdRecorded)){S.jtbd=picks.jtbd.filter(id=>H.jtbd.some(j=>j.id===id));S.jtbdOwnOn=picks.own;S.customJTBD=picks.cj}
+ if(picks&&picks.hmwRec===JSON.stringify(H.hmwRecorded)&&(picks.hmw==='custom'||H.hmw.some(x=>x.id===picks.hmw))){S.hmw=picks.hmw;S.customHMW=picks.ch}
+ S.deliverables=(deliv&&deliv.deliverables)||[];S.picked=Object.fromEntries(S.deliverables.filter(d=>!d.supplemental).map(d=>[d.id,true]));
+ H.loading=false;render();
+}
+function buildProject(project,axial){
+ H.project.label=project?project.name:S.cur;
+ H.project.purpose=((axial||{}).research_purpose||{}).text||'';
+ H.project.files=((axial||{}).sources||[]).map(name=>({name}));
+}
+function buildCoding(a){
+ if(!a){H.coding.state='none';return}
+ H.coding.state=(a.selective_themes||{}).state||a.state||'none';
+ let n=0;
+ H.coding.open=(a.open_codes||[]).map(g=>({source:String(g.source||'').replace(/\.[A-Za-z0-9]+$/,''),codes:(g.codes||[]).map(c=>({id:'oc'+(++n),name:c.name,description:c.description,quotes:evList(c.quotes)}))}));
+ H.coding.axial=(a.categories||[]).map(c=>({id:c.id,name:c.category_name||c.label,label:c.label,definition:scrub(c.definition),summary:scrub(c.description),
+  quotes:evList(c.representative_quotes&&c.representative_quotes.length?c.representative_quotes:c.quotes,3),
+  concepts:(c.concepts||[]).map(x=>x.name).filter(Boolean),conflicts:(c.conflicts||[]).map(x=>typeof x==='string'?x:x.description).filter(Boolean).map(scrub)}));
+ const axByName=Object.fromEntries(H.coding.axial.map(c=>[c.name,c.id]));
+ H.coding.themes=(((a.selective_themes||{}).themes)||[]).map(t=>({id:t.id,tier:t.tier,name:t.name,core_sentence:t.core_sentence,insight:scrub(t.insight),
+  key_insights:(t.key_insights||[]).map(scrub),axial_refs:(t.axial_names||[]).map(nm=>axByName[nm]).filter(Boolean),quotes:evList(t.quotes)}));
+}
+function buildJTBD(a){
+ a=a||{};const sel=(a.pair_selection||{}).selections||[];H.jtbdRecorded=sel;
+ H.jtbd=(a.pair_candidates||[]).map((j,i)=>{const b=j.basis||{};return {id:'J'+(i+1),situation:j.situation,progress:j.progress,motivation:j.motivation,outcome:j.outcome,
+  angle:(b.themes||[]).map(t=>t.name).filter(Boolean).join('、'),rationale:j.rationale,themes:b.themes||[],design_meaning:b.design_meaning||j.rationale,basis:evList(b.evidence,3)}});
+ const byKey=Object.fromEntries(H.jtbd.map(j=>[jobKey(j),j.id]));
+ S.jtbd=sel.map(s=>byKey[jobKey(s)]).filter(Boolean);
+ H.jtbdOwn=sel.filter(s=>!byKey[jobKey(s)]);S.jtbdOwnOn=H.jtbdOwn.map((_,i)=>i);S.customJTBD=blankJTBD();
+ const pcs=a.pair_candidates_state||{};
+ H.jtbdState={formed:!!pcs.formed,stale:!!pcs.stale,selectiveReady:!!pcs.selective_ready,insufficient:pcs.insufficient_reason||'',selective:(a.selective_themes||{}).state};
+ H.status.jtbd={recorded:sel.length>0,stale:!!(a.pair_selection||{}).stale};
+}
+function buildHMW(h){
+ h=h||{};const selected=h.selected||null;
+ H.hmw=(h.candidates||[]).map(c=>({id:c.hmw_id,statement:c.statement||c.label,problem_structure:scrub(c.problem_structure||c.tension),refs:evList(c.evidence,3)}));
+ H.hmwRecorded=selected;S.customHMW=blankHMW();
+ S.hmw=selected&&H.hmw.some(x=>x.id===selected.hmw_id)?selected.hmw_id:null;
+ // 自己寫的 HMW 照原介面拆回兩格（我們如何讓{誰}的人，能{想達成}？）。
+ if(selected&&!S.hmw){const parts=/^我們如何讓(.+)的人，能(.+)？$/.exec(String(selected.statement||'').trim());S.customHMW={who:parts?parts[1]:'',goal:parts?parts[2]:''};S.hmw='custom'}
+ H.hmwState={status:h.status||'none',formation:h.formation||{},framingStale:!!h.framing_stale,superseded:!!h.method_superseded};
+ H.status.hmw={recorded:!!selected,stale:!!(h.framing_stale||h.selection_retired)};
+}
+function buildPersona(pm,pc){
+ pm=pm||{};pc=pc||{};
+ H.persona.axes=(pm.axes||[]).map(a=>({id:a.id,label:a.label,pole_low:a.pole_low,pole_high:a.pole_high}));
+ H.persona.subjects=(pm.subjects||[]).map(s=>({key:s.key,short:s.short,role:s.role,quote:s.quote,
+  placements:Object.fromEntries(Object.entries(s.placements||{}).map(([ax,pos])=>[ax,{position:pos,rationale:(s.rationales||{})[ax]||''}]))}));
+ const confirmed=pm.confirmed||null;
+ H.persona.recorded_pair=(pm.confirmed_axis_ids&&pm.confirmed_axis_ids.length?pm.confirmed_axis_ids:pm.default_axis_ids)||[];
+ H.persona.recorded_quadrant=confirmed&&Array.isArray(confirmed.quadrant)?quadKey(confirmed.quadrant[0],confirmed.quadrant[1]):null;
+ H.persona.target=confirmed&&confirmed.target||null;
+ H.persona.status=pm.status||'none';H.persona.attribution=pm.attribution||null;H.persona.confirmedAxes=pm.confirmed_axis_ids||[];H.persona.confirmedQuad=H.persona.recorded_quadrant;
+ H.persona.hmwStale=((pm.hmw_framing||{}).state)==='stale';H.persona.digest=((pc.confirmation||{}).persona_digest)||null;
+ const excerpts=pc.evidence_excerpts||{};
+ H.persona.personas=(pc.personas||[]).map(p=>{const rq=p.representative_quote||{},ex=excerpts[rq.evidence_ref]||{};
+  const quoteRef=rq.text?addEv({text:rq.text,role:ex.speaker,locator:ex.locator,source:ex.source},rq.evidence_ref):null;
+  const basis=((pc.basis_by_persona||{})[p.id]||{});
+  return {...p,quote:{text:rq.text||'',ref:quoteRef},basis_refs:evList(basis.evidence,3)}});
+ S.axes=H.persona.recorded_pair.slice(0,2);S.quadrant=H.persona.recorded_quadrant;
+ const state=((pc.confirmation||{}).state)||'none';
+ H.status.persona={confirmed:state==='confirmed',made:H.persona.personas.length>0,
+  stale:((pc.freshness||{}).state&&pc.freshness.state!=='current')||((pm.hmw_framing||{}).state&&pm.hmw_framing.state!=='current')};
+}
+function buildJourney(jm,report){
+ jm=jm||{};const scenario=(report&&report.primary_scenario)||{};
+ H.journey.label=scenario.label||'';H.journey.goal=scenario.customer_goal||'';
+ H.journey.stages=jm.stages||[];
+ H.journey.steps=(jm.steps||[]).map((s,i)=>({id:s.id,label:s.label,stage_id:s.stage_id,actions:s.actions||[],pain_points:s.pain_points||[],
+  emotion:Number.isInteger(s.emotion)?s.emotion:null,satisfaction:s.satisfaction_items||[],
+  evidence_refs:evList(((jm.step_evidence||[])[i])||[]),develop:!!s.develop_solution,analysis:s.solution_analysis||null,
+  selected:s.selected_solution_ids||[],coreProblem:s.core_problem||'',momentModel:!!s.moment_selection,solutionsStale:!!s.solutions_stale,applicability:s.solution_applicability||null,
+  solutions:(s.solution_candidates||[]).map(c=>({id:c.id,text:c.text,delivery:Object.fromEntries(CHANNELS.map(ch=>[ch.id,((c.channels||{})[ch.id]||[])])),
+   evidence_refs:[...new Set(Object.values(c.channels||{}).flat().flatMap(d=>d.evidence_refs||[]))]}))}));
+ steps=H.journey.steps;solById={};steps.forEach((s,i)=>s.solutions.forEach(o=>solById[o.id]={...o,stepIndex:i,stepId:s.id}));
+ S.emotion=Object.fromEntries(steps.map(s=>[s.id,s.emotion]));
+ S.develop=steps.filter(s=>s.develop).map(s=>s.id);
+ S.adopted=steps.flatMap(s=>s.selected);
+ const conf=jm.confirmation||{};
+ H.journey.conf=conf;H.journey.solutionModel=!!jm.solution_selection_model;H.journey.build=jm.build||{};H.journey.annotations=jm.annotations||null;
+ H.status.cjm={confirmed:conf.state==='confirmed',edited:conf.state!=='confirmed'&&conf.state!=='persona_changed'&&!!conf.previously_confirmed,personaChanged:conf.state==='persona_changed'};
+}
+function buildSBP(r,asis){
+ const nodes=(r&&r.nodes)||[];
+ H.sbp.nodes=nodes.map(n=>({id:n.id,label:n.label,description:scrub(n.description),step:Number.isInteger(n.step)?n.step:(/^\d+$/.test(String(n.step||''))?+n.step:null),
+  layer:n.layer,actor:n.actor,future_state:n.future_state,necessity:scrub(n.necessity),inferred:inferenceOnlyCard(n),
+  claims:(n.claims||[]).map(c=>({text:scrub(c.text),inferred:c.source_level==='inference',
+   ref:c.source_text?addEv({text:c.source_text,role:c.role||((c.provenance||{}).participant_or_role),locator:c.source_locator,source:(c.provenance||{}).document_title},c.evidence_ref):null})),
+  markers:(n.markers||[]).map(m=>({type:m.type,note:scrub(m.note),ref:m.source_text?addEv({text:m.source_text,role:m.role,locator:(m.provenance||{}).locator,source:(m.provenance||{}).document_title},m.evidence_ref):null}))}));
+ H.sbp.conflicts=((r&&r.conflicts)||[]).map(c=>({description:scrub(c.description),evidence_refs:evList(c.evidence)}));
+ H.sbp.references=((r&&r.external_references)||[]).map(x=>({text:scrub(x.text),context:x.applicability_context,uncertainty:externalUncertaintyText(x.uncertainty),
+  sources:(x.supports||[]).map(s=>s.title||s.publisher).filter(Boolean)}));
+ S.report=r||null;H.sbp.built=nodes.length>0;
+ const m=(r&&r.meta)||{};
+ const edited=m.review_state==='reviewed'&&m.current_artifact_fingerprint!=null&&m.reviewed_artifact_fingerprint!=null&&m.current_artifact_fingerprint!==m.reviewed_artifact_fingerprint;
+ // 藍圖的確認與新鮮度以 /api/as-is-build 為準（原介面同一份狀態）；舊回應退回 run 的審閱紀錄。
+ const a=asis||{},c=a.confirmation||null;H.asis={confirmation:c||{},freshness:a.freshness||{},build:a.build||null};
+ // 上游還沒解決（例如採用的解方要重新確認）時，先前確認的藍圖可以看，但不是目前的（原介面 asIsUpstreamStatusText）。
+ H.status.sbp=c?{confirmed:!!c.downstream_eligible&&c.upstream!=='unresolved',edited:!c.downstream_eligible&&!!c.previously_confirmed,stale:(a.freshness||{}).state==='stale'||c.upstream==='reconsidered'}:{confirmed:m.review_state==='reviewed'&&!edited,edited};
+}
+
+/* ---------- AI jobs ---------- */
+const JOB_LABEL={fresh_coding:'編碼',hmw_formation:'形成 HMW',jtbd_candidates_generation:'形成 JTBD 候選',selective_themes_generation:'形成選擇編碼',
+ stage_run:'分析受訪者差異',persona_content_generation:'產生 Persona',journey_generation:'建立顧客旅程',journey_solutions:'發展解方',
+ as_is_blueprint_generation:'產生服務藍圖',generation:'產生服務藍圖',implementation_research:'查外部參考',chart_guide_drafting:'起草導讀'};
+const JOB_STATION={hmw_formation:'hmw',jtbd_candidates_generation:'jtbd',selective_themes_generation:'coding',stage_run:'persona',persona_content_generation:'persona',
+ journey_generation:'cjm',journey_solutions:'sbp',as_is_blueprint_generation:'sbp',generation:'sbp',implementation_research:'sbp',chart_guide_drafting:'output'};
+let jobTimer=null,jobTick=0;
+function jobRunning(kind){const j=S.job;return !!j&&(j.state==='running'||j.state==='waiting_for_model')&&(!kind||j.kind===kind)}
+function clock(sec){sec=Math.max(0,Math.round(sec||0));const m=Math.floor(sec/60),r=sec%60;return m?`${m} 分 ${r} 秒`:`${r} 秒`}
+function jobPanel(kind){
+ if(!jobRunning(kind))return '';
+ const j=S.job;
+ return `<div class="notice" role="status"><span>AI 正在${esc(JOB_LABEL[j.kind]||'處理')}：${esc(researcherJobMessage(j))}${typeof j.elapsed_seconds==='number'?`（已經過 ${clock(j.elapsed_seconds)}）`:''}。可以先離開，完成後這裡會更新。</span></div>`;
+}
+function watchJob(){
+ if(jobTimer)return;
+ jobTimer=setInterval(async()=>{
+  let status;try{status=await (await fetch('/api/job')).json()}catch(_){return}
+  const prevJob=S.job;S.job=status;jobTick++;
+  const running=status.state==='running'||status.state==='waiting_for_model';
+  if(running){if(status.kind==='fresh_coding'&&jobTick%4===0){const boot=await getPlain('/api/bootstrap');if(boot&&boot.runs)S.runs=boot.runs}render();return}
+  clearInterval(jobTimer);jobTimer=null;
+  if(!prevJob||!prevJob.kind)return render();
+  await jobFinished(prevJob.kind,status);
+ },1000);
+}
+async function jobFinished(kind,status){
+ const failed=status.state==='failed'||status.state==='cancelled';
+ if(kind==='fresh_coding'){
+  const out=S.codingOut;
+  if(!failed&&out){S.codingFailure=null;await loadShell();await openProject(out);toast('編碼完成，可以前往 JTBD。');return}
+  const f=status.failure||{};
+  S.codingFailure={what_happened:researcherSafeError(f.what_happened,status.state==='cancelled'?'編碼已取消。':'編碼未能完成。'),why_it_matters:f.why_it_matters||'JTBD 候選尚未準備好。',next_action:f.next_action||'排除原因後重試這一輪編碼。'};
+  const boot=await getPlain('/api/bootstrap');if(boot&&boot.runs)S.runs=boot.runs;
+  return render();
+ }
+ const station=JOB_STATION[kind]||S.station;
+ if(failed&&!S.jobSilent)S.err[station]=researcherSafeError((status.failure||{}).what_happened||researcherPhase(status.phase,''),`${JOB_LABEL[kind]||'這項工作'}沒有完成，原本的內容沒有變動。`);
+ S.jobSilent=false;
+ if(S.cur)await openProject(S.cur,{keep:true});else render();
+}
+// 花額度的工作：一律帶 executionPayload（使用者選的 AI 執行方式）。
+async function startJob(url,body,station,kind,{silent=false}={}){
+ if(jobRunning())return silent?undefined:toast('另一項 AI 工作還在進行，請等它完成。');
+ S.err[station]=null;S.busy['job:'+station]=true;render();
+ let r;
+ try{const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,execution:payloadFor(station)})});
+  r=await response.json();if(!response.ok||r.error)throw new Error(r.error||'沒有開始。')}
+ catch(error){S.busy['job:'+station]=false;if(silent)return render();return setErr(station,researcherSafeError(error.message,'這項 AI 工作沒有開始，原本的內容沒有變動。'))}
+ S.busy['job:'+station]=false;
+ if(r.state==='done'){if(S.cur)await openProject(S.cur,{keep:true});return}
+ S.jobSilent=silent;S.job={kind:r.kind||kind,state:'running',phase:r.phase||'正在準備'};render();watchJob();
+}
+
+/* ---------- confirmation & freshness (server-judged) ---------- */
+const prev=id=>RESEARCH[RESEARCH.indexOf(id)-1];
+const statusOf=id=>(H&&H.status[id])||{};
+function isConfirmed(id){if(id==='jtbd'||id==='hmw')return !!statusOf(id).recorded&&!isDirty(id);return !!statusOf(id).confirmed}
+// 畫面上的選擇跟伺服器記錄的不同（研究者改了、還沒按確認）。
+function isDirty(id){if(!H||H.loading)return false;if(id==='jtbd')return !!statusOf('jtbd').recorded&&!jtbdState().unchanged;if(id==='hmw')return !!statusOf('hmw').recorded&&!hmwState().unchanged;return false}
+function dirtyNote(id){return isDirty(id)?'<p class="hint warn">你改了這一步的選擇，按確認才會記下。</p>':''}
+function isEdited(id){return !!statusOf(id).edited}
+function isStale(id){return !!statusOf(id).stale&&isConfirmed(id)}
+function codingDone(){const m=runMeta();return !!S.cur&&(m.narrative_job_candidates_state==='complete'||!!(H&&H.jtbd.length))}
+function aiReady(){const p=S.provider;if(!p)return false;if(p==='openai')return !!String(S.execution.apiKey||'').trim();const r=S.providerStatus;return !!r&&!!r.installed&&!!r.authenticated&&!!r.configured}
+// v3-model-settings：研究者指定的模型與 effort。優先序沿用執行器那一端：研究站設定 → 全域設定 → 執行器預設。
+// 推薦只顯示、要研究者自己按「套用」，不在背景替研究者決定。
+const MODEL_STATIONS=['coding','jtbd','hmw','persona','cjm','sbp'];
+const EFFORT_CHOICES={codex:['low','medium','high','xhigh'],claude:['low','medium','high','xhigh','max']};
+// 研究者 2026-10-21 裁定：Persona 暫以 gpt-5.6-luna 為推薦模型（MUJI 模型對照 A），不硬性鎖定。
+const RECOMMENDED_STATION_MODELS={codex:{persona:'gpt-5.6-luna'}};
+// 設定只留在這一頁（v3 不用瀏覽器儲存）；重新整理後回到執行器預設，各站頁首會照實顯示要求的是哪個模型。
+function requestedModel(station){
+ const own=String((station&&S.models.stations[station])||'').trim(),all=String(S.models.model||'').trim();
+ return own?{model:own,source:'研究站設定'}:all?{model:all,source:'全域設定'}:{model:'',source:'執行器預設'};
+}
+// 送出的 payload：先照 executionPayload()（與 ui.html 相同），再補上這一站要求的模型與 effort。
+function payloadFor(station,options){
+ const payload=executionPayload(options);
+ if(payload.mode!=='cli')return payload;
+ const r=requestedModel(station);
+ if(r.model)payload.codex_model=r.model;
+ const effort=S.models.effort;
+ if(effort&&(EFFORT_CHOICES[S.provider]||[]).includes(effort))payload.codex_effort=effort;
+ return payload;
+}
+function modelLine(station){
+ if(!S.provider||S.provider==='openai')return '';
+ const r=requestedModel(station),local=(S.provider==='codex'&&S.providerStatus&&S.providerStatus.codex_settings)||{};
+ const model=r.model?`${r.model}（${r.source}）`:local.model?`${local.model}（本機 Codex 設定）`:'執行器預設';
+ const effort=S.models.effort?S.models.effort:local.model_reasoning_effort?`${local.model_reasoning_effort}（本機 Codex 設定）`:'執行器預設';
+ return `要求的模型：${model}・effort：${effort}`;
+}
+const hasProject=()=>!!S.cur||!!S.newCase;
+function upstreamReady(id){
+ if(id==='project')return true;
+ if(id==='ai'||id==='coding')return hasProject();
+ if(id==='jtbd')return codingDone();
+ if(id==='output')return isConfirmed('sbp');
+ return isConfirmed(prev(id));
+}
+function blockedReason(id){
+ if(id==='ai'||id==='coding')return '先在「建立專案」打開一個專案。';
+ if(id==='jtbd')return '編碼完成後才有 JTBD 候選。';
+ if(id==='output')return '服務藍圖確認後才能輸出。';
+ const p=STATIONS.find(x=>x.id===prev(id));return `先確認上一步「${p.name}」。`;
+}
+
+/* ---------- JTBD / HMW choice (same payloads as ui.html continueAxialPair / continuePrimaryHmw) ---------- */
+const JOB_FIELDS=['situation','progress','motivation','outcome'];
+const jobComplete=j=>JOB_FIELDS.every(k=>String(j[k]||'').trim());
+const jobStarted=j=>JOB_FIELDS.some(k=>String(j[k]||'').trim());
+function jtbdState(){
+ const items=[],raw=(H.raw.axial.pair_candidates)||[];
+ H.jtbd.forEach((j,i)=>{if(!S.jtbd.includes(j.id))return;const c=raw[i];
+  const item={situation:c.situation,progress:c.progress,motivation:c.motivation||'',outcome:c.outcome,rationale:c.rationale||'',selective_refs:c.selective_refs||[],origin:'ai_candidate'};
+  if(c.grounded_in)item.grounded_in=c.grounded_in;items.push(item)});
+ H.jtbdOwn.forEach((o,i)=>{if(S.jtbdOwnOn.includes(i))items.push({situation:o.situation,progress:o.progress,motivation:o.motivation||'',outcome:o.outcome,rationale:String(o.rationale||''),selective_refs:[],origin:'researcher'})});
+ const cj=S.customJTBD,missing=JT_SLOTS.filter(([k])=>!String(cj[k]||'').trim()).map(x=>x[2]);
+ if(jobStarted(cj)){if(!jobComplete(cj))return {ready:false,missing};
+  items.push({...Object.fromEntries(JOB_FIELDS.map(k=>[k,String(cj[k]).trim()])),rationale:'',selective_refs:[],origin:'researcher'})}
+ const recorded=H.jtbdRecorded||[];
+ const unchanged=recorded.length===items.length&&items.every(item=>recorded.some(r=>jobKey(r)===jobKey(item)));
+ return {ready:items.length>0,unchanged,items,missing:[]};
+}
+function hmwState(){
+ const recorded=H.hmwRecorded,choice=S.hmw;
+ if(!choice)return {ready:false,unchanged:!recorded};
+ if(choice==='custom'){
+  const statement=hmwCustomStatement(S.customHMW);
+  if(!statement)return {ready:false,unchanged:false,missing:HM_SLOTS.filter(([k])=>!String(S.customHMW[k]||'').trim()).map(x=>x[2])};
+  const kept=recorded&&!H.hmw.some(x=>x.id===recorded.hmw_id)?recorded:{};
+  return {ready:true,unchanged:!!(recorded&&String(recorded.statement||'').trim()===statement&&!H.hmw.some(x=>x.id===recorded.hmw_id)),answer:{statement,rationale:String(kept.rationale||'')}};
+ }
+ const same=!!(recorded&&recorded.hmw_id===choice);
+ return {ready:true,unchanged:same,answer:{hmw_id:choice,rationale:same?String(recorded.rationale||''):''}};
+}
+
+/* ---------- small renderers ---------- */
+function evidenceButton(refs,title,label='依據'){refs=(refs||[]).filter(r=>H&&H.evidence[r]);if(!refs.length)return '';return `<button class="ghost" data-evidence="${esc(refs.join(','))}" data-title="${esc(title)}">${esc(label)}</button>`}
+function head(st,{action,label,disabled,consequence,blocked,doneText}={}){
+ if(RESEARCH.includes(st.id)&&isConfirmed(st.id)&&(!isStale(st.id)||st.id==='jtbd'||st.id==='hmw')&&st.id!=='sbp'){const next=STATIONS[STATIONS.findIndex(x=>x.id===st.id)+1];action='goNext:'+st.id;label='前往 '+next.name;disabled=false;blocked=null;consequence='之後回來修改，下游會提示你決定保留或重新產生。'}
+ if(st.id==='sbp'&&isConfirmed('sbp')){action='goNext:sbp';label='前往輸出';disabled=false;blocked=null}
+ return `<div class="head"><div><p class="purpose">${esc(st.purpose)}</p><h1>${esc(st.title)}</h1></div>
+ <div class="decide">${doneText?`<span class="done-line">✓ ${esc(doneText)}</span>`:''}
+ ${action?`<button class="primary" data-act="${action}" ${disabled?'disabled':''}>${esc(label)}</button>`:''}
+ ${blocked?`<span class="blocked">${esc(blocked)}</span>`:consequence?`<span class="consequence">${esc(consequence)}</span>`:''}
+ ${MODEL_STATIONS.includes(st.id)&&modelLine(st.id)?`<span class="consequence model-line">${esc(modelLine(st.id))}</span>`:''}</div></div>`;
+}
+function editedNote(id){return isEdited(id)?`<p class="hint warn">這一步確認之後又改過，要再確認一次才會生效。</p>`:''}
+function sec(title,sub,body,cls=''){return `<section class="sec ${cls}">${title?`<h2>${esc(title)}</h2>`:''}${sub?`<p class="sub">${esc(sub)}</p>`:''}${body}</section>`}
+function noProject(st){return head(st,{blocked:blockedReason('ai')})+sec('','',`<p class="hint">還沒有打開專案。<button class="ghost" data-nav="project">前往建立專案</button></p>`)}
+function loadingView(st){return head(st,{})+sec('','','<p class="hint">正在讀取這個專案⋯</p>')}
+
+/* ---------- stations ---------- */
+function vProject(st){
+ const open=!!S.cur&&H,p=open?H.project:{label:'',purpose:'',files:[]},loading=open&&H.loading,d=S.draft;
+ const list=(S.projects||[]).map(pr=>`<div class="card"><div class="kicker"><span>最近更新 ${esc(pr.last_updated||'—')}</span></div><h3>${esc(pr.name)}</h3>
+  <div class="versions">${(pr.versions||[]).map(v=>{const on=v.name===S.cur;return `<div class="row" style="justify-content:space-between"><span class="hint">${esc(v.label||v.name)}${on?'・目前開啟':''}</span>${on?'':`<button class="secondary" data-openrun="${esc(v.name)}">打開</button>`}</div>`}).join('')||'<p class="hint">還沒有分析版本，到「資料與編碼」開始編碼。</p>'}</div></div>`).join('');
+ const ready=d.name.trim()&&d.purpose.trim()&&d.files.length,busy=!!S.busy.project;
+ const form=`<div class="field"><label for="pname">專案名稱</label><input id="pname" class="input" data-field="draft.name" value="${esc(d.name)}" placeholder="例如：門市回收服務研究"></div>
+ <div class="field"><label for="ppurpose">研究目的</label><textarea id="ppurpose" class="textarea" data-field="draft.purpose" placeholder="這次研究想了解什麼？AI 會依這段文字決定分析的範圍。">${esc(d.purpose)}</textarea></div>
+ <div class="field"><label>研究資料</label><div class="filebox"><span>${d.files.length?d.files.map(f=>`📄 ${esc(f.name)}`).join('<br>'):'<span class="hint">訪談逐字稿、觀察紀錄等，支援 PDF、DOCX、XLSX、TXT、MD、VTT、SRT。</span>'}</span><button class="secondary" data-act="pickFile">${d.files.length?'更換檔案':'選擇檔案'}</button></div>
+ <input id="filepick" type="file" multiple accept=".pdf,.docx,.xlsx,.txt,.md,.vtt,.srt" hidden></div>`;
+ const current=open?sec('目前的專案','研究目的改了會在離開輸入框時儲存；之後重新形成選擇編碼時才會用到新的目的。',`<div class="field"><label>專案名稱</label><p style="margin:0">${esc(p.label)}</p></div>
+ <div class="field"><label for="cpurpose">研究目的</label><textarea id="cpurpose" class="textarea" data-purpose ${loading?'readonly':''}>${esc(p.purpose)}</textarea></div>
+ <div class="field"><label>研究資料</label><div class="filebox"><span>${p.files.length?p.files.map(f=>`📄 ${esc(f.name)}`).join('<br>'):loading?'<span class="hint">正在讀取⋯</span>':'<span class="hint">這一輪沒有記錄讀入的資料清單。</span>'}</span></div></div>`):'';
+ const created=S.newCase?`<p class="done-line">✓ 已建立「${esc(S.newCase.name)}」，接著到 AI 設定與資料與編碼。</p>`:'';
+ return head(st,{action:open||S.newCase?null:'createProject',label:busy?'正在建立⋯':'建立專案',disabled:!ready||busy,doneText:open?`已打開「${p.label}」`:S.newCase?`已建立「${S.newCase.name}」`:null,
+   consequence:open||S.newCase?'':'建立後就能選擇 AI。專案名稱和研究目的之後都能改。',blocked:!open&&!S.newCase&&!ready?'填好名稱、研究目的，並選擇研究資料。':null})
+ +errLine('project')+created+current
+ +(S.projects&&S.projects.length?sec('接著做既有專案','打開一個專案，各站就會顯示它目前的內容與進度。',`<div class="cards">${list}</div>`):'')
+ +sec('開新專案','',form+(open||S.newCase?`<div class="row" style="justify-content:flex-end"><button class="secondary" data-act="createProject" ${!ready||busy?'disabled':''}>${busy?'正在建立⋯':'建立專案'}</button></div>`:''));
+}
+function vAI(st){
+ const r=S.providerStatus||{},ready=aiReady();
+ const cards=PROVIDERS.map(pv=>{
+  const on=S.provider===pv.id;
+  let status='',act='';
+  if(on&&pv.id==='openai'){
+   status=`<div class="status-list"><span class="${ready?'yes':''}">API key ${ready?'已貼上':'尚未貼上'}</span></div>`;
+   act=`<input id="execution-api-key" class="input" type="password" autocomplete="off" data-field="execution.apiKey" value="${esc(S.execution.apiKey)}" placeholder="sk-…"><p class="hint">key 只留在這一頁，用過一次就清掉，不會存檔。</p>`;
+  }else if(on&&!S.providerStatus)status=`<p class="hint">正在確認這台電腦的狀態⋯</p>`;
+  else if(on&&r.unavailable)status=`<p class="hint warn">讀不到這台電腦的狀態，請稍後再試。</p>`;
+  else if(on){
+   status=`<div class="status-list"><span class="${r.installed?'yes':''}">${r.installed?'已安裝':'尚未安裝'}</span><span class="${r.authenticated?'yes':''}">${r.authenticated?'已登入':'尚未登入'}</span><span class="${r.configured?'yes':''}">${r.configured?'已設定':'尚未設定'}</span></div>`;
+   if(!r.installed)act=`<p class="hint warn">在這台電腦安裝並登入 ${esc(pv.name)}（見 README），或改用其他 AI 執行方式。</p>`;
+   else if(!r.authenticated)act=`<p class="hint warn">請先登入 ${esc(pv.name)}（見 README），或改用其他 AI 執行方式。</p>`;
+   else if(!r.configured)act=`<p class="hint warn">這個工作台還沒設定用它執行。請改用 Codex 或 OpenAI API；設定方式見 README。</p>`;
+  }
+  if(on&&ready){const t=pv.id!=='openai'&&r.recent_test;
+   act+=`<div class="row"><button class="secondary" data-act="testAI" ${S.busy.ai?'disabled':''}>${S.busy.ai?'正在測試⋯':'測試連線'}</button><span class="hint">${t?`最近連線測試：${esc(String(t.checked_at||'').slice(11,16))} ${t.state==='ok'?'成功':'失敗'}。`:''}選用；${esc(checkCostNote())}</span></div>`}
+  return `<div class="card pick ${on?'on':''}" data-provider="${pv.id}" role="radio" aria-checked="${on}" tabindex="0"><div class="kicker"><span>${pv.kind}</span><span class="tick radio">●</span></div><h3>${pv.name}</h3><p>${pv.note}</p>${status}${act}</div>`;
+ }).join('');
+ return head(st,{action:'toCoding',label:'前往資料與編碼',disabled:!ready||!hasProject(),
+   consequence:'分析時，研究資料會送到你選的 AI 服務。之後可在設定裡更換。',blocked:!hasProject()?blockedReason('ai'):!S.provider?'還沒有選擇 AI 執行方式。':!ready?'選一種方式，完成登入或貼上 key。測試連線不是必要步驟。':null})
+ +errLine('ai')
+ +sec('','沒有預設選項。三種方式擇一即可；測試連線只是讓你事先確認。',`<div class="providers">${cards}</div>`)
+ +modelSettingsSection();
+}
+// v3-model-settings：全域模型與 effort，加上各研究站的模型。空白就是沿用上一層。
+function modelSettingsSection(){
+ if(!S.provider||S.provider==='openai')return '';
+ const m=S.models,local=(S.provider==='codex'&&S.providerStatus&&S.providerStatus.codex_settings)||{};
+ const fallback=local.model?`本機 Codex 設定：${local.model}`:'執行器預設';
+ const efforts=EFFORT_CHOICES[S.provider]||[];
+ const rec=RECOMMENDED_STATION_MODELS[S.provider]||{};
+ const rows=MODEL_STATIONS.map(id=>{const st=STATIONS.find(x=>x.id===id),r=requestedModel(id),hint=rec[id]&&(m.stations[id]||'')!==rec[id]
+   ?`<span class="hint">研究者裁定推薦 ${esc(rec[id])}　<button class="ghost" data-act="applyRecommendedModel:${id}">套用</button></span>`:'';
+  return `<tr><th scope="row">${esc(st.name)}</th><td><input class="input" data-model-station="${id}" value="${esc(m.stations[id]||'')}" placeholder="沿用全域" aria-label="${esc(st.name)} 的模型"></td><td>${esc(r.model?`${r.model}（${r.source}）`:fallback)}${hint}</td></tr>`}).join('');
+ return sec('模型與 effort','空白就沿用上一層：研究站設定 → 全域設定 → '+fallback+'。每次執行都會記下要求的模型與它的來源。',
+  `<div class="row" style="gap:16px;flex-wrap:wrap"><label class="field">全域模型<input class="input" data-model-global value="${esc(m.model)}" placeholder="${esc(fallback)}"></label>
+  <label class="field">Effort<select class="input" data-model-effort><option value="">${esc(local.model_reasoning_effort?`本機 Codex 設定：${local.model_reasoning_effort}`:'執行器預設')}</option>${efforts.map(e=>`<option value="${e}" ${m.effort===e?'selected':''}>${e}</option>`).join('')}</select></label></div>
+  <table class="model-table"><thead><tr><th>研究站</th><th>模型</th><th>這一站會要求</th></tr></thead><tbody>${rows}</tbody></table>
+  <p class="hint">模型名稱要是這個執行器支援的；不支援時，工作會停下並說明，不會改用其他模型。</p>`);
+}
+function phaseState(v){return v==='complete'?'ok':v==='running'||v==='in_progress'||v==='pending_run'?'run':v==='failed'?'failed':''}
+function vCoding(st){
+ if(!hasProject())return noProject(st);if(S.cur&&H.loading)return loadingView(st);
+ const running=jobRunning('fresh_coding'),meta=running||S.codingFailure?((S.runs.find(r=>r.name===S.codingOut)||{}).meta||{}):S.cur?runMeta():{};
+ const states=PHASES.map(p=>phaseState(p[2](meta))),done=!running&&codingDone(),failed=!!S.codingFailure||(!running&&states.includes('failed'));
+ const phases=PHASES.map((p,i)=>`<div class="phase ${states[i]}"><i class="dot"></i><b>${p[0]}</b><span>${p[1]}${states[i]==='failed'?'　<span class="hint warn">這一段沒有完成。</span>':''}</span></div>`).join('');
+ const pct=done?100:states.filter(x=>x==='ok').length/PHASES.length*100;
+ // 打開一個編碼沒完成的版本：照原介面提供「重試這一輪」（同一輪接著做，已完成的段落不重跑），並寫出執行器回報的原因。
+ const recorded=S.cur&&!running&&!S.codingFailure&&meta.coding_state==='failed'&&!done?{what_happened:researcherSafeError(meta.coding_failure,'編碼未能完成。'),why_it_matters:'JTBD 候選尚未準備好；已完成的段落會保留。',next_action:'排除原因後重試這一輪編碼。'}:null;
+ const f=S.codingFailure||recorded;
+ const failure=f?`<div class="notice" role="alert"><span><b>編碼尚未完成</b><br>${esc(f.what_happened)}<br>${esc(f.why_it_matters)}<br>${esc(f.next_action)}</span><span class="acts"><button class="secondary" data-act="retryCoding">重試這一輪</button></span></div>`:'';
+ const selectiveBtn=S.cur&&!running&&['none','failed','stale'].includes(H.coding.state)&&H.coding.axial.length?`<div class="row" style="justify-content:space-between;margin-top:10px"><span class="hint">${H.coding.state==='stale'?'主軸編碼或研究目的改過，選擇編碼可能需要更新。':'依研究目的，把主軸編碼整合成核心與次要主題，接著形成 JTBD 候選。'}會用到 AI 額度。</span><button class="secondary" data-act="genSelective" ${jobRunning()||S.busy.coding?'disabled':''}>${H.coding.state==='stale'?'依最新內容重新形成':H.coding.state==='failed'?'再試一次':'形成選擇編碼'}</button></div>`:'';
+ return head(st,{action:done?'toJTBD':running?null:'startCoding',label:done?'前往 JTBD':S.busy.coding?'正在開始⋯':'開始編碼',disabled:done?false:(!aiReady()||!!S.busy.coding||jobRunning()),
+   consequence:done?'接下來由你選擇要關注的使用者任務。':running?'':'會使用所選 AI 的額度。真實情況大約 30 分鐘，可以先離開，完成後從這裡繼續。',
+   blocked:!done&&!running&&!aiReady()?'先在「AI 設定」選好 AI 執行方式並完成登入或貼上 key。':null})
+ +errLine('coding')+failure+jobPanel('fresh_coding')+jobPanel('selective_themes_generation')
+ +sec(running?'AI 正在整理資料':done?'編碼完成':failed?'編碼沒有完成':'會發生什麼','',`${phases}${running||done?`<div class="bar"><i style="width:${pct}%"></i></div>`:''}${selectiveBtn}`)
+ +(S.cur&&(H.coding.open.length||H.coding.axial.length)?codingResults():'');
+}
+const axById=()=>Object.fromEntries(H.coding.axial.map(c=>[c.id,c]));
+function codingResults(){
+ const tabs=[['open','開放編碼','逐段標出的行為與想法'],['axial','主軸編碼','反覆出現的模式'],['selective','選擇編碼','核心現象與次要主題']];
+ const t=S.codingTab,ax=axById();let body='';
+ if(t==='open'){const q=S.ocFilter.trim();
+  const groups=H.coding.open.map(g=>({source:g.source,codes:g.codes.filter(c=>!q||[c.name,c.description,...c.quotes.map(r=>H.evidence[r].text)].some(x=>(x||'').includes(q)))})).filter(g=>g.codes.length);
+  body=`<p class="hint">AI 逐段讀資料，用接近原意的短句標出受訪者做了什麼、想什麼。點一則看原話。</p><input class="input" id="ocf" data-field="ocFilter" value="${esc(S.ocFilter)}" placeholder="搜尋標記或原話，例如：濾網、門市">
+  <div class="oc-list">${groups.map(g=>`<div class="oc-group">${esc(g.source)}</div>${g.codes.map(c=>`<details class="oc"><summary><b>${esc(c.name)}</b><span>${esc(c.description)}</span></summary>${c.quotes.map(evInline).join('')}</details>`).join('')}`).join('')||'<p class="hint" style="padding:12px 14px">沒有符合的標記。</p>'}</div>`}
+ if(t==='axial')body=`<p class="hint">把相近的標記歸成反覆出現的模式。點一張卡看它的範圍與代表原話。</p><div class="cards">${H.coding.axial.map(c=>`<button class="card pick" data-axial="${esc(c.id)}"><div class="kicker"><span>${esc(c.name)}</span></div><h3>${esc(c.label)}</h3><p>${esc(c.definition)}</p></button>`).join('')||'<p class="hint">還沒有主軸編碼。</p>'}</div>`;
+ if(t==='selective'){const card=th=>`<div class="theme-card"><div class="row"><span class="tag ${th.tier==='core'?'ok':''}">${th.tier==='core'?'核心現象':'次要主題'}</span></div><h3>${esc(th.name)}</h3><p>${esc(th.core_sentence)}</p>
+  <details><summary>完整說明</summary><p style="margin-top:6px">${esc(th.insight)}</p>${th.key_insights.length?`<ul>${th.key_insights.map(k=>`<li>${esc(k)}</li>`).join('')}</ul>`:''}</details>
+  <div class="row" style="justify-content:space-between"><div class="chips">${th.axial_refs.map(r=>`<button class="chip" data-axial="${esc(r)}">${esc(ax[r].name)}</button>`).join('')}</div>${evidenceButton(th.quotes,`「${th.name}」的代表原話`,'代表原話')}</div></div>`;
+  const themes=H.coding.themes;
+  body=themes.length?`<p class="hint">依研究目的，把模式整合成核心現象。下一步的 JTBD 候選從這裡推出。</p><div class="cards" style="grid-template-columns:repeat(2,minmax(0,1fr))">${themes.filter(x=>x.tier==='core').map(card).join('')}${themes.filter(x=>x.tier!=='core').map(card).join('')}</div>`
+   :`<p class="hint">${H.coding.state==='needs_purpose'?'還沒有研究目的，選擇編碼要先有研究目的。':H.coding.state==='stale'?'主軸編碼改過，選擇編碼要重新整合。':'還沒有選擇編碼。'}</p>`}
+ return sec('編碼結果','三層由下往上整理：開放編碼是第一層標記，主軸編碼歸出模式，選擇編碼整合出核心現象。',`<div class="tabs" role="tablist">${tabs.map(([id,l,d])=>`<button class="tab ${t===id?'on':''}" role="tab" aria-selected="${t===id}" data-tab="${id}">${l}<small>${d}</small></button>`).join('')}</div>${body}`);
+}
+const mk=(cls,v,blank)=>v&&String(v).trim()?`<mark class="${cls}">${esc(v)}</mark>`:`<span class="blank">${esc(blank)}</span>`;
+function jtbdSentence(j,blank){return `當${mk('s-ctx',j.situation,blank&&'（情境）')}，我想要${mk('s-job',j.progress,blank&&'（任務）')}，因為${mk('s-mot',j.motivation,blank&&'（動機）')}，好讓${mk('s-out',j.outcome,blank&&'（成果）')}。`}
+// HMW 自己寫維持兩格（研究者 2026-10-19 裁定），句子與原介面 hmwCustomStatement 相同。
+function hmwSentence(h){return `我們如何讓${mk('s-who',h.who,'（誰）')}的人，能${mk('s-goal',h.goal,'（達成什麼）')}？`}
+const JT_SLOTS=[['situation','當','情境','s-ctx','我準備帶濾網去回收時'],['progress','我想要','任務','s-job','確認手上的濾網能不能收'],['motivation','因為','動機','s-mot','我不想到現場才被退回'],['outcome','好讓','成果','s-out','出門前就知道該帶哪一片']];
+const HM_SLOTS=[['who','我們如何讓','誰','s-who','第一次參加回收'],['goal','的人，能','達成什麼','s-goal','出門前就確認該帶哪一片濾網']];
+function vJTBD(st){
+ if(!S.cur)return noProject(st);if(H.loading)return loadingView(st);
+ const cj=S.customJTBD,state=jtbdState(),n=state.ready?state.items.length:S.jtbd.length+S.jtbdOwnOn.length,busy=!!S.busy.jtbd;
+ const cards=H.jtbd.map(j=>{const on=S.jtbd.includes(j.id);return `<div class="card pick ${on?'on':''}" data-jtbd="${j.id}" role="checkbox" aria-checked="${on}" tabindex="0">
+  <div class="kicker"><span>切入角度：${esc(j.angle||'—')}</span><span class="tick">✓</span></div><h3 style="font-weight:500">${jtbdSentence(j)}</h3><div class="foot"><button class="ghost" data-jtbdbasis="${j.id}">依據</button></div></div>`}).join('');
+ const ownCards=H.jtbdOwn.map((j,i)=>{const on=S.jtbdOwnOn.includes(i);return `<div class="card pick ${on?'on':''}" data-jtbdown="${i}" role="checkbox" aria-checked="${on}" tabindex="0"><div class="kicker"><span>你自己寫的</span><span class="tick">✓</span></div><h3 style="font-weight:500">${jtbdSentence(j)}</h3></div>`}).join('');
+ const scope=n===0?'還沒選。可以複選，也可以自己寫一則。':n===1?'已選 1 則：下一步的 HMW 會聚焦在這個任務。':`已選 ${n} 則：下一步的 HMW 會同時涵蓋這 ${n} 個任務，範圍較廣。`;
+ const js=H.jtbdState,canGen=js.selectiveReady&&!jobRunning();
+ const missing=!H.jtbd.length?(js.insufficient?`這次沒有形成 JTBD 候選：${js.insufficient}`:js.selective==='needs_purpose'?'還沒有研究目的，候選要等選擇編碼完成。':js.selectiveReady?'還沒有 JTBD 候選。':'還沒有 JTBD 候選。選擇編碼完成後會出現在這裡。'):'';
+ const gen=(!H.jtbd.length&&js.selectiveReady)||js.stale?`<div class="notice" role="status"><span>${js.stale?'選擇編碼改過，JTBD 候選可能需要重新形成。':'依選擇編碼形成 JTBD 候選。'}會用到 AI 額度；舊的候選與你的選擇會保留，形成完停在這一站等你挑。</span><span class="acts"><button class="secondary" data-act="genJtbd" ${canGen?'':'disabled'}>${js.stale?'依最新選擇編碼重新形成':'形成 JTBD 候選'}</button></span></div>`:'';
+ const staleSel=statusOf('jtbd').stale?'<p class="hint warn" role="status">選擇編碼改過，JTBD 可能需要重新選。</p>':'';
+ return head(st,{action:'confirm:jtbd',label:busy?'正在記下⋯':'確認 JTBD',disabled:!upstreamReady('jtbd')||!state.ready||busy||isConfirmed('jtbd'),
+   consequence:'確認後會形成 HMW 候選，會用到 AI 額度（已是目前版本時不重跑）。之後回來改，下游會提示你決定保留或重新產生。',doneText:isConfirmed('jtbd')?'JTBD 已確認':null,
+   blocked:upstreamReady('jtbd')?(state.missing&&state.missing.length?`自己寫的這則還缺：${state.missing.join('、')}。`:!state.ready?'至少選一則，或自己寫一則。':null):blockedReason('jtbd')})
+ +errLine('jtbd')+jobPanel('jtbd_candidates_generation')+gen+staleSel+dirtyNote('jtbd')
+ +sec('JTBD 候選','每一則都照同一個句型：當〔情境〕，我想要〔任務〕，因為〔動機〕，好讓〔成果〕。比較它們的切入角度，選出這次最值得研究的任務。',`${missing?`<p class="hint">${esc(missing)}</p>`:''}<div class="cards">${cards}${ownCards}</div>
+  <div class="field" style="margin-top:18px"><label>自己寫一則</label><span class="hint">照句型填四格，四格都填才算一則。</span>
+  <div class="fill jt">${JT_SLOTS.map(([k,lead,name,cls,ph])=>`<div class="slot ${cls}"><label for="cj-${k}">${lead}……<small>${name}</small></label><input class="input" id="cj-${k}" data-field="customJTBD.${k}" value="${esc(cj[k])}" placeholder="${esc(ph)}"></div>`).join('')}</div>
+  <div class="preview">${jtbdSentence(cj,true)}</div></div><p class="hint">${scope}</p>`);
+}
+function vHMW(st){
+ if(!S.cur)return noProject(st);if(H.loading)return loadingView(st);
+ const ch=S.customHMW,state=hmwState(),busy=!!S.busy.hmw,hs=H.hmwState,f=hs.formation||{};
+ const cards=H.hmw.map((h,i)=>{const on=S.hmw===h.id;return `<div class="card pick ${on?'on':''}" data-hmw="${esc(h.id)}" role="radio" aria-checked="${on}" tabindex="0">
+  <div class="kicker"><span>候選 ${i+1}</span><span class="tick radio">●</span></div><h3>${esc(h.statement)}</h3><p>${esc(h.problem_structure)}</p>
+  <div class="foot">${evidenceButton(h.refs,'這則 HMW 的依據')}</div></div>`}).join('');
+ const canForm=f.can_start!==false&&!jobRunning()&&isConfirmed('jtbd');
+ const formBtn=`<button class="secondary" data-act="formHmw" ${canForm?'':'disabled'}>形成 HMW</button>`;
+ const formation=jobRunning('hmw_formation')?'':f.can_start===false&&f.blocked_reason?`<div class="notice" role="status"><span>${esc(f.blocked_reason)}</span></div>`
+  :hs.status==='not_formed'&&isConfirmed('jtbd')?`<div class="notice" role="status"><span>依確認的 JTBD 形成 HMW 候選。會用到 AI 額度，形成完停在這一站等你挑。</span><span class="acts">${formBtn}</span></div>`
+  :hs.framingStale?`<div class="notice" role="status"><span>這幾則是在你選定目前的 JTBD 之前產生的，可能沒有順著現在的 JTBD 走。重新形成會用到 AI 額度；舊的候選會保留，形成完停在這一站等你挑。</span><span class="acts">${formBtn}</span></div>`
+  :hs.superseded?`<div class="notice" role="status"><span>目前的 HMW 候選是用較早的方法產生的。重新形成只會重跑 HMW，不會重跑前面的分析，會用到 AI 額度。</span><span class="acts">${formBtn}</span></div>`:'';
+ return head(st,{action:'confirm:hmw',label:busy?'正在記下⋯':'確認 HMW',disabled:!upstreamReady('hmw')||!state.ready||busy||isConfirmed('hmw'),
+   consequence:'確認後進入 Persona，用這個問題決定要比較哪些使用者差異。',doneText:isConfirmed('hmw')?'HMW 已確認':null,
+   blocked:upstreamReady('hmw')?(S.hmw==='custom'&&state.missing&&state.missing.length?`自己寫的這則還缺：${state.missing.join('、')}。`:!state.ready?'選一則，或自己寫一則。':null):blockedReason('hmw')})
+ +errLine('hmw')+jobPanel('hmw_formation')+formation+dirtyNote('hmw')
+ +sec('HMW 候選','好的 HMW 指出要改善的情況，但不預先決定解法。讀每則下方的形成理由，選一個最能推進研究的切入點。',`${H.hmw.length?'':'<p class="hint">還沒有 HMW 候選。確認 JTBD 後會出現在這裡。</p>'}<div class="cards">${cards}</div>
+  <div class="field" style="margin-top:18px"><label>自己寫一則</label><span class="hint">照句型填兩格，兩格都填才算一則；寫了自己的就不會選上方候選。</span>
+  <div class="fill hm">${HM_SLOTS.map(([k,lead,name,cls,ph])=>`<div class="slot ${cls}"><label for="ch-${k}">${lead}……<small>${name}</small></label><input class="input" id="ch-${k}" data-field="customHMW.${k}" value="${esc(ch[k])}" placeholder="${esc(ph)}"></div>`).join('')}</div>
+  <div class="preview">${hmwSentence(ch)}</div></div>`);
+}
+function axisById(id){return H.persona.axes.find(a=>a.id===id)}
+const POS={near_low:-1,near_high:1};
+// speaker-attribution-for-persona：只呈現，不改任何檔案。落點多不代表歸屬對；分母固定為確認的個人。
+function attributionNotice(){
+ const a=H.persona.attribution;if(!a||!H.persona.axes.length)return '';
+ if(a.state==='unconfirmed')return `<div class="notice" role="status"><span><b>受訪者歸屬尚未確認。</b>${esc(a.message)}</span></div>`;
+ const suspects=(a.suspect_subjects||[]).map(x=>`${x.subject}（${(x.sources||[]).map(s=>s.replace(/\.txt$/,'')).join('、')}）`);
+ const lines=[`確認的個人：${a.confirmed_persons} 位，其中 ${a.placed_persons} 位有落點。`,
+  `無法歸屬到個人的證據：${a.unattributed_evidence} 則；這些證據仍用於主題與情境分析，不當成某一個人的證據。`];
+ if(suspects.length)lines.push(`可能把多人或講者不明的資料當成一位受訪者：${suspects.join('；')}。這份 Persona 不會被自動作廢或改寫，請檢視。`);
+ if((a.unconfirmed_sources||[]).length)lines.push(`還有 ${a.unconfirmed_sources.length} 份來源的受訪人數尚未確認。`);
+ return `<div class="notice" role="status"><span><b>受訪者歸屬</b>　${lines.map(esc).join('　')}</span></div>`;
+}
+function vPersona(st){
+ if(!S.cur)return noProject(st);if(H.loading)return loadingView(st);
+ const [a1,a2]=S.axes.map(axisById);
+ const axisList=H.persona.axes.map(a=>{const on=S.axes.includes(a.id);return `<div class="axis ${on?'on':''}"><label><input type="checkbox" data-axis="${esc(a.id)}" ${on?'checked':''}>${esc(a.label)}</label><div class="poles">${esc(a.pole_low)} ↔ ${esc(a.pole_high)}</div></div>`}).join('');
+ let plot='<div class="plot" style="display:grid;place-items:center"><p class="hint">勾選兩個矩陣維度，這裡會畫出受訪者的分布。</p></div>';
+ let unplaced=0;
+ if(a1&&a2){
+  const used={};
+  const dots=H.persona.subjects.map(s=>{const p1=s.placements[a1.id]?.position,p2=s.placements[a2.id]?.position;
+   if(!(p1 in POS)||!(p2 in POS)){unplaced++;return ''}
+   const x=POS[p1],y=POS[p2],k=x+','+y,j=used[k]=(used[k]||0)+1;const o=[[0,0],[9,0],[-9,0],[0,10],[9,10],[-9,10]][(j-1)%6];
+   const left=50+x*25+o[0],top=50-y*25+o[1];
+   return `<button class="dot-p" style="left:${left}%;top:${top}%" data-subject="${esc(s.key)}" title="查看落點依據"><i></i><b>${esc(s.short)}</b></button>`}).join('');
+  const quads=[[-1,1],[1,1],[-1,-1],[1,-1]].map(([x,y])=>{const id=quadKey(x,y),on=S.quadrant===id,empty=!used[id];
+   return `<button class="quad ${on?'on':''}" ${empty?'data-empty="1"':''} style="left:${x<0?0:50}%;top:${y>0?0:50}%" data-quad="${id}" aria-pressed="${on}"><span class="qlabel">${esc(x<0?a1.pole_low:a1.pole_high)}<br>× ${esc(y<0?a2.pole_low:a2.pole_high)}</span></button>`}).join('');
+  plot=`<div class="plot">${quads}${dots}<span class="ax-x l">← ${esc(a1.pole_low)}</span><span class="ax-x r">${esc(a1.pole_high)} →</span><span class="ax-y b">← ${esc(a2.pole_low)}</span><span class="ax-y t">${esc(a2.pole_high)} →</span></div>
+  <p class="hint">${unplaced?`另有 ${unplaced} 人在其中一個維度落在中間或資料不足，沒有放進四格。`:'每一位受訪者都落在四格之內。'}點圓點看落點依據；點一格選主要目標族群。</p>`;
+ }
+ const made=!!statusOf('persona').made;
+ // 畫面上改了軸或族群、還沒重新產生時，不把舊的 Persona 當成這個選擇的結果。
+ const persona=personaPickChanged()||!S.quadrant?null:(H.persona.personas[0]||null);
+ const card=persona?sec('Persona','每一格都能直接改寫；代表資料是原始資料摘錄，不開放改寫。',`
+  <div class="persona-card"><div class="persona-id"><div class="row" style="justify-content:space-between"><span class="hint">主要目標族群</span>${evidenceButton(persona.basis_refs.concat(persona.quote.ref?[persona.quote.ref]:[]),'為什麼是這一群')}</div><h3>${esc(persona.label)}</h3>
+  ${persona.quote.text?`<div class="quote">${esc(persona.quote.text)}<small>代表資料</small></div>`:''}<p class="hint">${esc(scrub(persona.rationale))}</p></div>
+  <div class="pfields">${PFIELDS.map(([k,l,wide])=>`<div class="pfield ${wide?'wide':''}"><label for="pf-${k}">${l}</label><textarea id="pf-${k}" data-persona="${k}" data-persona-id="${esc(persona.id)}" rows="${k==='user_story'?7:3}">${esc(persona[k]||'')}</textarea></div>`).join('')}</div></div>`):'';
+ const canMake=S.axes.length===2&&S.quadrant;
+ const genBusy=!!S.busy.persona||jobRunning();
+ const genRow=`<div class="row" style="justify-content:space-between;margin-top:12px"><span class="hint">${canMake?(personaPickChanged()||!made?'會用目前的兩個矩陣維度與這一群產生 Persona，會用到 AI 額度；目前的 Persona 會先保留。':'這一群的 Persona 已經產生。'):'選滿兩個矩陣維度，再點一格選主要目標族群。'}</span><button class="secondary" data-act="makePersona" ${!canMake||!upstreamReady('persona')||genBusy||(made&&!personaPickChanged())?'disabled':''}>${made?'依目前選擇重新產生 Persona':'產生 Persona'}</button></div>`;
+ const hmwKeep=H.persona.hmwStale&&made?`<div class="notice" role="status"><span><b>HMW 已變更，這份 Persona 是依先前的 HMW 建立。</b>保留目前 Persona 不會呼叫 AI，內容不變。重新分析會依目前的 HMW 重新分群，再依新的分群產生 Persona，會用到 AI 額度；目前的 Persona 會先保留。</span><span class="acts"><button class="secondary" data-act="keepPersona">保留目前 Persona</button><button class="secondary" data-act="resegment" ${jobRunning()?'disabled':''}>依目前 HMW 重新分析</button></span></div>`
+  :H.persona.hmwStale?`<div class="notice" role="status"><span>這份分群是依你先前選的 HMW 分析的。重新分析會依目前的 HMW 重新分群，會用到 AI 額度。</span><span class="acts"><button class="secondary" data-act="resegment" ${jobRunning()?'disabled':''}>重新分析分群</button></span></div>`:'';
+ const matrixMissing=H.persona.status!=='ready'&&isConfirmed('hmw')&&!jobRunning()?`<div class="notice" role="status"><span>依確認的 HMW 分析受訪者之間的差異，產生 Persona Matrix。會用到 AI 額度。</span><span class="acts"><button class="secondary" data-act="resegment">分析受訪者差異</button></span></div>`:'';
+ return head(st,{action:'confirm:persona',label:S.busy.persona?'處理中⋯':'確認 Persona',disabled:!upstreamReady('persona')||!made||!persona||isConfirmed('persona')||!!S.busy.persona,
+   consequence:'確認後進入顧客旅程地圖，以這群人的角度建立現況旅程，會用到 AI 額度（已有旅程時不重建）。',doneText:isConfirmed('persona')?'Persona 已確認':null,
+   blocked:upstreamReady('persona')?(!made?'先選兩個矩陣維度與主要目標族群，再產生 Persona。':null):blockedReason('persona')})
+ +errLine('persona')+jobPanel('stage_run')+jobPanel('persona_content_generation')+hmwKeep+matrixMissing+editedNote('persona')+attributionNotice()
+ +sec('Persona Matrix','用兩個矩陣維度比較受訪者的差異。好的維度能把人分成需要不同設計的群體，而不只是資料多寡的差別。',`${H.persona.axes.length?'':'<p class="hint">還沒有 Persona Matrix。確認 HMW 後會出現在這裡。</p>'}<div class="persona-wrap"><div><p class="hint" style="margin:0 0 8px">已選 ${S.axes.length}／2</p><div class="axes">${axisList}</div></div><div>${plot}</div></div>${genRow}`)
+ +card;
+}
+function stepVal(i,k){const s=steps[i];
+ if(k==='label')return s.label;if(k==='actions')return s.actions.join('\n');if(k==='pain')return s.pain_points.join('\n');
+ if(k==='core')return s.coreProblem||scrub((s.analysis||{}).problem||'');
+ if(k==='satisfaction')return s.satisfaction.map(x=>`${x.evaluation||''}${x.reason?'（'+x.reason+'）':''}`).join('\n');return ''}
+const COLW=210;
+const FACES=[null,
+ '<circle cx="10" cy="10" r="8"/><circle cx="7" cy="8.5" r="1" fill="currentColor" stroke="none"/><circle cx="13" cy="8.5" r="1" fill="currentColor" stroke="none"/><line x1="5.3" y1="6.3" x2="7.8" y2="7.3"/><line x1="14.7" y1="6.3" x2="12.2" y2="7.3"/><path d="M5.5,15.5 Q10,11 14.5,15.5"/>',
+ '<circle cx="10" cy="10" r="8"/><circle cx="7" cy="8.5" r="1" fill="currentColor" stroke="none"/><circle cx="13" cy="8.5" r="1" fill="currentColor" stroke="none"/><path d="M6,14.5 Q10,12.3 14,14.5"/>',
+ '<circle cx="10" cy="10" r="8"/><circle cx="7" cy="8.5" r="1" fill="currentColor" stroke="none"/><circle cx="13" cy="8.5" r="1" fill="currentColor" stroke="none"/><line x1="6.5" y1="13.5" x2="13.5" y2="13.5"/>',
+ '<circle cx="10" cy="10" r="8"/><circle cx="7" cy="8.5" r="1" fill="currentColor" stroke="none"/><circle cx="13" cy="8.5" r="1" fill="currentColor" stroke="none"/><path d="M6,13 Q10,16 14,13"/>',
+ '<circle cx="10" cy="10" r="8"/><circle cx="7" cy="8.5" r="1" fill="currentColor" stroke="none"/><circle cx="13" cy="8.5" r="1" fill="currentColor" stroke="none"/><path d="M5,12.5 Q10,18.5 15,12.5"/>'];
+const EMO_H=120,EMO_PAD=16,emoY=l=>EMO_PAD+(5-l)*((EMO_H-2*EMO_PAD)/4);
+const emoColor=l=>l<=2?'var(--wb-status-failed)':l>=4?'#2e8b4e':'var(--wb-text-secondary)';
+function emoTip(i,lv){const e=EMOTION[lv];return lv?`${steps[i].label}：${lv}｜${e.name}（${e.feel}）——${e.read}`:`${steps[i].label}：尚未設定`}
+function emoPointInner(lv){return lv?`<circle class="halo" r="13.5" fill="var(--wb-surface-raised)" stroke="${emoColor(lv)}" stroke-width="1.6"/><g class="face" transform="translate(-10.5,-10.5) scale(1.05)" fill="none" stroke="${emoColor(lv)}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="color:${emoColor(lv)}">${FACES[lv]}</g>`
+ :`<circle class="halo" r="13.5" fill="transparent" stroke="var(--wb-text-secondary)" stroke-width="1.6" stroke-dasharray="3 3"/><text y="4.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--wb-text-secondary)">—</text>`}
+function emotionSVG(){
+ const n=steps.length;
+ const pts=steps.map((s,i)=>({i,l:S.emotion[s.id],x:i*COLW+COLW/2}));
+ // adjacent set steps: solid; across an unset step: dashed -- the trend shows without inventing a value
+ let line='',gap='',prevP=null;
+ pts.forEach(p=>{if(!p.l)return;if(prevP){const seg=`M${prevP.x},${emoY(prevP.l)} L${p.x},${emoY(p.l)} `;if(prevP.i===p.i-1)line+=seg;else gap+=seg}prevP=p});
+ const guides=[1,2,3,4,5].map(l=>`<line x1="0" x2="${n*COLW}" y1="${emoY(l)}" y2="${emoY(l)}" stroke="var(--wb-border-strong)" stroke-dasharray="4 4" stroke-width="1"/>`).join('');
+ const dots=pts.map(p=>`<g class="emo-point" tabindex="0" role="slider" aria-valuemin="1" aria-valuemax="5" aria-valuenow="${p.l||''}" aria-label="${esc(emoTip(p.i,p.l))}" data-emo="${p.i}" transform="translate(${p.x},${emoY(p.l||3)})"><title>${esc(emoTip(p.i,p.l))}</title>${emoPointInner(p.l)}</g>`).join('');
+ return `<svg class="emo-svg" width="${n*COLW}" height="${EMO_H}" viewBox="0 0 ${n*COLW} ${EMO_H}" style="display:block;touch-action:none">${guides}<path d="${line}" fill="none" stroke="var(--wb-text-secondary)" stroke-width="1.4"/><path d="${gap}" fill="none" stroke="var(--wb-text-secondary)" stroke-width="1.4" stroke-dasharray="4 4" opacity=".7"/>${dots}</svg>`;
+}
+function vCJM(st){
+ if(!S.cur)return noProject(st);if(H.loading)return loadingView(st);
+ const n=steps.length;
+ const b=H.journey.build||{};
+ if(!n)return head(st,{blocked:upstreamReady('cjm')?null:blockedReason('cjm')})+errLine('cjm')+jobPanel('journey_generation')
+  +sec('','',upstreamReady('cjm')&&!jobRunning()?`<div class="row" style="justify-content:space-between"><span class="hint">依確認的 Persona 整理現況旅程，會用到 AI 額度。</span><button class="secondary" data-act="buildJourney" ${b.available===false?'disabled':''}>建立顧客旅程</button></div>`:'<p class="hint">還沒有顧客旅程地圖。確認 Persona 後會出現在這裡。</p>');
+ const cols=`grid-template-columns:150px repeat(${n},${COLW}px)`;
+ const stageCells=H.journey.stages.map((sg,si)=>{const idx=steps.map((s,i)=>s.stage_id===sg.id?i:-1).filter(i=>i>=0);if(!idx.length)return '';return `<button class="cell headrow stage edit" data-editstep="${si}:stage" style="grid-column:${idx[0]+2}/span ${idx.length}">${esc(sg.label)}</button>`}).join('');
+ const row=(label,sub,fn)=>`<div class="cell lab">${label}${sub?`<small>${sub}</small>`:''}</div>`+steps.map((s,i)=>fn(s,i)).join('');
+ const editCell=(i,k,cls='')=>{const v=stepVal(i,k);return `<button class="cell edit ${cls}" data-editstep="${i}:${k}">${v?esc(v).replace(/\n/g,'<br>'):'<span class="empty">＋ 新增</span>'}</button>`};
+ const grid=`<div class="grid" style="${cols}"><div class="cell headrow lab">階段</div>${stageCells}
+  ${row('步驟','',(s,i)=>`<button class="cell edit stepname ${S.develop.includes(s.id)?'dev':''}" data-editstep="${i}:label"><b>${esc(stepVal(i,'label'))}</b><small>${i+1}／${n}</small></button>`)}
+  ${row('顧客行動','',(s,i)=>editCell(i,'actions'))}
+  ${row('痛點','',(s,i)=>editCell(i,'pain','pain'))}
+  <div class="cell lab" style="padding:0 10px"><div>情緒曲線</div><div class="emo-legend">${[5,4,3,2,1].map(l=>`<span title="${esc(EMOTION[l].feel+'——'+EMOTION[l].read)}">${l} ${EMOTION[l].name}</span>`).join('')}</div></div>
+  <div class="cell emo-cell" style="grid-column:2/span ${n}">${emotionSVG()}</div>
+  ${row('滿意度','評價與理由',(s,i)=>editCell(i,'satisfaction'))}
+  ${row('依據','',(s,i)=>`<div class="cell">${evidenceButton(s.evidence_refs,`「${s.label}」的依據`,'查看原文')}</div>`)}
+  ${row('核心問題','要發展解方的步驟',(s,i)=>{const v=stepVal(i,'core'),on=S.develop.includes(s.id);
+   // 每一步都能勾選納入（原介面也是）；剛建好的旅程沒有 AI 起草的核心問題，要先能勾、再自己寫或之後由發展解方起草。
+   return `<div class="cell core ${on?'dev':''}"><label><input type="checkbox" data-develop="${esc(s.id)}" ${on?'checked':''}>納入這次要解決</label><button class="core-text" data-editstep="${i}:core">${v?esc(v):'<span class="empty">＋ 寫下核心問題</span>'}${v?`<span class="src">${s.coreProblem?'研究者寫的':'AI 起草'}</span>`:''}</button></div>`})}</div>`;
+ const pc=statusOf('cjm').personaChanged?`<div class="notice" role="status"><span><b>Persona 改過了，這份顧客旅程是依先前的 Persona 整理的。</b>保留目前顧客旅程不會呼叫 AI，內容不變。重新建立會依目前 Persona 整理一份新的，會用到 AI 額度；舊的這份會先保留。</span><span class="acts"><button class="secondary" data-act="keepJourney">保留目前顧客旅程</button><button class="secondary" data-act="rebuildJourney" ${b.available===false||jobRunning()?'disabled':''}>依目前 Persona 重新建立</button></span></div>`:'';
+ return head(st,{action:'confirm:cjm',label:S.busy.cjm?'正在確認⋯':'確認 CJM',disabled:!upstreamReady('cjm')||isConfirmed('cjm')||statusOf('cjm').personaChanged||!!S.busy.cjm,
+   consequence:'確認只會儲存，不會啟動 AI。之後在服務藍圖依你納入的核心問題發展解方。',doneText:isConfirmed('cjm')?'CJM 已確認':null,
+   blocked:upstreamReady('cjm')?null:blockedReason('cjm')})
+ +errLine('cjm')+jobPanel('journey_generation')+pc+editedNote('cjm')
+ +sec('① 現況旅程',`${H.journey.label?`${H.journey.label}：${H.journey.goal} `:''}每一格都能點開修改，步驟可以插入、移動或刪除；情緒點可以上下拖曳，或選取後用上下鍵調整。最後一列勾選這次要解決的核心問題。`,`<div class="scroll">${grid}</div>
+  <p class="hint">情緒是 AI 依資料起草、由你調整的判斷，不是量測結果。「—」表示還沒設定，和「無感／普通」不同。納入核心問題是選這次處理的範圍，不是重新選 HMW。</p>`);
+}
+function deliveryText(solId,ch){return (solById[solId]?.delivery[ch]||[]).map(x=>x.text).join('\n')}
+function vSBP(st){
+ if(!S.cur)return noProject(st);if(H.loading)return loadingView(st);
+ const cjmOK=isConfirmed('cjm'),dims=steps.some(s=>s.solutions.length),canAdopt=dims;
+ const c=H.asis.confirmation||{},fresh=(H.asis.freshness||{}).state,busy=!!S.busy.sbp||jobRunning();
+ const n=steps.length,devIdx=steps.map((s,i)=>S.develop.includes(s.id)?i:-1).filter(i=>i>=0);
+ const widths=steps.map((s,i)=>devIdx.includes(i)?'240px':'120px').join(' ');
+ const head1=steps.map((s,i)=>`<div class="cell headrow ${devIdx.includes(i)?'dev':''}"><b style="font-size:13px">${i+1}. ${esc(stepVal(i,'label'))}</b></div>`).join('');
+ const coreRow=steps.map((s,i)=>devIdx.includes(i)?`<div class="cell">${esc(stepVal(i,'core'))}</div>`:`<div class="cell"><span class="empty">不是核心問題</span></div>`).join('');
+ const solRow=steps.map((s,i)=>{if(!devIdx.includes(i))return `<div class="cell"></div>`;
+  if(!s.solutions.length)return `<div class="cell"><span class="hint">這一步還沒有解方候選。</span></div>`;
+  const staleSol=s.solutionsStale?`<p class="hint warn">上游決定改過，這一步採用的解方是否仍適用？<button class="ghost" data-act="keepSolution:${esc(s.id)}">保留目前解方</button></p>`:'';
+  return `<div class="cell">${staleSol}${s.solutions.map(o=>{const on=S.adopted.includes(o.id);return `<div class="dl-sol ${on?'on':''}"><span>${esc(o.text)}</span>
+   <div class="row" style="justify-content:space-between"><button class="adopt" data-adopt="${esc(o.id)}" aria-pressed="${on}" ${busy||!cjmOK?'disabled':''}><span class="tick">✓</span>${on?'已採用':'採用這個解方'}</button></div>
+   ${evidenceButton(o.evidence_refs,'這個解方的依據')}</div>`}).join('')}</div>`}).join('');
+ const chRows=CHANNELS.map(ch=>`<div class="cell lab">${ch.name}<small>${ch.desc}</small></div>`+steps.map((s,i)=>{
+  if(!devIdx.includes(i)||!s.solutions.length)return `<div class="cell"></div>`;
+  return `<div class="cell">${s.solutions.map(o=>{const d=deliveryText(o.id,ch.id);return `<button class="dl-edit" data-delivery="${esc(o.id)}|${ch.id}">${d?esc(d).replace(/\n/g,'<br>'):'<span class="empty">＋ 新增安排</span>'}</button>`}).join('')}</div>`}).join('')).join('');
+ const matrix=`<div class="scroll"><div class="grid" style="grid-template-columns:170px ${widths}"><div class="cell headrow lab">旅程</div>${head1}<div class="cell lab">核心問題</div>${coreRow}<div class="cell lab">解方</div>${solRow}${chRows}</div></div>`;
+ const built=H.sbp.built;
+ // sbp-solution-adoption-and-core-problem：解方在這一站發展與採用，不用回 CJM 重新確認；CJM 本身改過才要回去確認。
+ const journeyChanged=statusOf('cjm').edited&&!cjmOK,refusal=(H.asis.build||{}).reason||c.upstream_reason||'';
+ const buildNote=!cjmOK?(journeyChanged?'顧客旅程改過，要先回 CJM 重新確認，才能產生服務藍圖。':'先確認 CJM。')
+  :built?(fresh==='stale'?'內容已更新，服務藍圖可能需要更新。':c.upstream==='reconsidered'?'這份服務藍圖建立在你重新確認部分解方之前，可以確認目前這份，或依目前內容重新產生。':`已依 ${S.adopted.length} 個解方建立。`)
+  :refusal&&(H.asis.build||{}).available===false?refusal:!S.adopted.length?'在上方至少採用一個解方。':`已採用 ${S.adopted.length} 個解方，可以建立；會用到 AI 額度，並先查相關的外部參考。`;
+ const buildBtns=!cjmOK?(journeyChanged?'<button class="secondary" data-nav="cjm">前往 CJM 確認</button>':'')
+  :built?(fresh==='stale'?`<span class="acts"><button class="secondary" data-act="retainSBP" ${busy?'disabled':''}>保留目前服務藍圖</button><button class="secondary" data-act="regenSBP" ${busy?'disabled':''}>依目前內容更新服務藍圖</button></span>`
+   :c.upstream==='reconsidered'?`<button class="secondary" data-act="regenSBP" ${busy?'disabled':''}>依目前內容重新產生服務藍圖</button>`:'')
+  :`<button class="secondary" data-act="buildSBP" ${!S.adopted.length||busy||(H.asis.build||{}).available===false?'disabled':''}>產生服務藍圖</button>`;
+ const buildSec=sec('② 產生服務藍圖','依你採用的解方，推演讓它們成立需要的前台、後台與支援流程。',`${jobPanel('as_is_blueprint_generation')}${jobPanel('generation')}<div class="row" style="justify-content:space-between"><span class="hint">${buildNote}</span>${buildBtns}</div>`,cjmOK||journeyChanged?'':'locked');
+ let bp='';
+ if(built){
+  const nodesBy={};H.sbp.nodes.forEach(nd=>{if(!nd.step)return;(nodesBy[nd.layer+'|'+nd.step]=nodesBy[nd.layer+'|'+nd.step]||[]).push(nd)});
+  const lanes=LANES.map(l=>`<div class="cell lab ${l.cls}">${l.name}</div>`+steps.map((s,i)=>`<div class="cell ${l.cls}">${(nodesBy[l.id+'|'+(i+1)]||[]).map(nd=>`<button class="node ${nd.inferred?'inferred':''}" data-node="${esc(nd.id)}">${esc(nd.label)}<span class="meta">${nd.inferred?'<span class="tag inf">AI 推論</span>':''}${nd.future_state==='changed'?'<span class="tag chg">改變</span>':nd.future_state==='added'?'<span class="tag chg">新增</span>':''}${nd.markers.map(m=>`<span class="tag">${esc(m.type)}</span>`).join('')}</span></button>`).join('')}</div>`).join('')).join('');
+  bp=sec('③ 審閱服務藍圖','點任何一張卡片，看它的說明、為什麼需要它，以及支持它的原文。',`
+   <div class="scroll"><div class="grid as-is-grid" style="grid-template-columns:170px repeat(${n},${COLW}px)"><div class="cell headrow lab">旅程</div>${steps.map((s,i)=>`<div class="cell headrow"><b style="font-size:13px">${i+1}. ${esc(stepVal(i,'label'))}</b></div>`).join('')}${lanes}<svg class="as-is-grid-lines" aria-hidden="true"></svg></div></div>
+   <div class="legend"><span><span class="sw"></span>有研究資料支持</span><span><span class="sw inf"></span>AI 推論（資料沒有直接提到，需要你判斷）</span><span><span class="tag chg">改變</span>／<span class="tag chg">新增</span> 相對現況</span><span><svg width="30" height="10" aria-hidden="true"><path d="M1,5 H27" class="legend-line"/></svg>動作之間的關係</span><span><svg width="30" height="10" aria-hidden="true"><path d="M1,5 H27" class="legend-line is-inference"/></svg>AI 推論的關係</span></div>`)
+  +sec('說法不一致',`不同受訪者對同一件事說法不同，需要你查看出處後判斷。`,`<div class="conflicts">${H.sbp.conflicts.map(c=>`<div class="conflict">${esc(c.description)} ${evidenceButton(c.evidence_refs,'說法不一致的原文','查看原文')}</div>`).join('')||'<p class="hint">沒有。</p>'}</div>`)
+  +sec('外部參考','其他服務的做法，只是設計參考，不是本案受訪者的經驗證據，也不證明解方一定可行。',`<div class="refs">${H.sbp.references.map(r=>`<div class="ref">${esc(r.text)}<small>適用情境：${esc(r.context||'—')}${r.uncertainty?`　${esc(r.uncertainty)}`:''}　來源：${esc(r.sources.join('、')||'—')}</small></div>`).join('')||'<p class="hint">這次沒有外部參考。</p>'}</div>`);
+ }
+ const canConfirm=built&&cjmOK&&c.journey_current!==false&&fresh!=='stale'&&c.upstream!=='unresolved'&&!!c.fingerprint;
+ return head(st,{action:'confirm:sbp',label:S.busy.sbp?'正在確認⋯':'確認服務藍圖',disabled:!canConfirm||isConfirmed('sbp')||!!S.busy.sbp,
+   consequence:'確認只儲存你目前的審閱狀態，不會啟動任何 AI 工作。',doneText:isConfirmed('sbp')?'服務藍圖已確認':null,
+   blocked:!cjmOK?(journeyChanged?'顧客旅程改過，先回 CJM 重新確認。':blockedReason('sbp')):!dims?'先依核心問題發展解方，產生體驗維度。':!built?'採用至少一個解方，再產生服務藍圖。':fresh==='stale'?'內容已更新，先決定保留或更新服務藍圖。':c.upstream==='unresolved'?(c.upstream_reason||'部分上游決定已變更，尚未重新確認。'):null})
+ +errLine('sbp')+jobPanel('journey_solutions')+editedNote('sbp')
+ +sec('① 體驗維度與採用解方',dims?'橫向是旅程，縱向是核心問題、解方與四種體驗維度。採用要帶進藍圖的解方，並檢查它們由誰、透過什麼交付。這裡改的是解方的交付安排，還不是服務藍圖。':'依你在 CJM 納入的核心問題，AI 提出解方候選，並把每個解方拆成人員、實體環境、數位工具、數位環境四種體驗維度。',
+   (dims?matrix:`<ul style="margin:0 0 14px;padding-left:20px">${devIdx.map(i=>`<li><b>${i+1}. ${esc(stepVal(i,'label'))}</b>　<span class="hint">${esc(stepVal(i,'pain'))}</span></li>`).join('')||'<li class="hint">CJM 還沒有納入核心問題。</li>'}</ul>`)
+   +`<div class="row" style="justify-content:space-between;margin-top:12px"><span class="hint">${!cjmOK?'先確認 CJM。':dims?'依 CJM 目前納入的核心問題重新發展解方並拆成四種體驗維度，會使用 AI 額度；已發展的解方會換成新的一版。':'依你在 CJM 納入的核心問題發展解方並拆成四種體驗維度，會使用 AI 額度；產生後可以逐格修改。'}</span><button class="secondary" data-act="makeDims" ${cjmOK&&devIdx.length&&!busy?'':'disabled'}>${dims?'重新產生體驗維度':'產生體驗維度'}</button></div>`,cjmOK?'':'locked')
+ +buildSec+bp;
+}
+function vOutput(st){
+ if(!S.cur)return noProject(st);if(H.loading)return loadingView(st);
+ const items=S.deliverables||[];
+ const picked=items.filter(d=>S.picked[d.id]);
+ return head(st,{action:'export',label:'輸出研究成果',disabled:!upstreamReady('output')||!picked.length,consequence:'輸出 PDF，研究資料仍只存在你的電腦。',blocked:upstreamReady('output')?(!picked.length?'至少選一項成果。':null):blockedReason('output')})
+ +sec('要交付哪些成果','',`<div class="cards" style="grid-template-columns:1fr">${items.map(d=>`<label class="card" style="flex-direction:row;align-items:center"><input type="checkbox" data-deliv="${esc(d.id)}" ${S.picked[d.id]?'checked':''} style="accent-color:var(--wb-accent)"> ${esc(d.label)}${d.note?`<span class="hint">　${esc(d.note)}</span>`:''}</label>`).join('')||'<p class="hint">這個專案還沒有可以輸出的成果。</p>'}</div>`);
+}
+
+/* ---------- shell ---------- */
+function stationMark(id){
+ if(id==='project')return S.cur?'✓':'';if(id==='ai')return aiReady()?'✓':'';if(id==='coding')return codingDone()?'✓':'';
+ if(!H||H.loading)return '';
+ if(RESEARCH.includes(id)){if(isStale(id)||isEdited(id))return '<span class="mark stale">需更新</span>';return isConfirmed(id)?'✓':''}return '';
+}
+function render(){
+ const st=STATIONS.find(x=>x.id===S.station);
+ const groups=[...new Set(STATIONS.map(x=>x.group))];
+ const side=`<aside class="side"><div class="brand"><span class="product-mark">DITL service design workbench</span></div>
+  ${groups.map(g=>`<div class="side-group"><div class="side-label">${g}</div>${STATIONS.filter(x=>x.group===g).map(x=>`<button class="nav ${x.id===S.station?'on':''}" data-nav="${x.id}" ${x.id===S.station?'aria-current="page"':''}><span class="num">${x.num}</span><span><b>${esc(x.name)}</b><small>${esc(x.purpose)}</small></span><span class="mark">${stationMark(x.id)}</span></button>`).join('')}</div>`).join('')}
+  <div class="side-foot"><a class="linkish" href="/classic">原介面（專案管理、AI 執行資訊、回報與意見）</a><small class="app-copyright">© 2026 DITL, NTUST</small></div></aside>`;
+ const views={project:vProject,ai:vAI,coding:vCoding,jtbd:vJTBD,hmw:vHMW,persona:vPersona,cjm:vCJM,sbp:vSBP,output:vOutput};
+ const scrollers=[...document.querySelectorAll('.scroll')].map(x=>[x.scrollLeft,x.scrollTop]);
+ $('#app').innerHTML=`<div class="shell">${side}<main class="main"><div class="top"><span>${esc((H&&H.project.label)||(S.newCase&&S.newCase.name)||'尚未打開專案')}　/　<b>${esc(st.name)}</b></span><span class="proto-tag">唯讀預覽</span></div><div class="page">${views[st.id](st)}</div></main></div>${drawer?renderDrawer():''}`;
+ document.querySelectorAll('.scroll').forEach((x,i)=>{if(scrollers[i]){x.scrollLeft=scrollers[i][0];x.scrollTop=scrollers[i][1]}});
+ if(document.querySelector('.as-is-grid'))requestAnimationFrame(drawAsIsGridLines);
+}
+function writeHash(){const p=new URLSearchParams();if(S.cur)p.set('run',S.cur);p.set('s',S.station);history.replaceState(null,'','#'+p.toString())}
+function go(id){S.station=id;drawer=null;writeHash();render();window.scrollTo(0,0)}
+
+/* ---------- drawer ---------- */
+function evHTML(ref){const e=H&&H.evidence[ref];if(!e)return '';
+ const shown=readableLocator(e.locator),raw=String(e.locator||'').trim(),file=String(e.source||'').split(/[\\/]/).pop().trim();
+ const who=[e.role,shown].filter(Boolean).join('・')||'來源資訊不完整';
+ return `<div class="ev"><div class="who">${esc(who)}</div>${e.question?`<div class="who">問：${esc(e.question)}</div>`:''}<blockquote>${esc(e.text)}</blockquote>${file||(raw&&raw!==shown)?`<details><summary>出處</summary>${file?`檔案：${esc(file)}<br>`:''}${raw?`位置：${esc(raw)}`:''}</details>`:''}</div>`}
+function evInline(ref){const e=H.evidence[ref];if(!e)return '';return `<blockquote>${esc(e.text)}</blockquote><small>${esc([e.role,readableLocator(e.locator)].filter(Boolean).join('・'))}</small>`}
+function renderDrawer(){
+ const d=drawer;let title='',sub='',body='';
+ if(d.type==='evidence'){title=d.title;sub='原文與出處';body=d.refs.map(evHTML).join('')}
+ if(d.type==='jtbdbasis'){const j=H.jtbd.find(x=>x.id===d.id);title='這則 JTBD 的依據';sub='判斷依據與相關資料';
+  body=`<p class="hint">${jtbdSentence(j)}</p>${j.themes.map(t=>`<div class="kv"><b>來自選擇編碼主題</b>${esc(t.name)}<br>${esc(t.core_sentence)}</div>${t.support_summary?`<div class="kv"><b>為什麼成立</b>${esc(scrub(t.support_summary))}</div>`:''}`).join('')}${j.design_meaning?`<div class="kv"><b>對設計的意義</b>${esc(scrub(j.design_meaning))}</div>`:''}
+  <div class="kv"><b>相關資料</b></div>${j.basis.map(evHTML).join('')||'<p class="hint">沒有可顯示的相關資料。</p>'}`}
+ if(d.type==='axial'){const c=axById()[d.id];title=c.label;sub='主軸編碼・'+c.name;
+  body=`<div class="kv"><b>範圍</b>${esc(c.definition)}</div><div class="kv"><b>資料裡看到的</b>${esc(c.summary)}</div>
+  ${c.quotes.map(evHTML).join('')}
+  ${c.conflicts.length?`<div class="kv"><b>說法不一致</b>${c.conflicts.map(esc).join('<br>')}</div>`:''}
+  <details class="kv"><summary><b style="display:inline">包含的開放編碼</b></summary><ul style="margin:6px 0 0;padding-left:18px">${c.concepts.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></details>`}
+ if(d.type==='subject'){const s=H.persona.subjects.find(x=>x.key===d.key);title=s.short;sub=s.role;
+  body=S.axes.map(id=>{const a=axisById(id),p=s.placements[id]||{};const pos={near_low:a.pole_low,near_high:a.pole_high,mid:'中間',no_data:'資料不足'}[p.position]||'—';return `<div class="kv"><b>${esc(a.label)}：${esc(pos)}</b>${esc(scrub(p.rationale))}</div>`}).join('')+(s.quote?`<div class="ev"><div class="who">代表語句</div><blockquote>${esc(s.quote)}</blockquote></div>`:'')}
+ if(d.type==='node'){const nd=H.sbp.nodes.find(x=>x.id===d.id);title=nd.label;sub=`${LANES.find(l=>l.id===nd.layer)?.name||nd.layer}${nd.actor?'・'+nd.actor:''}`;
+  body=`${nd.inferred?'<p><span class="tag inf">AI 推論</span></p>':''}<div class="kv"><b>說明</b>${esc(nd.description)}</div>${nd.necessity?`<div class="kv"><b>為什麼提出這項安排</b>${esc(nd.necessity)}</div>`:''}
+  ${nd.claims.filter(c=>c.inferred).map(c=>`<div class="kv"><b>AI 推論的部分</b>${esc(c.text)}</div>`).join('')}
+  ${[...new Set(nd.claims.map(c=>c.ref).filter(Boolean))].map(evHTML).join('')}
+  ${nd.markers.map(m=>`<div class="kv"><b>${esc(m.type)}</b>${esc(m.note)}</div>${m.ref?evHTML(m.ref):''}`).join('')}
+  ${nd.inferred?'<p class="hint">資料沒有直接提到這項安排，這是 AI 提出的設計推論。</p>':''}`}
+ if(d.type==='editstep'){const [i,k]=d.key.split(':');
+  if(k==='stage'){const sg=H.journey.stages[+i];title='階段名稱';sub=sg.label;
+   body=`<textarea class="textarea" id="draft" style="min-height:80px">${esc(sg.label)}</textarea><div class="row" style="justify-content:flex-end"><button class="secondary" data-act="closeDrawer">取消</button><button class="primary" data-act="saveStep">儲存修改</button></div>`}
+  else{const stp=steps[+i];const label={label:'步驟名稱',actions:'顧客行動',pain:'痛點',satisfaction:'滿意度（評價與理由）',core:'核心問題'}[k];title=label;sub=`第 ${+i+1} 步・${stp.label}`;
+  const a=stp.analysis||{},save=`<div class="row" style="justify-content:flex-end"><button class="secondary" data-act="closeDrawer">取消</button><button class="primary" data-act="saveStep">儲存修改</button></div>`;
+  const line=(kind,v,ph)=>`<textarea class="textarea" data-line="${kind}" style="min-height:64px" placeholder="${esc(ph||'')}">${esc(v)}</textarea>`;
+  if(k==='label')body=`<textarea class="textarea" id="draft" style="min-height:80px">${esc(stp.label)}</textarea>${save}
+   <div class="kv"><b>這一步的位置</b><div class="row"><button class="secondary" data-act="step:insert_step:${esc(stp.id)}:before">在前面插入一步</button><button class="secondary" data-act="step:insert_step:${esc(stp.id)}:after">在後面插入一步</button><button class="secondary" data-act="step:move_step:${esc(stp.id)}:left" ${+i===0?'disabled':''}>往前移</button><button class="secondary" data-act="step:move_step:${esc(stp.id)}:right" ${+i===steps.length-1?'disabled':''}>往後移</button><button class="secondary" data-act="step:delete_step:${esc(stp.id)}">刪除這一步</button></div></div>`;
+  if(k==='actions')body=(stp.actions.length?stp.actions.map(v=>line('action',v)).join(''):'<p class="hint">這一步沒有記錄顧客行動。</p>')+save;
+  if(k==='pain')body=stp.pain_points.map(v=>line('pain',v)).join('')+`<label class="hint">新增一個痛點</label><textarea class="textarea" id="line-new" style="min-height:64px"></textarea>${save}<p class="hint">清空一格就是刪掉那個痛點。</p>`;
+  if(k==='satisfaction')body=stp.satisfaction.map(x=>`<div class="kv">${line('evaluation',x.evaluation||'','評價')}${line('reason',x.reason||'','理由')}</div>`).join('')+`<div class="kv"><b>新增一則（評價與理由都要寫）</b><textarea class="textarea" id="sat-new-evaluation" style="min-height:56px" placeholder="評價"></textarea><textarea class="textarea" id="sat-new-reason" style="min-height:56px" placeholder="理由"></textarea></div>${save}`;
+  if(k==='core'){const on=S.develop.includes(stp.id),cur=stp.coreProblem||scrub(a.problem||'');
+   // sbp-solution-adoption-and-core-problem：研究者可以改寫核心問題；有寫時，發展解方以它為問題。
+   body=`<textarea class="textarea" id="draft" style="min-height:120px" placeholder="這一刻要解決的問題是什麼？">${esc(cur)}</textarea>
+   <p class="hint">${stp.coreProblem?'這是你寫的核心問題。':a.problem?'這段是 AI 發展解方時起草的，可以直接改寫。':'還沒有核心問題；寫下來就會納入這次要解決。'}改寫後，已採用的解方會標成需要重新確認，產生體驗維度時會以你寫的問題為準。</p>
+   ${a.why_it_matters?`<div class="kv"><b>為什麼重要（AI 起草）</b>${esc(scrub(a.why_it_matters))}</div>`:''}${(a.constraints||[]).length?`<div class="kv"><b>限制（AI 起草）</b>${a.constraints.map(x=>esc(scrub(x))).join('<br>')}</div>`:''}
+   <div class="row" style="justify-content:space-between"><button class="secondary" data-act="develop:${esc(stp.id)}:${on?'false':'true'}">${on?'取消納入':'納入這次要解決'}</button><span class="row"><button class="secondary" data-act="closeDrawer">取消</button><button class="primary" data-act="saveStep">儲存修改</button></span></div>`}
+  body+=evidenceButton(stp.evidence_refs,`「${stp.label}」的依據`,'查看這一步的原文')}}
+ if(d.type==='delivery'){const [sid,ch]=d.key.split('|');const c=CHANNELS.find(x=>x.id===ch);title=`${c.name}：交付安排`;sub=solById[sid].text;
+  const items=solById[sid].delivery[ch]||[],refs=[...new Set(items.flatMap(x=>x.evidence_refs||[]))];
+  body=`<p class="hint">這裡改的是解方的交付安排。已經建立的服務藍圖不會自動跟著改；要反映到藍圖，需要重新產生。</p>${items.map(x=>`<textarea class="textarea" data-line="delivery" style="min-height:72px">${esc(x.text)}</textarea>`).join('')}<label class="hint">新增一項安排</label><textarea class="textarea" id="line-new" style="min-height:64px"></textarea><div class="row" style="justify-content:flex-end"><button class="secondary" data-act="closeDrawer">取消</button><button class="primary" data-act="saveDelivery">儲存修改</button></div>${evidenceButton(refs,'這項安排的依據','查看依據')}`}
+ return `<div class="overlay" data-overlay><div class="drawer" role="dialog" aria-modal="true" aria-label="${esc(title)}"><header><div><small>${esc(sub)}</small><h2>${esc(title)}</h2></div><button class="close" data-act="closeDrawer" aria-label="關閉">×</button></header><div class="body">${body}</div></div></div>`;
+}
+
+/* ---------- writes ---------- */
+async function createProject(){
+ const d=S.draft;if(S.busy.project)return;
+ if(!d.name.trim()||!d.purpose.trim()||!d.files.length)return setErr('project','填好名稱、研究目的，並選擇研究資料。');
+ S.busy.project=true;S.err.project=null;render();
+ const data=new FormData();data.append('name',d.name.trim());d.files.forEach(f=>data.append('files',f,f.name));
+ let body;
+ try{const response=await fetch('/api/upload',{method:'POST',body:data});body=await response.json();if(!response.ok||body.error)throw new Error(body.error||'上傳失敗。')}
+ catch(error){S.busy.project=false;return setErr('project','專案沒有建立：'+researcherSafeError(error.message,'上傳失敗。'))}
+ S.cur=null;H=null;
+ S.newCase={path:body.case,case_id:body.case_id||`upload-${body.intake_id}`,name:body.label||body.intake_id||d.name.trim()};
+ // 研究目的跟著存（原介面在開始編碼前存；這裡建立時就存，開始編碼時一定已經有）。
+ const saved=await savePurpose(S.newCase.case_id,null,d.purpose.trim());
+ S.busy.project=false;S.draft={name:'',purpose:'',files:[]};
+ await loadShell();writeHash();
+ if(!saved)return render();
+ toast('專案已建立。');go('ai');
+}
+async function savePurpose(caseId,run,text){
+ if(!run)await get('/api/research-purpose?case_id='+encodeURIComponent(caseId));
+ try{const response=await decisionFetch('research-purpose','/api/research-purpose',{case_id:caseId,run:run||undefined,text});const body=await response.json();
+  if(!response.ok)throw new Error(isStaleBasis(body)?noSaveText(body.error):(body.error||'研究目的沒有存起來。'));return true}
+ catch(error){setErr('project',researcherSafeError(error.message,'研究目的沒有存起來。'));return false}
+}
+async function chooseProvider(provider){
+ if(provider===S.provider||!PROVIDER_LABELS[provider])return;
+ try{const response=await fetch('/api/provider-selection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider})});const body=await response.json();
+  if(!response.ok||body.error)throw new Error(body.error||'沒有儲存選擇。');S.provider=body.provider}
+ catch(error){return setErr('ai','沒有儲存 AI 執行方式的選擇：'+researcherSafeError(error.message,'沒有儲存選擇。'))}
+ S.err.ai=null;S.execution={apiKey:''};loadProviderStatus();
+}
+async function testProvider(){
+ if(S.busy.ai||!aiReady())return;
+ S.busy.ai=true;render();
+ let result=null,failure=null;
+ try{const response=await fetch('/api/provider-check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payloadFor(null,{retainKey:true}))});const body=await response.json();
+  if(!response.ok||body.error)failure=body.error||'連線測試沒有完成。';else result=body}
+ catch(error){failure='無法送出連線測試：'+error.message}
+ finally{S.busy.ai=false}
+ if(failure)return setErr('ai','連線測試沒有完成：'+researcherSafeError(failure,'連線測試沒有完成。')+' 這不影響開始 AI 工作。');
+ S.err.ai=result.cause&&result.cause.what_happened?`連線測試沒有送出：${result.cause.what_happened}${result.cause.next_action?' '+result.cause.next_action:''}`:null;
+ loadProviderStatus();
+}
+async function startCoding(retry){
+ if(jobRunning())return toast('另一項 AI 工作還在進行，請等它完成。');
+ const c=S.newCase||(H&&H.caseId&&{path:(projectOf(S.cur)||{}).path,name:H.project.label});
+ if(!c||!c.path)return setErr('coding','先在「建立專案」建立或打開一個專案。');
+ if(!aiReady())return setErr('coding','先在「AI 設定」選好 AI 執行方式並完成登入或貼上 key。');
+ const out=retry&&S.codingOut?S.codingOut:`${c.name.replace(/[^\w一-鿿-]/g,'')}-${Date.now()}`.slice(0,120);
+ S.codingOut=out;S.codingFailure=null;S.busy.coding=true;S.err.coding=null;render();
+ let started;
+ try{const response=await fetch('/api/start-coding',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({case:c.path,out,execution:payloadFor('coding')})});
+  started=await response.json();if(!response.ok||started.error)throw new Error(started.error||'伺服器未接受編碼請求。')}
+ catch(error){S.busy.coding=false;S.codingFailure={what_happened:researcherSafeError(error.message,'伺服器未接受編碼請求。'),why_it_matters:'還沒有開始編碼。',next_action:'確認 AI 設定後再按一次「開始編碼」。'};return render()}
+ S.busy.coding=false;
+ if(started.state==='done'){await loadShell();return openProject(out)}
+ S.job={kind:'fresh_coding',state:'running',phase:'正在準備編碼',out};render();watchJob();
+}
+async function confirmJTBD(){
+ const state=jtbdState();if(!state.ready||S.busy.jtbd)return;
+ if(state.unchanged)return go('hmw');
+ S.busy.jtbd=true;S.err.jtbd=null;render();
+ try{const response=await decisionFetch('jtbd-selection','/api/axial-coding-review/pair-selection',{run:S.cur,selections:state.items});const d=await response.json();
+  if(isStaleBasis(d))throw new Error(noSaveText(d.error));if(!response.ok||!d.ok)throw new Error((d.stderr||'').trim()||d.error||'送出失敗')}
+ catch(error){S.busy.jtbd=false;return setErr('jtbd',researcherSafeError(error.message,'這個選擇沒有送出成功，請稍後再試。'))}
+ S.busy.jtbd=false;await openProject(S.cur,{keep:true});toast('JTBD 已確認。');go('hmw');
+ // 原介面：確認 JTBD 就是形成 HMW 的觸發；伺服器判定已是目前版本時直接沿用、不重跑。
+ startJob('/api/form-hmw',{run:S.cur},'hmw','hmw_formation');
+}
+async function confirmHMW(){
+ const state=hmwState();if(!state.ready||S.busy.hmw)return;
+ if(state.unchanged)return go('persona');
+ S.busy.hmw=true;S.err.hmw=null;render();
+ let result;
+ try{result=await (await decisionFetch('primary-hmw','/api/primary-hmw-picker/select',{run:S.cur,answer:state.answer})).json()}
+ catch(error){S.busy.hmw=false;return setErr('hmw','沒有送出：'+error.message)}
+ S.busy.hmw=false;
+ if(!result.ok)return setErr('hmw',isStaleBasis(result)?noSaveText(result.error):researcherSafeError((result.stderr||result.stdout||result.error||'').trim(),'送出失敗。'));
+ await openProject(S.cur,{keep:true});toast('HMW 已確認。');go('persona');
+ // 原介面：Persona 分群還沒有產出時，確認 HMW 就接著分析；已經有就只是前往下一站。
+ if(H.persona.status!=='ready')startJob('/api/run-stage',{run:S.cur,artifact:'persona_segmentation'},'persona','stage_run');
+}
+
+const POLE={1:'near_high',[-1]:'near_low'};
+const quadXY=key=>String(key).split(',').map(Number);
+const personaAxesChanged=()=>S.axes.join()!==H.persona.confirmedAxes.join();
+const personaPickChanged=()=>personaAxesChanged()||S.quadrant!==H.persona.confirmedQuad;
+// 原介面 produceSelectedPersona：軸或目標族群有改就先存（preview＋confirm，不另問理由），再用目前的選擇產出 Persona。
+async function applyPersonaSelection(gate,decision){
+ const preview=await(await scopedPost('/api/persona/preview',{run:S.cur,gate,decision,execution:payloadFor('persona',{retainKey:true})})).json();
+ if(preview.error)throw new Error(preview.error);
+ const saved=await(await scopedPost('/api/persona/confirm',{run:S.cur,gate,decision,preview_id:preview.preview_id,execution:payloadFor('persona',{retainKey:true})})).json();
+ if(saved.error)throw new Error(saved.error);
+}
+async function makePersona(){
+ if(S.busy.persona||jobRunning()||S.axes.length!==2||!S.quadrant)return;
+ const axesChanged=personaAxesChanged(),targetChanged=axesChanged||!H.persona.confirmedQuad||S.quadrant!==H.persona.confirmedQuad;
+ const [x,y]=quadXY(S.quadrant);
+ S.busy.persona=true;S.err.persona=null;render();
+ try{
+  if(axesChanged)await applyPersonaSelection('segmentation_axes',{axis_ids:S.axes.slice(),business_rationale:''});
+  if(targetChanged)await applyPersonaSelection('target_segmentation',{primary_axis_poles:[POLE[x],POLE[y]],primary_rationale:''});
+ }catch(error){S.busy.persona=false;return setErr('persona',researcherSafeError(error.message,'這次的選擇沒有存到，請再按一次「產生 Persona」。'))}
+ S.busy.persona=false;
+ await startJob('/api/persona-matrix/generate-persona',{run:S.cur},'persona','persona_content_generation');
+}
+async function savePersonaField(el){
+ const field=el.dataset.persona,pn=H.persona.personas.find(p=>p.id===el.dataset.personaId);if(!pn)return;
+ const value=el.value.trim();if(value===String(pn[field]||'').trim())return;
+ try{const r=await decisionFetch('persona','/api/persona-content/field',{run:S.cur,persona_id:pn.id,field,value});const d=await r.json();
+  if(!r.ok||d.error)throw new Error(isStaleBasis(d)?noSaveText(d.error):(d.error||'存檔失敗'));
+  pn[field]=value;S.err.persona=null;toast('已儲存。')}
+ catch(error){setErr('persona','沒有存到：'+researcherSafeError(error.message,'請稍後再試。'))}
+}
+async function confirmPersona(){
+ if(S.busy.persona)return;
+ if(!H.persona.digest)return setErr('persona','這份 Persona 目前讀不到版本標記，請重新整理頁面後再試一次。');
+ S.busy.persona=true;S.err.persona=null;render();
+ try{const r=await scopedPost('/api/persona-content/confirm',{run:S.cur,persona_digest:H.persona.digest});const d=await r.json();if(!r.ok||d.error)throw new Error(d.error||'確認沒有存到')}
+ catch(error){S.busy.persona=false;return setErr('persona','沒有確認：'+researcherSafeError(error.message,'請稍後再試。'))}
+ S.busy.persona=false;await openProject(S.cur,{keep:true});toast('Persona 已確認。');go('cjm');
+ // 原介面：確認 Persona 同時是建立顧客旅程的觸發；旅程已存在時伺服器會略過，不覆蓋。
+ startJob('/api/build-journey',{run:S.cur,rebuild:false},'cjm','journey_generation',{silent:true});
+}
+async function keepPersonaAgainstHmw(){
+ if(S.busy.persona)return;
+ S.busy.persona=true;render();
+ try{const r=await decisionFetch('persona','/api/persona/hmw-basis/retain',{run:S.cur});const d=await r.json();if(!r.ok||d.error)throw new Error(d.error||'沒有記下來。')}
+ catch(error){S.busy.persona=false;return setErr('persona',noSaveText(researcherSafeError(error.message,'沒有記下來，請再試一次。')))}
+ await openProject(S.cur,{keep:true});S.busy.persona=false;render();toast('已保留目前的 Persona。');
+}
+
+let saveChain=Promise.resolve();
+// 旅程的修改逐筆送出（同一份內容，下一筆用上一筆回來的身分）；確認要等前面的修改存完。
+function queueSave(fn){const next=saveChain.then(fn,fn);saveChain=next.catch(()=>{});return next}
+function journeyEdit(body,station){
+ return queueSave(async()=>{
+  try{const r=await decisionFetch('journey','/api/journey-candidate/field',{run:S.cur,...body});const res=await r.json();
+   if(!r.ok||res.error)throw new Error(isStaleBasis(res)?noSaveText(res.error):(res.error||'沒有存到'));
+   buildJourney(res,H.reportRaw);S.err[station||'cjm']=null;
+   const asis=await get('/api/as-is-build?run='+encodeURIComponent(S.cur));buildSBP(H.reportRaw,asis);return true}
+  catch(error){S.err[station||'cjm']='沒有存到：'+researcherSafeError(error.message,'請稍後再試。');return false}
+  finally{render()}
+ });
+}
+async function saveEmotion(stepId,level){
+ S.emotion[stepId]=level;render();
+ if(H.journey.solutionModel)return journeyEdit({kind:'emotion',step_id:stepId,value:String(level)});
+ // 舊格式的旅程：情緒存在旅程註記（原介面 saveJourneyAnnotation）。
+ return queueSave(async()=>{
+  try{const r=await decisionFetch('journey-annotations','/api/journey-annotations',{run:S.cur,step_id:stepId,field:'emotion',value:level});const d=await r.json();
+   if(!r.ok||d.error)throw new Error(d.error||'沒有存到');S.err.cjm=null}
+  catch(error){S.err.cjm='沒有存到：'+researcherSafeError(error.message,'請稍後再試。')}
+  render();
+ });
+}
+// 側欄裡的修改：每一格跟原本不同才送；多格依序送出。
+async function saveStepDrawer(){
+ const [i,k]=drawer.key.split(':'),st=steps[+i],edits=[];
+ const vals=sel=>[...document.querySelectorAll(sel)].map(el=>el.value.trim());
+ if(k==='label'){const v=$('#draft').value.trim();if(v&&v!==st.label)edits.push({kind:'step_label',step_id:st.id,value:v})}
+ if(k==='core'){const v=$('#draft').value.trim(),cur=st.coreProblem||scrub((st.analysis||{}).problem||'');
+  if(v!==cur)edits.push({kind:'core_problem',step_id:st.id,value:v});
+  if(v&&!S.develop.includes(st.id))edits.push({kind:'develop_moment',step_id:st.id,value:'true'})}
+ if(k==='stage'){const sg=H.journey.stages[+i],v=$('#draft').value.trim();if(v&&v!==sg.label)edits.push({kind:'stage_label',stage_id:sg.id,value:v})}
+ if(k==='actions')vals('[data-line="action"]').forEach((v,j)=>{if(v!==String(st.actions[j]||'').trim())edits.push({kind:'action',step_id:st.id,index:j,value:v})});
+ if(k==='pain'){vals('[data-line="pain"]').forEach((v,j)=>{if(v!==String(st.pain_points[j]||'').trim())edits.push({kind:'pain_point',step_id:st.id,index:j,value:v})});
+  const add=($('#line-new')||{}).value;if(add&&add.trim())edits.push({kind:'pain_point_add',step_id:st.id,value:add.trim()})}
+ if(k==='satisfaction'){const ev=vals('[data-line="evaluation"]'),re=vals('[data-line="reason"]');
+  ev.forEach((v,j)=>{const old=st.satisfaction[j]||{};if(v!==String(old.evaluation||'').trim()||re[j]!==String(old.reason||'').trim()){if(!!v!==!!re[j])return;edits.push({kind:'satisfaction_item',step_id:st.id,index:j,value:'',evaluation:v,reason:re[j]})}});
+  const ne=(($('#sat-new-evaluation')||{}).value||'').trim(),nr=(($('#sat-new-reason')||{}).value||'').trim();
+  if(ne&&nr)edits.push({kind:'satisfaction_item_add',step_id:st.id,value:'',evaluation:ne,reason:nr});
+  else if(ne||nr)return toast('新增的滿意度要同時寫評價與理由。')}
+ drawer=null;render();
+ for(const body of edits){if(!await journeyEdit(body))break}
+ if(edits.length&&!S.err.cjm)toast('已儲存。');
+}
+function stepStructure(op,stepId,arg){
+ if(op==='delete_step'&&!window.confirm('刪除這一步？這一步的行動與做法會一起刪掉。'))return;
+ drawer=null;render();
+ return journeyEdit(op==='insert_step'?{kind:'insert_step',step_id:stepId,position:arg,value:'新步驟'}:{kind:op,step_id:stepId,value:arg||''});
+}
+async function confirmCJM(){
+ if(S.busy.cjm)return;
+ S.busy.cjm=true;S.err.cjm=null;render();
+ await saveChain;
+ const c=H.journey.conf||{};
+ if(!c.journey_digest||S.err.cjm){S.busy.cjm=false;return render()}
+ try{const r=await scopedPost('/api/journey-candidate/confirm',{run:S.cur,journey_digest:c.journey_digest});const res=await r.json();if(!r.ok||res.error)throw new Error(res.error||'確認沒有存到')}
+ catch(error){S.busy.cjm=false;const text=researcherSafeError(error.message,'請稍後再試。');return setErr('cjm',text.startsWith('沒有確認：')?text:'沒有確認：'+text)}
+ // 原介面：確認只保存，不啟動任何 AI 工作。
+ await openProject(S.cur,{keep:true});S.busy.cjm=false;toast('CJM 已確認。');go('sbp');
+}
+async function keepJourney(){
+ if(S.busy.cjm)return;S.busy.cjm=true;render();
+ try{const r=await decisionFetch('journey','/api/journey/persona-basis/retain',{run:S.cur});const d=await r.json();if(!r.ok||d.error)throw new Error(d.error||'沒有記下來。')}
+ catch(error){S.busy.cjm=false;return setErr('cjm',noSaveText(researcherSafeError(error.message,'沒有記下來，請再試一次。')))}
+ await openProject(S.cur,{keep:true});S.busy.cjm=false;render();toast('已保留目前的顧客旅程。');
+}
+async function adoptSolution(solId){
+ const sol=solById[solId];if(!sol)return;const step=steps[sol.stepIndex];
+ const selected=step.selected.includes(solId)?step.selected.filter(x=>x!==solId):[...step.selected,solId];
+ return journeyEdit({kind:'solution_selection',step_id:step.id,value:'',selected_solution_ids:selected},'sbp');
+}
+async function saveDeliveryDrawer(){
+ const [sid,ch]=drawer.key.split('|'),sol=solById[sid],step=steps[sol.stepIndex],items=sol.delivery[ch]||[],edits=[];
+ [...document.querySelectorAll('[data-line="delivery"]')].forEach((el,j)=>{const v=el.value.trim();if(v!==String((items[j]||{}).text||'').trim())edits.push({kind:'candidate_delivery',step_id:step.id,solution_id:sid,channel:ch,index:j,value:v})});
+ const add=(($('#line-new')||{}).value||'').trim();if(add)edits.push({kind:'candidate_delivery_add',step_id:step.id,solution_id:sid,channel:ch,value:add});
+ drawer=null;render();
+ for(const body of edits){if(!await journeyEdit(body,'sbp'))break}
+ if(edits.length&&!S.err.sbp)toast('已儲存。');
+}
+async function keepSolution(stepId){
+ const step=steps.find(x=>x.id===stepId),a=step&&step.applicability;if(!a||S.busy.sbp)return;
+ S.busy.sbp=true;render();
+ try{const r=await scopedPost('/api/journey/solution-reconfirm',{run:S.cur,step_id:stepId,step_digest:a.step_digest,hmw_digest:a.hmw_digest,solution_ids:a.solution_ids});const d=await r.json();if(!r.ok||d.error)throw new Error(d.error||'沒有記下來。')}
+ catch(error){S.err.sbp=researcherSafeError(error.message,'沒有記下來，請重新載入後再試。')}
+ await openProject(S.cur,{keep:true});S.busy.sbp=false;render();
+}
+async function retainBlueprint(){
+ if(S.busy.sbp)return;S.busy.sbp=true;render();
+ try{const r=await decisionFetch('blueprint','/api/sbp-basis/retain',{run:S.cur});const d=await r.json();if(!r.ok||d.error)throw new Error(d.error||'沒有記下來。')}
+ catch(error){S.busy.sbp=false;return setErr('sbp',noSaveText(researcherSafeError(error.message,'沒有記下來，請再試一次。')))}
+ await openProject(S.cur,{keep:true});S.busy.sbp=false;render();toast('已保留目前的服務藍圖。');
+}
+async function confirmSBP(){
+ const c=H.asis.confirmation||{};if(S.busy.sbp||!c.fingerprint)return;
+ S.busy.sbp=true;S.err.sbp=null;render();
+ try{const r=await scopedPost('/api/as-is/confirm',{run:S.cur,fingerprint:c.fingerprint});const res=await r.json();if(!r.ok||res.error)throw new Error(res.error||'確認沒有存到')}
+ catch(error){S.busy.sbp=false;return setErr('sbp','沒有確認：'+researcherSafeError(error.message,'請稍後再試。'))}
+ // 原介面：確認只儲存並停在服務藍圖站。
+ await openProject(S.cur,{keep:true});S.busy.sbp=false;render();toast('服務藍圖已確認。');
+}
+
+/* ---------- actions ---------- */
+// 會改資料或啟動 AI 的動作：這一批一律不送出。
+function exportURL(){const ids=(S.deliverables||[]).filter(d=>S.picked[d.id]).map(d=>d.id);
+ return '/api/research-deliverables/export?run='+encodeURIComponent(S.cur)+'&ids='+encodeURIComponent(ids.join(','))+'&format=pdf'}
+function act(a){
+ const [verb,arg]=a.split(':');
+ if(a==='createProject')return createProject();
+ if(verb==='pickFile')return $('#filepick')?.click();
+ if(verb==='testAI')return testProvider();
+ if(verb==='applyRecommendedModel'){const model=(RECOMMENDED_STATION_MODELS[S.provider]||{})[arg];if(model){S.models.stations[arg]=model;toast(`${STATIONS.find(x=>x.id===arg).name} 改用 ${model}。`)}return render()}
+ if(verb==='startCoding')return startCoding(false);
+ if(verb==='retryCoding'){if(!S.codingOut&&S.cur&&runMeta().coding_state==='failed')S.codingOut=S.cur;return startCoding(true)}
+ if(a==='confirm:jtbd')return confirmJTBD();
+ if(a==='confirm:hmw')return confirmHMW();
+ if(a==='confirm:persona')return confirmPersona();
+ if(verb==='makePersona')return makePersona();
+ if(verb==='keepPersona')return keepPersonaAgainstHmw();
+ if(verb==='resegment')return startJob('/api/run-stage',{run:S.cur,artifact:'persona_segmentation'},'persona','stage_run');
+ if(a==='confirm:cjm')return confirmCJM();
+ if(a==='confirm:sbp')return confirmSBP();
+ if(verb==='buildJourney')return startJob('/api/build-journey',{run:S.cur,rebuild:false},'cjm','journey_generation');
+ if(verb==='rebuildJourney')return startJob('/api/build-journey',{run:S.cur,rebuild:true},'cjm','journey_generation');
+ if(verb==='keepJourney')return keepJourney();
+ if(verb==='saveStep')return saveStepDrawer();
+ if(verb==='step'){const [,op,stepId,arg]=a.split(':');return stepStructure(op,stepId,arg)}
+ if(verb==='develop'){const [,stepId,value]=a.split(':');drawer=null;return journeyEdit({kind:'develop_moment',step_id:stepId,value})}
+ if(verb==='makeDims')return queueSave(()=>startJob('/api/build-journey-solutions',{run:S.cur},'sbp','journey_solutions'));
+ if(verb==='saveDelivery')return saveDeliveryDrawer();
+ if(verb==='keepSolution')return keepSolution(arg);
+ if(verb==='buildSBP')return startJob('/api/generate-as-is',{run:S.cur},'sbp','as_is_blueprint_generation');
+ if(verb==='regenSBP')return startJob('/api/generate-as-is',{run:S.cur,regenerate:true},'sbp','as_is_blueprint_generation');
+ if(verb==='retainSBP')return retainBlueprint();
+ if(verb==='formHmw')return startJob('/api/form-hmw',{run:S.cur},'hmw','hmw_formation');
+ if(verb==='genJtbd')return startJob('/api/narrative-job-candidates/generate',{run:S.cur},'jtbd','jtbd_candidates_generation');
+ if(verb==='genSelective')return startJob('/api/selective-themes/generate',{run:S.cur},'coding','selective_themes_generation');
+ if(verb==='toCoding')return go('coding');
+ if(verb==='toJTBD')return go('jtbd');
+ if(verb==='goNext'){const next=STATIONS[STATIONS.findIndex(x=>x.id===arg)+1];return go(next.id)}
+ if(verb==='reload'){return openProject(S.cur)}
+ if(verb==='export'){window.location.href=exportURL();return toast('正在產生 PDF，完成後會下載。')}
+ if(verb==='closeDrawer'){drawer=null;return render()}
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{
+ if(e.target.matches('[data-overlay]')){drawer=null;return render()}
+ const t=e.target.closest('button,[data-jtbd],[data-jtbdown],[data-hmw],[data-provider]');if(!t)return;
+ const d=t.dataset;
+ if(d.nav)return go(d.nav);
+ if(d.openrun)return openProject(d.openrun);
+ if(d.act)return act(d.act);
+ if(d.tab){S.codingTab=d.tab;return render()}
+ if(d.axial){drawer={type:'axial',id:d.axial};return render()}
+ if(d.jtbdbasis){drawer={type:'jtbdbasis',id:d.jtbdbasis};return render()}
+ if(d.evidence){drawer={type:'evidence',refs:d.evidence.split(','),title:d.title};return render()}
+ if(d.subject){drawer={type:'subject',key:d.subject};return render()}
+ if(d.node){drawer={type:'node',id:d.node};return render()}
+ if(d.editstep){drawer={type:'editstep',key:d.editstep};return render()}
+ if(d.delivery){drawer={type:'delivery',key:d.delivery};return render()}
+ if(d.quad){if(d.empty)return toast('這一格沒有受訪者，不能當主要目標族群。');S.quadrant=S.quadrant===d.quad?null:d.quad;return render()}
+ if(d.adopt)return adoptSolution(d.adopt);
+ if(d.provider){if(e.target.closest('button,input'))return;return chooseProvider(d.provider)}
+ if(d.jtbd){if(e.target.closest('button'))return;S.jtbd=S.jtbd.includes(d.jtbd)?S.jtbd.filter(x=>x!==d.jtbd):[...S.jtbd,d.jtbd];return render()}
+ if(d.jtbdown!==undefined){const i=+d.jtbdown;S.jtbdOwnOn=S.jtbdOwnOn.includes(i)?S.jtbdOwnOn.filter(x=>x!==i):[...S.jtbdOwnOn,i];return render()}
+ if(d.hmw){if(e.target.closest('button'))return;S.hmw=d.hmw;S.customHMW=blankHMW();return render()}
+});
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape'&&drawer){drawer=null;return render()}
+ const t=e.target;
+ if((e.key==='Enter'||e.key===' ')&&t.matches('[data-jtbd],[data-jtbdown],[data-hmw],[data-provider]')){e.preventDefault();t.click()}
+ if(t.matches('[data-emo]')&&(e.key==='ArrowUp'||e.key==='ArrowDown')){e.preventDefault();const i=+t.dataset.emo,id=steps[i].id,cur=S.emotion[id]||3;
+  saveEmotion(id,Math.max(1,Math.min(5,cur+(e.key==='ArrowUp'?1:-1))));document.querySelector(`[data-emo="${i}"]`)?.focus()}
+});
+document.addEventListener('change',e=>{
+ const t=e.target,d=t.dataset;
+ if(d.modelEffort!==undefined){S.models.effort=t.value;return render()}
+ if(d.deliv){S.picked[d.deliv]=t.checked;return render()}
+ if(t.id==='filepick'){S.draft.files=[...(t.files||[])];return render()}
+ if(d.purpose!==undefined&&S.cur&&H&&!H.loading){const text=t.value.trim();if(text===H.project.purpose)return;
+  savePurpose(H.caseId,S.cur,text).then(ok=>{if(ok){H.project.purpose=text;toast('研究目的已儲存。');openProject(S.cur,{keep:true})}})}
+ if(d.axis){if(t.checked){if(S.axes.length>=2){t.checked=false;return toast('最多選兩個矩陣維度，請先取消一個。')}S.axes=[...S.axes,d.axis]}else S.axes=S.axes.filter(x=>x!==d.axis);S.quadrant=null;return render()}
+ if(d.persona&&d.personaId)return savePersonaField(t);
+ if(d.develop)return journeyEdit({kind:'develop_moment',step_id:d.develop,value:t.checked?'true':'false'});
+});
+document.addEventListener('input',e=>{
+ const t=e.target,d=t.dataset;
+ if(d.modelGlobal!==undefined||d.modelStation){
+  if(d.modelStation)S.models.stations[d.modelStation]=t.value;else S.models.model=t.value;
+  clearTimeout(window.__m);window.__m=setTimeout(()=>{const pos=t.selectionStart,sel=d.modelStation?`[data-model-station="${d.modelStation}"]`:'[data-model-global]';render();const n=document.querySelector(sel);if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(_){}}},350);return}
+ if(d.field&&d.field!=='ocFilter'){
+  const [a,b]=d.field.split('.');S[a][b]=t.value;
+  if(a==='customHMW')S.hmw=Object.values(S.customHMW).some(v=>v.trim())?'custom':(S.hmw==='custom'?null:S.hmw);
+  // 只更新頭部的按鈕與預覽，不重畫整頁，游標留在原處。
+  clearTimeout(window.__f);window.__f=setTimeout(()=>{const id=t.id,pos=t.selectionStart;render();const n=id&&document.getElementById(id);if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(_){}}},350);return}
+ if(d.field==='ocFilter'){S.ocFilter=t.value;clearTimeout(window.__r);window.__r=setTimeout(()=>{const pos=t.selectionStart;render();const n=document.getElementById('ocf');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(x){}}},300)}
+});
+/* emotion drag: repaint on release so pointer capture survives (prototype), then save */
+let drag=null;
+document.addEventListener('pointerdown',e=>{const g=e.target.closest('[data-emo]');if(!g)return;drag={i:+g.dataset.emo,svg:g.ownerSVGElement,g,lv:S.emotion[steps[+g.dataset.emo].id]};g.setPointerCapture?.(e.pointerId);e.preventDefault()});
+document.addEventListener('pointermove',e=>{if(!drag)return;const r=drag.svg.getBoundingClientRect();const yy=(e.clientY-r.top)*(EMO_H/r.height);const lv=Math.max(1,Math.min(5,Math.round(5-(yy-EMO_PAD)/((EMO_H-2*EMO_PAD)/4))));
+ if(drag.lv!==lv){drag.lv=lv;drag.g.setAttribute('transform',`translate(${drag.i*COLW+COLW/2},${emoY(lv)})`);[...drag.g.children].forEach(c=>{if(c.tagName!=='title')c.remove()});drag.g.insertAdjacentHTML('beforeend',emoPointInner(lv))}});
+document.addEventListener('pointerup',()=>{if(!drag)return;const {i,lv}=drag;drag=null;const id=steps[i].id;if(lv&&lv!==S.emotion[id])saveEmotion(id,lv);else render()});
+
+window.addEventListener('resize',()=>requestAnimationFrame(drawAsIsGridLines));
+(async function start(){
+ const p=new URLSearchParams(location.hash.slice(1));
+ if(STATIONS.some(x=>x.id===p.get('s')))S.station=p.get('s');
+ render();
+ await loadShell();
+ // 進行中的 AI 工作（例如換頁或重新整理前開始的編碼）接著顯示。
+ const job=await getPlain('/api/job');
+ if(job&&(job.state==='running'||job.state==='waiting_for_model')){S.job=job;if(job.kind==='fresh_coding')S.codingOut=job.out;watchJob()}
+ const run=p.get('run');
+ if(run&&S.runs.some(r=>r.name===run))return openProject(run);
+ render();
+})();
+</script>
+</body>
+</html>

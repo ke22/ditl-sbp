@@ -60,8 +60,9 @@ stages:
     identity_preserved_across_modes: true
     secondary_actions: [save-draft]
   - id: selective-coding
-    visible_label: 資料與編碼
-    page_title: 主軸編碼與顧客任務選擇
+    # separate-evidence-pool（2026-10-19）：編碼移到研究依據，第一站只選 JTBD。
+    visible_label: JTBD
+    page_title: JTBD
     # select-jtbd-from-selective-synthesis（2026-10-01 裁定）：選擇編碼是 AI
     # 分析層，不是研究者關卡；②只問研究者要服務哪個使用者任務。
     decision_statement: 在這個核心現象裡，人真正想完成什麼？
@@ -110,8 +111,9 @@ stages:
     identity_preserved_across_modes: true
     secondary_actions: []
   - id: journey-map
-    visible_label: 顧客旅程
-    page_title: 顧客旅程
+    # v3-shell（2026-10-19）：用詞清單與 prototype-v3 的統一名稱。
+    visible_label: 顧客旅程地圖（CJM）
+    page_title: 顧客旅程地圖（CJM）
     decision_statement: 這份完整歷程是否可信，可作為建模依據？
     primary_actions:
       - id: confirm-journey-generate-as-is
@@ -126,8 +128,8 @@ stages:
     identity_preserved_across_modes: true
     secondary_actions: [adjust-journey]
   - id: review-as-is
-    visible_label: 服務藍圖
-    page_title: SBP
+    visible_label: 服務藍圖（SBP）
+    page_title: 服務藍圖（SBP）
     decision_statement: 這份服務藍圖是否已經檢視完成？
     primary_actions:
       - id: confirm-as-is-start-to-be
@@ -205,11 +207,16 @@ journey_candidate_confirmation:
   confirm_action:
     id: confirm-journey
     label: 確認 CJM 與解方
-    consequence: 保存已檢視的 CJM 與研究者採用的解方，前往服務藍圖；還沒有服務藍圖時，由研究者在那裡按「建立 SBP」。確認不會啟動任何 AI 工作（2026-10-02 研究者裁定）。
+    consequence: 保存已檢視的 CJM 與研究者採用的解方，停在顧客旅程；接著由研究者按「建立藍圖」。確認不會啟動任何 AI 工作（2026-10-02 研究者裁定）。
   continue_action:
     id: continue-to-as-is
     label: 查看 SBP
     consequence: 前往服務藍圖。
+  # cjm-builds-sbp（研究者 2026-10-15）：建立藍圖是 CJM 的下一步；按下就生成並跳到服務藍圖站。
+  build_action:
+    id: build-sbp
+    label: 建立藍圖
+    consequence: 開始建立服務藍圖，並前往服務藍圖站看進度。
 
 journey_confirmation:
   decision_statement: 這份完整歷程是否可信，可作為建模依據？

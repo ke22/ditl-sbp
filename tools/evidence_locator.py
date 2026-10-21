@@ -16,6 +16,7 @@ import json
 from pathlib import Path
 
 import yaml
+from yaml_loader import safe_load as load_safe_yaml
 
 REPO = Path(__file__).resolve().parent.parent
 TOOLS_DIR = REPO / "tools"
@@ -68,7 +69,7 @@ def _load_yaml_safe(path: Path):
     if not path.is_file():
         return None
     try:
-        return yaml.safe_load(path.read_text(encoding="utf-8"))
+        return load_safe_yaml(path.read_text(encoding="utf-8"))
     except (yaml.YAMLError, OSError, UnicodeDecodeError):
         return None
 

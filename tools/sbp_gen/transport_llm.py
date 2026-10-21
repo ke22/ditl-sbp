@@ -212,11 +212,16 @@ def record_provenance(run_json_path: Path, stages_done: list[str]) -> dict:
     `origin` 用的是審閱介面已經認得的值（它會顯示「手動搬進來的產出」），
     所以介面那邊一行都不用改。
     """
-    import json
+    from . import run_files, run_lock
 
-    state = {}
-    if run_json_path.is_file():
-        state = json.loads(run_json_path.read_text(encoding="utf-8")) or {}
+    with run_lock.hold(run_json_path.parent):
+        return _record_provenance(run_json_path, stages_done)
+
+
+def _record_provenance(run_json_path: Path, stages_done: list[str]) -> dict:
+    from . import run_files
+
+    state = run_files.read_state(run_json_path)
     state["origin"] = ORIGIN
     models = state.setdefault("models", {})
     providers = state.setdefault("providers", {})
@@ -238,8 +243,5 @@ def record_provenance(run_json_path: Path, stages_done: list[str]) -> dict:
         "傳輸方式保證不了 model／effort／max tokens 與 API 呼叫一致，也量不到 usage"
         "（docs/experiment/pipeline.md 的候選條件）。"
     )
-    run_json_path.parent.mkdir(parents=True, exist_ok=True)
-    run_json_path.write_text(
-        json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    run_files.write_json_atomic(run_json_path, state, trailing_newline=False)
     return state

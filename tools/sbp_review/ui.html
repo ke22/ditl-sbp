@@ -36,6 +36,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);line
 
 .build{font-size:11px;font-weight:500;color:var(--muted);margin-left:8px}
 section.card{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:20px;margin-bottom:16px}
+/* sbp-status-render-consistency：服務藍圖上方狀態區的容器只負責整段重畫，不產生自己的版面框。 */
+.as-is-station-status{display:contents}
 /* tier-blueprint-review-status-disclosure 決定：完整範例預覽提示是一次性訊息，
    不該每次載入都佔用常駐版位，可關閉且關閉後不佔空間（不是只有 CSS 隱藏）。 */
 h2{font-size:15px;margin:0 0 12px}
@@ -344,6 +346,7 @@ svg.arrows{position:absolute;z-index:0;inset:0;overflow:visible}
 .pending-list .pending-detail{color:var(--wb-text-secondary,var(--muted));font-size:12.5px;font-weight:400;line-height:1.6}
 .pending-list .pending-topic i{width:7px;height:7px;border-radius:50%;background:var(--red);flex:0 0 auto}
 .pending-list .pending-jump{white-space:nowrap}
+
 .pending-list .empty{padding:8px 10px;color:var(--muted);font-size:13px}
 @media (prefers-reduced-motion: no-preference){
   .node.jump-highlight{animation:jumpHighlight 1.4s ease-out}
@@ -591,6 +594,11 @@ body{background:var(--wb-surface-app);color:var(--wb-text-primary);font-size:var
 .stage-nav-home .stage-nav-button{grid-template-columns:28px minmax(0,1fr)}
 .home-nav-icon{display:grid;place-items:center;width:26px;height:26px;font-size:20px;line-height:1;color:var(--wb-text-secondary)}
 .stage-nav-home .stage-nav-button[aria-current="step"] .home-nav-icon{color:var(--wb-accent)}
+.page-note{max-width:60ch;margin:12px 0 0;color:var(--wb-text-secondary);font-size:var(--wb-type-body-size);font-weight:var(--wb-type-body-weight)}
+.basis-region{margin:0 0 var(--wb-space-8)}
+.basis-region>h2{margin:0 0 4px;font-size:var(--wb-type-section-size);font-weight:var(--wb-type-section-weight)}
+.basis-region-note{margin:0 0 var(--wb-space-4);color:var(--wb-text-secondary);font-size:var(--wb-type-small-size)}
+.basis-source-list{margin:0;padding:var(--wb-space-4) var(--wb-space-5);list-style:none;display:grid;gap:6px;border:1px solid var(--wb-border-subtle);border-radius:var(--wb-radius-card);background:var(--wb-surface-raised)}
 /* converge-workbench-shell-and-visual-grammar：研究步驟用編號標出順序（契約順序＋1，Home 另列）。
    目前這站＝暖灰褐膠囊底＋強調色實心編號；已確認＝白底編號＋✓；還沒到＝淡框。
    強調色在側欄只出現在目前這站的編號上。 */
@@ -781,7 +789,11 @@ body{background:var(--wb-surface-app);color:var(--wb-text-primary);font-size:var
 .as-is-blueprint .as-is-card.layer-back{background:#f5eefa;border-color:#a58fbf}
 .as-is-blueprint .as-is-card.layer-support{background:#f3f3f3;border-color:#a8a8a8}
 .as-is-blueprint .as-is-card.is-inference{border-style:dashed}
-/* to-be-blueprint-provenance-presentation：未來狀態是設計內容，用短標籤；形成方式只是低權重的角落符號。 */
+/* reduce-to-be-sbp-cognitive-load（研究者 2026-10-16／10-17）：改善後藍圖的 AI 推斷卡用既有的淡底與虛線，
+   邊框沿用泳道色；卡片和文字都不降透明度，推斷卡讀起來跟其他卡一樣清楚。要排在 .layer-* 之後才蓋得過底色。 */
+.as-is-blueprint .as-is-card.is-to-be-inference{background:var(--wb-surface-work);border-style:dashed}
+.as-is-blueprint .as-is-legend-card{display:inline-block;width:20px;height:12px;margin-right:6px;vertical-align:middle;box-sizing:border-box;border:1px dashed #9aa6b8;border-radius:3px;background:var(--wb-surface-work)}
+/* to-be-blueprint-provenance-presentation：未來狀態是設計內容，用短標籤；◆ 研究者決策是低權重的角落符號。 */
 .as-is-blueprint .as-is-card .to-be-state{align-self:flex-start;margin:2px 0 0;padding:0 6px;border-radius:8px;border:1px solid var(--line);font-size:11px;font-weight:600;color:var(--ink,inherit)}
 .as-is-blueprint .as-is-card .to-be-formation{position:absolute;right:6px;bottom:4px;font-size:11px;color:var(--muted);font-weight:400}
 .as-is-blueprint .to-be-legend{display:inline-flex;gap:14px}
@@ -798,6 +810,12 @@ body{background:var(--wb-surface-app);color:var(--wb-text-primary);font-size:var
 .as-is-pending .pending-list{display:grid;gap:10px;margin:0;padding:0;border:0;background:none;box-shadow:none;max-height:none;overflow:visible}
 .as-is-pending-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 22px;border:1px solid var(--wb-status-pending);border-radius:4px;background:var(--wb-status-pending-surface)}
 .as-is-pending-row.is-highlighted{outline:2px solid var(--wb-accent);outline-offset:-1px}
+/* reduce-to-be-sbp-cognitive-load：改善後藍圖的待確認分兩組，組標題下一句講研究者要做什麼。 */
+.as-is-pending .pending-group{display:grid;gap:10px}
+.as-is-pending .pending-group+.pending-group{margin-top:20px}
+.as-is-pending .pending-group h3{margin:0}
+.as-is-pending .pending-todo{margin:0;color:var(--wb-text-secondary);font-size:var(--wb-type-small-size)}
+.as-is-pending .pending-reason,.as-is-pending .pending-next{display:block;margin-top:4px;color:var(--wb-text-secondary);font-size:var(--wb-type-small-size)}
 .as-is-pending-jump{flex:none;padding:0;border:0;background:transparent;font:inherit;font-size:var(--wb-type-small-size);color:var(--wb-text-link);cursor:pointer}
 .as-is-baseline-goal h3{margin:0 0 10px}
 .as-is-baseline-box{margin:0;padding:14px 18px;border:1px solid var(--wb-border-subtle);background:var(--wb-surface-raised)}
@@ -839,6 +857,16 @@ body{background:var(--wb-surface-app);color:var(--wb-text-primary);font-size:var
 .cjm-cell.cjm-absent{background:#fdf1ea}
 .cjm-absent-note{margin:6px 0 0;color:#8a4a1f;font-size:11px;font-weight:700}
 .cjm-cell.cjm-content .cjm-absent-note{border-top:1px dashed #d9b48f;padding-top:6px}
+.reference-role{margin:0 0 var(--wb-space-4);color:var(--wb-text-secondary);font-size:var(--wb-type-small-size)}
+.reference-card{margin:0 0 var(--wb-space-4);padding:var(--wb-space-4) var(--wb-space-5);border:1px solid var(--wb-border-subtle);border-radius:var(--wb-radius-card);background:var(--wb-surface-raised)}
+.reference-kind{margin:0 0 2px;color:var(--wb-text-muted);font-size:var(--wb-type-tag-size);font-weight:var(--wb-type-tag-weight);letter-spacing:.06em}
+.reference-card h3{margin:0 0 var(--wb-space-3);font-size:var(--wb-type-card-size)}
+.reference-card h3 a{color:var(--wb-text-link)}
+.reference-card dl{display:grid;grid-template-columns:8em minmax(0,1fr);gap:6px 14px;margin:0;font-size:var(--wb-type-small-size)}
+.reference-card dt{color:var(--wb-text-secondary)}
+.reference-card dd{margin:0;color:var(--wb-text-primary)}
+.cjm-group-row th{padding:10px 12px 8px;border-top:2px solid var(--wb-border-strong);background:var(--wb-surface-app);text-align:left}
+.cjm-group-label{position:sticky;left:12px;color:var(--wb-text-primary);font-size:var(--wb-type-small-size);font-weight:var(--wb-type-card-weight);letter-spacing:.06em}
 .cjm-emotion-cell{padding:10px 10px 12px;vertical-align:middle}
 .cjm-emotion-curve{position:relative;height:88px;width:100%;min-width:260px}
 .cjm-emotion-line{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
@@ -886,6 +914,15 @@ body{background:var(--wb-surface-app);color:var(--wb-text-primary);font-size:var
 .hmw-card-jobs{margin:0;padding-left:18px;font-size:13px;line-height:1.6}
 .hmw-card-structure{margin:0;font-size:13px;line-height:1.6;color:var(--wb-text-secondary)}
 .axial-quote-role{display:block;margin-top:4px;color:var(--wb-text-secondary);font-size:11px}
+/* readable-source-location：出處行本身就是展開入口，不另加按鈕；展開後才看到檔名與原始位置 */
+.source-line{margin-top:4px}
+.source-line>summary.axial-quote-role{margin-top:0;cursor:pointer;list-style:none;width:fit-content}
+.source-line>summary::-webkit-details-marker{display:none}
+.source-line>summary::after{content:" ›";color:var(--wb-text-muted)}
+.source-line[open]>summary::after{content:" ⌄"}
+.source-line>summary:hover{text-decoration:underline}
+.source-line-detail{margin:4px 0 0;padding:6px 8px;border-left:2px solid var(--wb-border-subtle);color:var(--wb-text-secondary);font-size:11px;line-height:1.6;overflow-wrap:anywhere}
+.source-line-note{display:block;margin-top:2px;color:var(--wb-text-muted);font-size:11px}
 .axial-pair-list{list-style:none;margin:0;padding:0;display:grid;gap:12px}
 .axial-pair-row{display:block;padding:var(--wb-space-5);
   border:1px solid var(--wb-border-subtle);border-radius:var(--wb-radius-card);background:var(--wb-surface-raised);cursor:pointer}
@@ -1109,6 +1146,19 @@ button.danger-action{background:var(--wb-status-failed);color:#fff;border-color:
 .settings-section{margin:0 0 var(--wb-space-6)}
 .settings-section .form-note{margin:0 0 var(--wb-space-3);color:var(--wb-text-secondary);font-size:var(--wb-type-small-size)}
 .settings-account{margin:0 0 6px;color:var(--wb-text-secondary)}
+.terminology-reference{margin:0 0 var(--wb-space-6);border-block:1px solid var(--wb-border-subtle);padding:var(--wb-space-4) 0}
+.terminology-reference>summary{cursor:pointer;font-weight:var(--wb-type-card-weight);font-size:var(--wb-type-card-size)}
+.terminology-reference>summary:focus-visible{outline:2px solid var(--wb-focus);outline-offset:4px}
+.terminology-reference label{display:block;margin:var(--wb-space-4) 0 6px;font-size:var(--wb-type-small-size)}
+.terminology-reference input{width:100%;box-sizing:border-box;min-height:40px;padding:8px 10px;border:1px solid var(--wb-border-strong);border-radius:var(--wb-radius-card);background:var(--wb-surface-work);color:var(--wb-text-primary);font:inherit}
+.terminology-reference .form-note{margin:var(--wb-space-3) 0;font-size:var(--wb-type-small-size);color:var(--wb-text-secondary);line-height:1.7}
+.terminology-group{margin-top:var(--wb-space-5)}
+.terminology-group h4{margin:0 0 var(--wb-space-3);font-size:var(--wb-type-card-size)}
+.terminology-group dl{margin:0}
+.terminology-entry{padding:var(--wb-space-3) 0;border-bottom:1px solid var(--wb-border-subtle);overflow-wrap:anywhere}
+.terminology-entry dt{font-weight:var(--wb-type-card-weight);font-size:var(--wb-type-small-size)}
+.terminology-entry dd{margin:6px 0 0;line-height:1.75;font-size:var(--wb-type-small-size)}
+.terminology-entry .terminology-alias,.terminology-entry .terminology-note{color:var(--wb-text-secondary)}
 .feedback-form label{display:block;margin:14px 0 7px;font-size:13px;font-weight:800}
 .feedback-form textarea{width:100%;min-height:100px;box-sizing:border-box;padding:9px 10px;border:1px solid var(--wb-border-strong);border-radius:6px;background:var(--wb-surface-work);color:var(--wb-text-primary);font:inherit;line-height:1.5;resize:vertical}
 .feedback-form .inline-check{display:flex;gap:9px;align-items:flex-start;margin-top:12px;font-size:13px;font-weight:600}
@@ -1192,6 +1242,9 @@ button.danger-action{background:var(--wb-status-failed);color:#fff;border-color:
 .pm-hint{margin:0;font-size:12.5px;color:var(--wb-text-secondary)}
 .pm-default-notice{margin:0 0 var(--wb-space-4);font-size:var(--wb-type-body-size,14px);line-height:var(--wb-line-body);color:var(--wb-text-primary)}
 .pm-hmw-stale{margin:0 0 var(--wb-space-4)}
+.cjm-topic-line{margin:0 0 var(--wb-space-2)}
+.cjm-topic-label{display:block;color:var(--wb-text-muted);font-size:11px;letter-spacing:.04em}
+.cjm-topic-note{margin:var(--wb-space-2) 0 0;color:var(--wb-text-muted);font-size:12px}
 .pm-plot{border:1px solid var(--line);border-radius:8px;padding:14px;background:var(--surface,var(--wb-surface-raised))}
 .pm-plot.empty{display:grid;place-items:center;min-height:300px;color:var(--wb-text-secondary);text-align:center}
 .pm-plot svg{width:100%;height:auto}
@@ -1202,6 +1255,15 @@ button.danger-action{background:var(--wb-status-failed);color:#fff;border-color:
 .pm-plot.is-selectable .pm-quad{cursor:pointer}
 .pm-plot.is-selectable .pm-quad:hover{fill:var(--wb-surface-hover)}
 .pm-primary{fill:var(--wb-accent-tint);stroke:var(--wb-border-selected);stroke-width:1.5;pointer-events:none}
+/* persona-matrix-continuity：Persona 來自哪一格；只寫這一端與另一端，不用高低字樣。 */
+.pm-primary-label{fill:var(--wb-accent);font-size:11px;font-weight:600;pointer-events:none}
+.pm-source{margin:0 0 var(--wb-space-5);padding:var(--wb-space-4) var(--wb-space-5);border:1px solid var(--wb-border-subtle);border-radius:var(--wb-radius-card);background:var(--wb-surface-work)}
+.pm-source-title{margin:0 0 6px;color:var(--wb-text-muted);font-size:var(--wb-type-tag-size);font-weight:var(--wb-type-tag-weight);letter-spacing:.06em}
+.pm-source ul{display:grid;gap:4px;margin:0;padding:0;list-style:none;font-size:var(--wb-type-small-size)}
+.pm-source li{display:grid;grid-template-columns:minmax(10em,auto) auto 1fr;gap:12px;align-items:baseline}
+.pm-source-axis{color:var(--wb-text-secondary)}
+.pm-source-chosen{color:var(--wb-text-primary);font-weight:var(--wb-type-card-weight)}
+.pm-source-other{color:var(--wb-text-muted)}
 .pm-dot{cursor:default}
 .pm-dot circle{fill:var(--wb-text-secondary);stroke:var(--surface,var(--wb-text-inverse));stroke-width:1.5}
 .pm-dot:hover circle,.pm-dot:focus-visible circle{fill:var(--wb-text-primary)}
@@ -1383,6 +1445,55 @@ body.print-mode{display:block;background:var(--wb-surface-raised);height:auto;ov
 .print-doc .print-text{margin:0;white-space:pre-wrap;font:inherit}
 .print-doc .pc-editable{outline:none !important;background:none !important}
 .print-doc .axial-pair-row,.print-doc .hmw-candidate{cursor:default}
+/* v3-shell（2026-10-19 研究者裁定：以 prototype-v3 為新介面）：全高側欄、頂欄麵包屑、
+   頁首「目的＋問題」與右上主要按鈕。只覆寫外殼；各站內容的樣式不在這裡。 */
+.workbench-shell{--nav-col:248px;grid-template-columns:var(--nav-col) minmax(0,1fr);grid-template-rows:56px minmax(0,1fr);grid-template-areas:"nav case" "nav work"}
+.workbench-shell.inspector-open{grid-template-areas:"nav case case" "nav work inspect"}
+.workbench-shell.gate-hidden{grid-template-rows:56px minmax(0,1fr)}
+.workbench-shell.nav-expanded{--nav-col:248px}
+#case-context{grid-template-columns:minmax(0,1fr) auto;padding:0 32px;background:var(--wb-surface-work);border-bottom:1px solid var(--wb-border-subtle)}
+.case-context-copy{justify-content:flex-start;align-items:center;gap:8px;font-size:13px;color:var(--wb-text-secondary)}
+.case-context-copy .context-home{font-size:13px;font-weight:400;color:var(--wb-text-secondary)}
+.context-sep{color:var(--wb-text-muted)}.context-place{color:var(--wb-text-primary);font-weight:600}
+#stage-navigation{padding:22px 14px 16px;background:var(--wb-surface-app)}
+#stage-navigation-body{display:flex;flex-direction:column;gap:18px}
+.v3-brand{padding:0 10px}.v3-brand .product-mark{font-size:14px;line-height:1.3;white-space:normal;min-width:0}
+.nav-group{display:flex;flex-direction:column;gap:2px}
+.nav-group .stage-nav-heading{margin:0 0 4px;padding:0 10px;font-size:12px;letter-spacing:var(--wb-label-tracking);text-transform:none}
+.nav-group .stage-nav-list{gap:2px}
+.stage-nav-button{grid-template-columns:26px minmax(0,1fr) auto;gap:8px;align-items:start;min-height:0;padding:8px 10px;border-radius:10px;font-size:14px}
+.stage-nav-button[aria-current="step"],.stage-nav-button[aria-current="page"]{background:var(--wb-surface-selected);color:var(--wb-text-primary)}
+.stage-index{width:auto;height:auto;border:0;border-radius:0;background:none!important;justify-content:start;font-size:12px;font-weight:600;color:var(--wb-text-secondary);padding-top:2px}
+.stage-nav-button[aria-current="step"] .stage-index,.stage-nav-button[aria-current="page"] .stage-index{color:var(--wb-accent)}
+.stage-nav-button[data-availability="complete"] .stage-index{border:0;background:none;color:var(--wb-text-secondary)}
+.stage-nav-button[data-availability="complete"]:not([aria-current="step"])::after{padding-top:2px;color:var(--wb-status-confirmed);font-size:12px}
+.stage-label{font-size:14px;font-weight:600;line-height:1.4}
+.stage-purpose{display:block;margin-top:2px;font-size:12px;font-weight:400;line-height:1.45;color:var(--wb-text-secondary)}
+.stage-nav-toggle{display:none}
+.stage-nav-utility{margin-top:auto}
+.v3-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin:0 32px;padding:28px 0 20px;border-bottom:1px solid var(--wb-border-subtle)}
+#page-header{padding:0;background:transparent;min-width:0;flex:1}
+.page-purpose{margin:0 0 6px;color:var(--wb-text-secondary);font-size:13px}
+#page-header h1{max-width:none;font-size:26px;line-height:1.35;font-weight:600}
+#page-header h1 .decision-statement{display:inline;margin:0;max-width:none;color:inherit;font:inherit}
+#page-header .ai-info-entry{position:static;display:inline-flex;margin-top:10px}
+#review-gate{grid-area:auto;position:static;z-index:auto;flex:none;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-end;gap:6px;max-width:440px;min-width:0;padding:0;background:transparent;border:0;text-align:right}
+.workbench-shell.gate-hidden #review-gate{display:none}
+#review-gate .review-gate-copy{order:2}
+#review-gate .review-gate-primary{order:1}
+#review-gate .go{border-radius:10px;padding:0 20px;font-size:15px;font-weight:600}
+#main{padding:24px 32px 64px}
+#inspector{top:68px;bottom:12px}
+.workbench-shell.inspector-open::before{inset:56px 0 0 var(--nav-col)}
+.shell-panel-scrim{inset:56px 0 0 0}.shell-panel{top:56px}
+@media (max-width:1023px){
+  .workbench-shell,.workbench-shell.nav-expanded{--nav-col:200px}
+  .workbench-shell:not(.nav-expanded){--nav-col:76px}
+  .stage-nav-toggle{display:grid}
+  .v3-head{flex-direction:column;align-items:flex-start;margin:0 18px}
+  #review-gate{align-items:flex-start;text-align:left}
+  #main{padding:20px 18px 56px}
+}
 </style>
 </head>
 <body>
@@ -1391,11 +1502,10 @@ body.print-mode{display:block;background:var(--wb-surface-raised);height:auto;ov
   <header id="case-context" aria-label="目前案例"><span class="product-mark">DITL service design workbench</span><span>載入案例資訊⋯</span></header>
   <nav id="stage-navigation" aria-label="工作階段"><div id="stage-navigation-body"></div><small class="app-copyright">© 2026 DITL, NTUST</small></nav>
   <main id="stage-work-area" tabindex="-1">
-    <div id="page-header"></div>
+    <div class="v3-head"><div id="page-header"></div><div id="review-gate" role="region" aria-label="目前確認關卡"></div></div>
     <div id="main"></div>
   </main>
   <aside id="inspector" aria-label="詳細資料" hidden></aside>
-  <footer id="review-gate" aria-label="目前確認關卡"></footer>
 </div>
 <div id="shell-panel-host"></div>
 <div id="failure-dialog" hidden></div>
@@ -1579,7 +1689,7 @@ let S={step:1,cases:[],selectedCase:null,runs:[],cur:null,report:null,inv:null,p
        viewingVersion:null,versions:[],asIsResearch:null,researchDetail:null,toBeDetail:null,validationDetail:null,researchPoll:null,researchAttempted:false,
        toBeCompare:'to-be',toBeDecisionPending:false,
        workbench:null,bootstrapError:null,fixtureProfile:null,mode:'blueprint',selection:null,inspectorOpen:false,inspectorFormSnapshot:null,
-       navExpanded:false,judgmentBoundariesExpanded:false,
+       navExpanded:true,judgmentBoundariesExpanded:false,
        blueprintView:{scale:null,tx:24,ty:24,drag:null,scene:null},
        diagram:{scale:null,tx:0,ty:0,type:'',source:'',selected:null,scene:null,drag:null},
        // add-run-watch-mode：runStatusPoll 跟既有 S.poll（生成進度）分開管理，避免
@@ -1621,7 +1731,7 @@ let S={step:1,cases:[],selectedCase:null,runs:[],cur:null,report:null,inv:null,p
        personaGenerationBusy:false,personaGenerationError:null,personaGenerationPhase:null,
        // restore-browser-generation-workflow：全新一輪上傳／歷程辨識用的暫存欄位。
        projects:null,openProject:null,stageJob:null,stagePoll:null,autoRanArtifact:null,toBeJob:null,
-       intakeBusy:false,shellPanel:null,shellPanelTrigger:null,
+       intakeBusy:false,shellPanel:null,shellPanelTrigger:null,terminologyOpen:false,terminologyQuery:'',
        provider:null,providerStatus:null,providerCheckBusy:false,
        execution:{mode:'cli',provider:'openai',apiKey:'',executor:'',codexModel:'',codexEffort:''},
        personaMatrixProjection:null,personaProjRun:null,personaPrimaryQuadrant:null,personaContent:null,personaJob:null,personaPoll:null,personaRationale:'',hmwPicker:null,hmwPickerRun:null,
@@ -1738,41 +1848,50 @@ const ACCOUNT_ICON='<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden=
 const MENU_ICON='<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M3 5.5h14M3 10h14M3 14.5h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 function renderCaseContext(){
   const context=effectiveCaseContext();
-  const isProjectHome=(stageContractByStep(S.step)||{}).id==='project-home';
+  const isProjectHome=!S.page&&(stageContractByStep(S.step)||{}).id==='project-home';
   const name=!isProjectHome&&(S.fixtureProfile?context.case_label:(S.cur||S.selectedCase)?context.case_label:'');
-  // rework-shell-and-project-home：頂欄只剩案例名稱（點它回首頁換專案、換版本）、
-  // 輸出與設定兩個入口；專案與版本的下拉選單搬到首頁的專案卡片。
-  $('#case-context').innerHTML=`<span class="product-mark">DITL service design workbench</span>
-    <div class="case-context-copy" data-build="${esc(S.ui&&S.ui.version||'')}">${name
-      ?`<span class="context-label">案例</span><button class="context-home" id="case-home-link" title="回到專案首頁">${esc(name)}</button>`:''}</div>
+  // v3-shell（2026-10-19，prototype-v3）：頂欄是麵包屑——案例名稱（點它回首頁）／目前所在的站或頁；
+  // 品牌移到側欄頂端。設定、帳號照舊。
+  const place=S.page?NAV_PAGES[S.page]:((stageContractByStep(S.step)||{}).visible_label||'');
+  $('#case-context').innerHTML=`<div class="case-context-copy" data-build="${esc(S.ui&&S.ui.version||'')}">${name
+      ?`<button class="context-home" id="case-home-link" title="回到專案首頁">${esc(name)}</button><span class="context-sep" aria-hidden="true">／</span>`:''}<b class="context-place">${esc(place)}</b></div>
     <div class="shell-actions">${(S.authState||{}).mode==='email'?`<button class="ghost shell-menu" id="open-account-panel" aria-label="帳號" aria-haspopup="dialog" aria-expanded="${S.shellPanel==='account'}">${ACCOUNT_ICON}</button>`:''}<button class="ghost shell-menu" id="open-settings-panel" aria-label="設定" aria-haspopup="dialog" aria-expanded="${S.shellPanel==='settings'}">${MENU_ICON}</button></div>`;
 }
+// v3-shell（2026-10-19，prototype-v3）：全高側欄，分「準備／研究步驟／完成」，每一項寫名稱與一句目的。
+// 研究步驟的名稱與順序讀 contract；AI 設定、資料與編碼、輸出是頁面，不是 runtime stage。
+const NAV_PURPOSE={'project-home':'開新專案或接著做，上傳研究資料',ai:'選擇由哪一種 AI 幫你分析',coding:'AI 讀完資料，整理出可比較的模式',
+  'selective-coding':'使用者想完成什麼','primary-hmw':'這次要處理什麼問題','persona-target-selection':'主要為誰設計',
+  'journey-map':'現況經歷了什麼、哪幾刻要改善','review-as-is':'解方如何交付、服務如何運作',output:'整理要交付的研究成果'};
+const NAV_PAGES={ai:'AI 設定',coding:'資料與編碼',output:'輸出'};
+const PAGE_HEADING={ai:'這次要用哪一種 AI 分析資料？',coding:'讓 AI 整理研究資料',output:'輸出研究成果'};
 function renderStageNavigation(){
   const stages=S.workbench.stages||[],runtime=effectiveRuntimeStages();
   const homeStage=stages.find(stage=>stage.id==='project-home');
   const researchStages=stages.filter(stage=>stage.id!=='project-home');
-  const currentStageId=(stageContractByStep(S.step)||{}).id;
+  const currentStageId=S.page?null:(stageContractByStep(S.step)||{}).id;
   $('#app-shell').classList.toggle('nav-expanded',!!S.navExpanded);
-  // 只講「下一個卡住的地方」。以前每一個被鎖的階段都各自把理由寫出來，於是站在①
-  // 就同時讀到④和⑤各自為什麼不能用——而後面那個的理由，在前面那個解開之前根本
-  // 無從下手。前一個解開之後，下一個自然變成最前面那個，理由就會出現。
+  // 只講「下一個卡住的地方」；理由留在站內內容，側欄只標狀態。
   const firstBlockedId=(stages.find(stage=>{
     const item=runtime.find(entry=>entry.id===stage.id);
     return (item?item.availability:'blocked')==='blocked';
   })||{}).id;
-  $('#stage-navigation-body').innerHTML=`<button class="stage-nav-toggle" id="stage-nav-toggle" aria-expanded="${S.navExpanded}" aria-label="${S.navExpanded?'收合':'展開'}工作階段導覽">${S.navExpanded?'«':'»'}</button>${homeStage?`<div class="stage-nav-home"><button class="stage-nav-button" data-stage-step="${stageStepById(homeStage.id)}" data-stage-id="${esc(homeStage.id)}" data-availability="${esc((runtime.find(item=>item.id===homeStage.id)||{availability:'available'}).availability)}" aria-current="${currentStageId===homeStage.id?'step':'false'}"><span class="home-nav-icon" aria-hidden="true">⌂</span><span class="stage-copy"><span class="stage-label">${esc(homeStage.visible_label)}</span></span></button></div>`:''}<p class="stage-nav-heading">研究步驟</p><ol class="stage-nav-list">${researchStages.map((stage,index)=>{
+  const copy=(label,purpose)=>`<span class="stage-copy"><span class="stage-label">${esc(label)}</span>${purpose?`<span class="stage-purpose">${esc(purpose)}</span>`:''}</span>`;
+  const pageButton=id=>`<button type="button" class="stage-nav-button nav-page" data-open-page="${id}" aria-current="${S.page===id?'page':'false'}"><span class="stage-index nav-dot" aria-hidden="true">·</span>${copy(NAV_PAGES[id],NAV_PURPOSE[id])}</button>`;
+  const home=homeStage?`<button class="stage-nav-button" data-stage-step="${stageStepById(homeStage.id)}" data-stage-id="${esc(homeStage.id)}" data-availability="${esc((runtime.find(item=>item.id===homeStage.id)||{availability:'available'}).availability)}" aria-current="${currentStageId===homeStage.id?'step':'false'}"><span class="stage-index nav-dot" aria-hidden="true">·</span>${copy(homeStage.visible_label,NAV_PURPOSE['project-home'])}</button>`:'';
+  $('#stage-navigation-body').innerHTML=`<button class="stage-nav-toggle" id="stage-nav-toggle" aria-expanded="${S.navExpanded}" aria-label="${S.navExpanded?'收合':'展開'}工作階段導覽">${S.navExpanded?'«':'»'}</button>
+    <div class="v3-brand"><span class="product-mark">DITL service design workbench</span></div>
+    <div class="nav-group" role="group" aria-labelledby="nav-group-prep"><p class="stage-nav-heading" id="nav-group-prep">準備</p>${home}${pageButton('ai')}${pageButton('coding')}</div>
+    <div class="nav-group" role="group" aria-labelledby="nav-group-steps"><p class="stage-nav-heading" id="nav-group-steps">研究步驟</p><ol class="stage-nav-list">${researchStages.map((stage,index)=>{
     const state=runtime.find(item=>item.id===stage.id)||{availability:'blocked',status:'draft'};
     const current=stage.id===currentStageId;
     const blocked=state.availability==='blocked';
-    // Keep the sidebar as navigation/status only.  Station-specific recovery
-    // guidance belongs in the station content, where it has the right context.
-    const blockedText=null;
-    // The visible number counts research steps only (專案首頁 sits above them);
-    // the target is the station's own step in the full list.
-    return `<li><button class="stage-nav-button" data-stage-step="${stageStepById(stage.id)}" data-stage-id="${esc(stage.id)}" data-availability="${esc(state.availability)}" aria-current="${current?'step':'false'}" aria-disabled="${blocked}" ${blockedText?`aria-describedby="stage-blocked-${index+1}"`:''}>
-      <span class="stage-index">${index+1}</span><span class="stage-copy"><span class="stage-label">${esc(stage.visible_label)}</span></span></button>
-      ${blockedText?`<p class="stage-blocked-reason" id="stage-blocked-${index+1}" role="status">${esc(blockedText)}</p>`:''}</li>`;
-  }).join('')}</ol><div class="stage-nav-utility"><button type="button" id="open-feedback">回報與意見</button></div>`;
+    // The visible number counts research steps only, in contract order; the
+    // target is the station's own step in the full list.
+    return `<li><button class="stage-nav-button" data-stage-step="${stageStepById(stage.id)}" data-stage-id="${esc(stage.id)}" data-availability="${esc(state.availability)}" aria-current="${current?'step':'false'}" aria-disabled="${blocked}">
+      <span class="stage-index">${String(index+1).padStart(2,'0')}</span>${copy(stage.visible_label,NAV_PURPOSE[stage.id])}</button></li>`;
+  }).join('')}</ol></div>
+    <div class="nav-group" role="group" aria-labelledby="nav-group-done"><p class="stage-nav-heading" id="nav-group-done">完成</p>${pageButton('output')}</div>
+    <div class="stage-nav-utility"><button type="button" id="open-feedback">回報與意見</button></div>`;
 }
 function effectiveUtilities(stage){
   if(stage.id==='review-to-be')return ['return-to-as-is'];
@@ -1780,6 +1899,12 @@ function effectiveUtilities(stage){
   return (utilities||[]).slice(0,S.workbench.attention_budget.visible_utilities);
 }
 function renderPageHeader(){
+  // v3-shell：頁面（AI 設定、資料與編碼、輸出）不是研究步驟，頁首只有目的與標題，沒有主要按鈕。
+  if(S.page){
+    document.title=NAV_PAGES[S.page];
+    $('#page-header').innerHTML=`<p class="page-purpose">${esc(NAV_PURPOSE[S.page])}</p><h1 id="stage-title" tabindex="-1">${esc(PAGE_HEADING[S.page])}</h1>`;
+    return;
+  }
   const stage=stageContractByStep(S.step);if(!stage){$('#page-header').innerHTML='';return;}
   const warning=S.fixtureProfile&&S.fixtureProfile.warning_summary;
   // 狀態膠囊講的是左側導覽同一個階段已經標好的狀態；工具膠囊列的是這一頁本來就
@@ -1789,13 +1914,20 @@ function renderPageHeader(){
   // 判斷。站名已由側欄的編號與高亮標出，不再另起一行；page_title 改當分頁標題，
   // 讓輔助技術與瀏覽器分頁仍讀得到頁名。
   document.title=stage.page_title;
-  const kicker=stage.id==='project-home'?'工作台':stage.visible_label;
   const aiRows=aiUsageRowsForStation(stage.id);
   const aiEntry=aiRows.length?`<button type="button" class="ghost ai-info-entry" id="ai-info-entry">AI 執行資訊</button>`:'';
-  $('#page-header').innerHTML=`${aiEntry}<p class="page-kicker">${esc(kicker)}</p><h1 id="stage-title" tabindex="-1">${esc(stage.page_title)}</h1>
-    ${STAGES_WITHOUT_DECISION_LINE.has(stage.id)?'':`<p class="decision-statement" id="decision-statement">${esc(S.fixtureProfile&&S.fixtureProfile.decision_statement||stage.decision_statement)}</p>`}
+  // v3-shell（prototype-v3）：頁首左邊是目的一行與問題標題；主要按鈕在右邊的關卡區。
+  $('#page-header').innerHTML=`<p class="page-purpose">${esc(NAV_PURPOSE[stage.id]||'')}</p><h1 id="stage-title" tabindex="-1"><span class="decision-statement" id="decision-statement">${esc(S.fixtureProfile&&S.fixtureProfile.decision_statement||stationGoal(stage))}</span></h1>${aiEntry}
     ${warning?`<p class="warning-summary" data-warning-kind="${esc(warning.kind)}">${esc(warning.label)}</p>`:''}
     ${S.navBlockedMsg?`<div class="stage-notice" role="alert" id="stage-notice"><p><b>${esc(blockedStageLabel())}還不能打開</b>${esc(S.navBlockedMsg)}${blockedStageNextAction()?` ${esc(blockedStageNextAction())}`:''}</p><button type="button" class="ghost" id="stage-notice-close" aria-label="關閉提示">×</button></div>`:''}`;
+}
+// 每站的問題：contract 決定句；CJM 在解方選擇流程用 journey confirmation 的決定句。
+function stationGoal(stage){
+  if(stage.id==='journey-map'&&(S.journeyChannelMap||{}).solution_selection_model){
+    const goal=((S.workbench||{}).journey_candidate_confirmation||{}).decision_statement;
+    if(goal)return goal;
+  }
+  return stage.decision_statement;
 }
 // ai-execution-info：已完成的產物旁邊一個不搶眼的入口；點開才看執行細節。
 // 資料是 run.json 逐步驟的執行紀錄（/api/ai-usage），研究內容裡不放任何模型或 token。
@@ -1868,8 +2000,7 @@ async function loadAxialCodingReview(){
   if(S.axialCodingReviewRun===S.cur&&S.axialCodingReview){render();return;}
   S.axialCodingReview=null;S.axialCodingError=null;
   S.axialOpenCard=null;S.axialPicked=[];S.axialSelfs=[];S.axialPairError=null;S.axialPairBusy=false;S.autoRanArtifact=null;render();
-  const reviewResponse=await fetch('/api/axial-coding-review?run='+encodeURIComponent(S.cur));
-  S.axialCodingReview=await reviewResponse.json();
+  S.axialCodingReview=await scopedJSON('/api/axial-coding-review?run='+encodeURIComponent(S.cur));
   S.axialCodingReviewRun=S.cur;
   const recorded=axialRecordedSelections(S.axialCodingReview);
   S.axialPicked=recorded.picked;S.axialSelfs=recorded.selfs;
@@ -1897,9 +2028,51 @@ function axialCardGridHTML(categories){
   return `<section class="axial-card-grid-section"><h3>主軸編碼一覽</h3>
     <ul class="axial-card-grid">${cards}</ul></section>`;
 }
-function axialQuoteListHTML(quotes){
+// readable-source-location（2026-10-16 P1）：locator 是整理證據時模型寫的自由文字，
+// 常帶著研究者讀不懂、也不是這句話位置的片段——整份訪談的頁碼範圍「PDF pp.43–58」、
+// 表格欄號「[欄位 3]」、走查表的欄名「Desc／Flow」、毫秒。畫面只顯示看得懂的位置；
+// 存檔原樣不動，原始 locator 收在出處行點開的地方（sourceLineHTML）。認不得的形狀
+// 原樣顯示，不猜。
+function readableLocator(raw){
+  const PAGE_RANGE=/^(?:PDF\s*)?pp?\.\s*\d+(?:\s*[–—\-~]\s*\d+)?$/i;
+  const readable=part=>{
+    const s=part
+      .replace(/\[欄位\s*(\d+)\]\s*([^；]*)/g,(_,n,name)=>name.trim()||`表格第 ${n} 欄`)
+      .replace(/^欄位\s*\d+\s*[：:]\s*/,'')
+      .replace(/^欄位\s*\d+\s*(?=「)/,'')
+      .replace(/(\d{1,2}:\d{2}:\d{2}),\d{1,3}/g,'$1');
+    const pieces=s.split(/(：|／)/);
+    let out='';
+    for(let i=0;i<pieces.length;i+=2){
+      const text=pieces[i].trim();
+      if(!text||text==='Desc'||text==='Flow')continue;
+      out+=(out?pieces[i-1]:'')+text;
+    }
+    return out;
+  };
+  return String(raw||'').split('；').map(s=>s.trim()).filter(s=>s&&!PAGE_RANGE.test(s)).map(readable).filter(Boolean).join('；');
+}
+// 溯源畫面的出處行：關著是「誰・看得懂的位置」，點開才是存檔的檔名（只留檔名，不帶
+// 資料夾）與原始 locator，一字不改。沒有東西可展開時就是一般文字行，不放空的開關。
+// who 只能來自存檔的 role／participant_or_role，呼叫端不得從 AI 描述取名字。
+// place：section／頁／段這類結構化位置（SBP provenance 才有），放在可讀位置前面。
+function sourceLineHTML({who,locator,source,place,incomplete,fallback}){
+  const raw=String(locator||'').trim();
+  const shown=readableLocator(raw);
+  const file=String(source||'').split(/[\\/]/).pop().trim();
+  const summary=[who||fallback||'',[place,shown].filter(Boolean).join('｜')].filter(Boolean).join('・')||(incomplete?'來源資訊不完整':'');
+  const note=incomplete?'<span class="source-line-note">來源資訊不完整</span>':'';
+  if(!file&&(!raw||raw===shown))return `<span class="axial-quote-role source-line-plain">${esc(summary)}</span>${summary==='來源資訊不完整'?'':note}`;
+  return `<details class="source-line"><summary class="axial-quote-role">${esc(summary)}</summary><p class="source-line-detail">${file?`檔案：${esc(file)}<br>`:''}${raw?`位置：${esc(raw)}`:''}</p>${note}</details>`;
+}
+// traceable：① 編碼的原話是溯源畫面，出處行點得開；依據面板是判斷輔助
+// （evidence-basis-inspection），只給看得懂的位置，不給檔名。
+function axialQuoteListHTML(quotes,traceable,fallback){
   // converge-coding-contracts：整理後引言回答太短時附訪員問題，放在原話上面。
-  return `<ul class="axial-quotes">${(quotes||[]).map(q=>`<li>${q.question?`<span class="axial-quote-role">問：${esc(q.question)}</span>`:''}<p class="axial-quote-text">${esc(q.text)}</p><span class="axial-quote-role">${[q.role,q.locator].filter(Boolean).map(esc).join('・')}</span></li>`).join('')}</ul>`;
+  const line=q=>traceable
+    ?sourceLineHTML({who:q.role,locator:q.locator,source:q.source,fallback})
+    :`<span class="axial-quote-role">${esc([q.role||fallback,readableLocator(q.locator)].filter(Boolean).join('・'))}</span>`;
+  return `<ul class="axial-quotes">${(quotes||[]).map(q=>`<li>${q.question?`<span class="axial-quote-role">問：${esc(q.question)}</span>`:''}<p class="axial-quote-text">${esc(q.text)}</p>${line(q)}</li>`).join('')}</ul>`;
 }
 // evidence-basis-inspection（2026-10-07 裁定、10-08 收斂）：JTBD／HMW 候選與 Persona
 // 整卡各一個低權重「依據」入口，開既有詳情側欄。依據是判斷輔助，不是溯源：
@@ -1926,7 +2099,7 @@ function jtbdBasisHTML(basis){
 function hmwBasisHTML(basis){
   const b=basis||{};
   const jobs=(b.supporting_jtbds||[]).map(job=>`<li>${esc(jtbdStatement(job))}</li>`).join('');
-  return basisSectionHTML('判斷依據',basisTextHTML('形成理由',b.problem_structure)+(jobs?`<p class="basis-label">支撐的顧客任務</p><ul class="basis-jobs">${jobs}</ul>`:''))
+  return basisSectionHTML('判斷依據',basisTextHTML('形成理由',b.problem_structure)+(jobs?`<p class="basis-label">支撐的顧客任務</p><ul class="basis-jobs">${jobs}</ul>`:b.supporting_jtbds_unknown?basisTextHTML('支撐的顧客任務','形成時依據無法確認'):''))
     +basisSectionHTML('相關資料',basisRecordsHTML(b.evidence));
 }
 // 明確推論只列存檔標成推論、研究者沒改寫過的欄位（server 已排除）；欄位名照卡片上的中文，
@@ -1963,7 +2136,7 @@ function openBasisInspector(kind,index,invoker){
 }
 function axialConceptChipHTML(concept){
   const shared=concept.shared?`<span class="axial-concept-shared">也在別的主題</span>`:'';
-  return `<li class="axial-concept-chip"><details><summary>${esc(concept.name)}${shared}</summary>${axialQuoteListHTML(concept.quotes)}</details></li>`;
+  return `<li class="axial-concept-chip"><details><summary>${esc(concept.name)}${shared}</summary>${axialQuoteListHTML(concept.quotes,true)}</details></li>`;
 }
 // The centred overlay. Its dismissal (click outside, escape) is wired in
 // wire(); the shell contract names this region and states both dismissals.
@@ -1986,7 +2159,7 @@ function axialOverlayHTML(categories){
       ${conflictsHTML}
       ${category.definition?`<p class="axial-overlay-definition"><b>定義</b>${esc(category.definition)}</p>`:''}
       <p class="axial-overlay-description">${esc(category.description||'')}</p>
-      ${(category.representative_quotes||[]).length?`<p class="axial-overlay-subhead">代表語句</p>${axialQuoteListHTML(category.representative_quotes)}`:''}
+      ${(category.representative_quotes||[]).length?`<p class="axial-overlay-subhead">代表語句</p>${axialQuoteListHTML(category.representative_quotes,true)}`:''}
       ${chips?`<p class="axial-overlay-subhead">包含的開放編碼</p>${chips}`:''}
       <div class="actions"><button class="ghost" id="axial-overlay-close">關閉</button></div>
     </section>
@@ -2060,7 +2233,11 @@ function axialPairPickerHTML(raw){
   const formError=S.jtbdCandidatesError?`<p class="warn" role="alert">${esc(S.jtbdCandidatesError)}</p>`:'';
   if(state.forming||S.jtbdCandidatesBusy)return `<section class="card axial-pair-picker">${head}${processingIndicatorHTML('正在形成顧客任務候選','jtbd-candidates-progress',jobElapsedText('jtbd_candidates_generation'))}</section>`;
   if(!candidates){
-    if(!state.selective_ready)return `<section class="card axial-pair-picker">${head}<p class="empty">還沒有選擇編碼；形成選擇編碼之後，才能形成顧客任務候選。</p></section>`;
+    if(!state.selective_ready){
+      // separate-evidence-pool：選擇編碼的操作在研究依據頁；還缺研究目的時先在上方寫。
+      const needsPurpose=((raw.selective_themes||{}).state)==='needs_purpose';
+      return `<section class="card axial-pair-picker">${head}<p class="empty">${needsPurpose?'先在上方寫研究目的，再到「資料與編碼」形成選擇編碼；JTBD 候選接著產生。':'還沒有選擇編碼；JTBD 候選在「資料與編碼」形成選擇編碼之後產生。'}</p><button type="button" class="ghost" data-open-research-basis>前往資料與編碼</button></section>`;
+    }
     return `<section class="card axial-pair-picker">${head}
       <p class="empty">依選擇編碼形成顧客任務候選。會用到 CLI 額度。</p>
       <button type="button" class="ghost" data-jtbd-candidates-generate>形成顧客任務候選</button>${formError}
@@ -2129,22 +2306,52 @@ function viewAxialCodingReview(){
   const raw=S.axialCodingReview;
   if(!raw)return `<p class="status-line">載入中⋯</p>`;
   if(raw.state==='not_generated')return `<section class="card"><h2>主軸編碼</h2><p class="empty">這個案例還沒有產出主軸編碼。</p></section>`;
-  const categories=raw.categories||[];
-  // 核心類別那一行版面稿沒畫，研究者 2026-09-27 裁定拿掉；已記錄的核心類別不動。
-  return `${researchPurposeHTML(raw.research_purpose)}${openCodesSectionHTML(raw.open_codes)}${axialCardGridHTML(categories)}${selectiveSectionHTML(raw.selective_themes)}${axialPairPickerHTML(raw)}${axialOverlayHTML(categories)}`;
+  // separate-evidence-pool（2026-10-19 研究者裁定）：第一站只承擔 JTBD 選擇；
+  // 開放、主軸、選擇編碼移到研究依據頁，這裡只在選擇編碼過時時指過去。
+  return `${researchPurposeHTML(raw.research_purpose,{note:false})}${jtbdBasisNoticeHTML(raw)}${axialPairPickerHTML(raw)}`;
+}
+function jtbdBasisNoticeHTML(raw){
+  const st=raw&&raw.selective_themes;
+  if(!st||st.state!=='stale')return '';
+  return `<p class="chart-guide-stale" role="status" data-basis-notice>研究目的或主軸編碼改過，選擇編碼可能需要更新。<button type="button" class="ghost" data-open-research-basis>前往資料與編碼</button></p>`;
+}
+// separate-evidence-pool：研究資料（這一輪讀入的原始檔）與 AI 分析分開；
+// AI 分析沿用第一站原本的開放、主軸、選擇編碼區塊與所有操作。
+// v3-shell：AI 設定頁沿用設定面板的執行方式內容與操作；輸出頁沿用既有的選擇性匯出。
+function viewAiPage(){
+  return `<section class="card ai-page" data-ai-page>${providerSettingsHTML()}</section>`;
+}
+function viewOutputPage(){
+  if(!S.cur)return `<section class="card" data-output-empty><h2>還沒有可以輸出的成果</h2><p class="empty">開啟一個已編碼的專案之後，研究成果會在這裡輸出。</p><div class="actions"><button class="ghost" type="button" data-go-home>前往專案首頁</button></div></section>`;
+  return `<section class="card" data-output-page><h2>研究成果</h2><p class="empty">選擇要輸出的研究成果，產生可以交付的檔案；研究資料仍只存在你的電腦。</p><div class="actions"><button class="go" type="button" id="open-output">選擇要輸出的成果</button></div></section>`;
+}
+function viewResearchBasis(){
+  if(!S.cur)return `<section class="card" data-basis-empty><h2>還沒有研究依據</h2><p class="empty">上傳研究資料並開始編碼之後，研究資料與 AI 分析會出現在這裡。</p><div class="actions"><button class="ghost" type="button" data-go-home>前往專案首頁</button></div></section>`;
+  const codingMeta=((S.runs||[]).find(run=>run.name===S.cur)||{}).meta||{};
+  if(['failed','cancelled','running'].includes(codingMeta.coding_state))return `<section class="card" data-basis-empty><h2>編碼還沒完成</h2><p class="empty">編碼的進度與重試在「JTBD」。</p><div class="actions"><button class="ghost" type="button" data-go-jtbd>前往 JTBD</button></div></section>`;
+  const raw=S.axialCodingReview;
+  if(!raw)return `<p class="status-line">載入中⋯</p>`;
+  if(raw.state==='not_generated')return `<section class="card" data-basis-empty><h2>AI 分析</h2><p class="empty">這個案例還沒有產出主軸編碼。</p></section>`;
+  const categories=raw.categories||[],sources=Array.isArray(raw.sources)?raw.sources:[];
+  const ready=S.basisCandidatesReady&&raw.pair_candidates?`<p class="status-line" role="status" data-basis-candidates-ready>JTBD 候選已產生。<button type="button" class="ghost" data-go-jtbd>前往 JTBD</button></p>`:'';
+  const sourceList=sources.length?`<ul class="basis-source-list">${sources.map(name=>`<li>${esc(name)}</li>`).join('')}</ul>`:'<p class="empty">這一輪沒有記錄讀入的資料清單。</p>';
+  return `${ready}<section class="basis-region" data-basis-region="sources" aria-labelledby="basis-sources-title"><h2 id="basis-sources-title">研究資料</h2><p class="basis-region-note">這一輪讀入的原始資料。</p>${sourceList}</section>
+    <section class="basis-region" data-basis-region="analysis" aria-labelledby="basis-analysis-title"><h2 id="basis-analysis-title">AI 分析</h2><p class="basis-region-note">AI 依研究資料整理的分析，供你檢查；選擇編碼可以直接改寫。</p>
+    ${openCodesSectionHTML(raw.open_codes)}${axialCardGridHTML(categories)}${selectiveSectionHTML(raw.selective_themes)}</section>${axialOverlayHTML(categories)}`;
 }
 // add-selective-coding-layer：第一站最上方一行研究目的，研究者自己寫（2026-10-03 裁定）；
 // 選擇編碼依它與主軸主題形成。不恢復建案五欄。
-function researchPurposeHTML(purpose){
+// 2026-10-18 走查 #2：JTBD 站不放這句說明；專案首頁第一次編碼前照規格保留（selective-coding-layer）。
+function researchPurposeHTML(purpose,{note=true}={}){
   const text=(purpose&&purpose.text)||'';
   const error=S.researchPurposeError?`<p class="warn" role="alert">${esc(S.researchPurposeError)}</p>`:'';
   return `<section class="card research-purpose" data-research-purpose-section><label for="research-purpose-input"><h3>研究目的</h3></label>
     <input id="research-purpose-input" data-research-purpose maxlength="120" value="${esc(text)}" placeholder="用一句話寫這次研究想了解什麼">
-    <p class="research-purpose-note">這會作為編碼與主題整合時的研究範圍。</p>${error}</section>`;
+    ${note?'<p class="research-purpose-note">這會作為編碼與主題整合時的研究範圍。</p>':''}${error}</section>`;
 }
 async function loadCasePurpose(){
   const c=S.selectedCase;if(!c||S.cur)return;
-  try{const d=await(await fetch('/api/research-purpose?case_id='+encodeURIComponent(c.case_id))).json();S.casePurpose={caseId:c.case_id,text:(d.research_purpose||{}).text||''};render();}catch(_){}
+  try{const d=await scopedJSON('/api/research-purpose?case_id='+encodeURIComponent(c.case_id));S.casePurpose={caseId:c.case_id,text:(d.research_purpose||{}).text||''};render();}catch(_){}
 }
 // first-run-research-purpose-with-start-coding：首頁輸入框裡目前的字（還沒失焦存檔
 // 也算），決定「開始編碼」能不能按；按下時先存再開始。
@@ -2158,7 +2365,7 @@ async function saveFirstRunPurpose(){
   const c=S.selectedCase,text=firstRunPurposeText();
   if(!c||!text)throw new Error('請先寫研究目的，再開始編碼。');
   if(S.casePurpose&&S.casePurpose.caseId===c.case_id&&String(S.casePurpose.text||'').trim()===text)return;
-  const response=await fetch('/api/research-purpose',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({case_id:c.case_id,text})});
+  const response=await decisionFetch('research-purpose','/api/research-purpose',{case_id:c.case_id,text});
   const body=await response.json();
   if(!response.ok)throw new Error(body.error||'研究目的沒有存起來。');
   S.casePurpose={caseId:c.case_id,text};
@@ -2170,7 +2377,7 @@ async function saveResearchPurpose(input){
   S.researchPurposeError=null;
   const save=(async()=>{
     try{
-      const response=await fetch('/api/research-purpose',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({case_id:(S.selectedCase||{}).case_id,run:S.cur||undefined,text})});
+      const response=await decisionFetch('research-purpose','/api/research-purpose',{case_id:(S.selectedCase||{}).case_id,run:S.cur||undefined,text});
       const body=await response.json();
       if(!response.ok)throw new Error(body.error||'研究目的沒有存起來。');
       // first-ai-start-readiness (O1)：首頁存完研究目的不重畫——重畫會把正被按下的
@@ -2189,21 +2396,20 @@ function selectiveSectionHTML(st){
   if(!st)return '';
   if(st.forming||S.selectiveBusy)return `<section class="card selective-section">${head}${processingIndicatorHTML('正在形成選擇編碼','selective-progress',jobElapsedText('selective_themes_generation'))}</section>`;
   if(st.state==='legacy')return `<section class="card selective-section">${head}<p class="empty">${esc(st.message||'這份編碼是舊方法產生的，沒有選擇編碼；重新編碼後才會有。')}</p></section>`;
-  if(st.state==='needs_purpose')return `<section class="card selective-section">${head}<p class="empty">請先在上方寫研究目的，才能形成選擇編碼。</p></section>`;
+  if(st.state==='needs_purpose')return `<section class="card selective-section">${head}<p class="empty">研究目的寫在「JTBD」；寫好之後才能形成選擇編碼。</p><button type="button" class="ghost" data-go-jtbd>前往 JTBD</button></section>`;
   if(st.state==='none'||st.state==='failed')return `<section class="card selective-section">${head}
     ${st.state==='failed'?'<p class="warn" role="alert">選擇編碼上次沒有形成。</p>':'<p class="empty">依研究目的，把主軸主題整合成核心與次要主題，接著形成顧客任務候選。會用到 CLI 額度。</p>'}
     <button type="button" class="ghost" data-selective-generate>${st.state==='failed'?'再試一次':'形成選擇編碼'}</button>${error}</section>`;
   const themes=st.themes||[];
   const stale=st.state==='stale'?`<p class="chart-guide-stale" role="status">主軸編碼或研究目的改過，選擇編碼可能需要更新。<button type="button" class="ghost" data-selective-generate>依最新內容重新形成</button></p>`:'';
   const field=(theme,key,label,value,multi)=>`<p class="selective-field-label">${label}</p><div class="pc-editable selective-field" contenteditable="plaintext-only" spellcheck="false" data-selective-edit="${esc(key)}" data-selective-theme="${esc(theme.id)}" aria-label="${esc(label)}">${esc(multi?(value||[]).join('\n'):(value||''))}</div>`;
-  const quote=q=>`<li>${q.question?`<span class="axial-quote-role">問：${esc(q.question)}</span>`:''}<p class="axial-quote-text">${esc(q.text)}</p><span class="axial-quote-role">${esc(q.role||'說話者未記錄')}${q.locator?`・${esc(q.locator)}`:''}</span></li>`;
   const card=theme=>`<li><details class="selective-theme"><summary><span class="selective-theme-name">${esc(theme.name)}</span><span class="selective-theme-core">${esc(theme.core_sentence)}</span></summary>
     ${field(theme,'name','主題名稱',theme.name)}
     ${field(theme,'core_sentence','核心一句',theme.core_sentence)}
     ${field(theme,'insight','洞察敘事',theme.insight)}
     <p class="selective-field-label">包含的主軸主題</p><p class="selective-names">${esc((theme.axial_names||[]).join('、'))}</p>
     <p class="selective-field-label">包含的開放編碼</p><p class="selective-names">${esc((theme.open_code_names||[]).join('、'))}</p>
-    <p class="selective-field-label">代表語句</p><ul class="axial-quotes">${(theme.quotes||[]).map(quote).join('')}</ul>
+    <p class="selective-field-label">代表語句</p>${axialQuoteListHTML(theme.quotes,true,'說話者未記錄')}
     ${field(theme,'key_insights','關鍵洞察（一行一條）',theme.key_insights,true)}
   </details></li>`;
   const group=(tier,title)=>{const list=themes.filter(t=>t.tier===tier);return list.length?`<h4>${title}</h4><ul class="selective-list">${list.map(card).join('')}</ul>`:'';};
@@ -2228,6 +2434,8 @@ async function startSelectiveThemes(){
       if(candidates)S.jtbdCandidatesError=researcherPhase(status.phase,'顧客任務候選沒有形成，原本的候選沒有變動。');
       else S.selectiveError=researcherPhase(status.phase,'選擇編碼沒有形成，原本的內容沒有變動。');
     }
+    // separate-evidence-pool：在研究依據頁接續形成的 JTBD 候選，只提示前往，不自動換頁。
+    else if(candidates&&S.page==='coding')S.basisCandidatesReady=true;
     S.axialCodingReviewRun=null;await loadAxialCodingReview();
   },1500);
 }
@@ -2238,21 +2446,21 @@ async function saveSelectiveField(element){
   if(JSON.stringify(value)===JSON.stringify(theme[field]))return;
   S.selectiveError=null;
   try{
-    const response=await fetch('/api/selective-themes/edit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run:S.cur,theme_id:themeId,field,text:value})});
+    const response=await decisionFetch('selective-themes','/api/selective-themes/edit',{run:S.cur,theme_id:themeId,field,text:value});
     const body=await response.json();
+    if(!response.ok||isStaleBasis(body))keepUnsavedInput('selective|'+field+'|'+themeId,value);
     if(!response.ok)throw new Error(body.error||'沒有存起來。');
-    theme[field]=value;
-  }catch(error){S.selectiveError=researcherSafeError(error.message,'沒有存起來。');render();}
+    theme[field]=value;dropUnsavedInput('selective|'+field+'|'+themeId);
+  }catch(error){S.selectiveError=noSaveText(researcherSafeError(error.message,'沒有存起來。'));render();}
 }
 // axial-explicit-membership：第一站的開放編碼，預設收合，依逐字稿分組；每個開放編碼
 // 帶描述與原話（說話者、位置）。不顯示內部編號。
 function openCodesSectionHTML(groups){
   if(!groups||!groups.length)return '';
   const source=name=>String(name||'未標示來源').replace(/\.(txt|md|docx?|pdf)$/i,'');
-  const quote=q=>`<li>${q.question?`<span class="axial-quote-role">問：${esc(q.question)}</span>`:''}<p class="axial-quote-text">${esc(q.text)}</p><span class="axial-quote-role">${esc(q.role||'說話者未記錄')}${q.locator?`・${esc(q.locator)}`:''}</span></li>`;
   return `<details class="card open-codes" data-open-codes><summary><h3>開放編碼</h3><span class="open-codes-summary">依逐字稿分開，展開看每段原話</span></summary>
     ${groups.map(group=>`<details class="open-codes-source"><summary>${esc(source(group.source))}</summary>
-      <ul class="open-codes-list">${(group.codes||[]).map(code=>`<li class="open-code"><p class="open-code-name">${esc(code.name)}</p><p class="open-code-description">${esc(code.description)}</p>${(code.quotes||[]).length?`<ul class="axial-quotes">${code.quotes.map(quote).join('')}</ul>`:''}</li>`).join('')}</ul>
+      <ul class="open-codes-list">${(group.codes||[]).map(code=>`<li class="open-code"><p class="open-code-name">${esc(code.name)}</p><p class="open-code-description">${esc(code.description)}</p>${(code.quotes||[]).length?axialQuoteListHTML(code.quotes,true,'說話者未記錄'):''}</li>`).join('')}</ul>
     </details>`).join('')}
   </details>`;
 }
@@ -2311,10 +2519,9 @@ async function continueAxialPair(){
   if(state.unchanged){go(S.step+1);return;}
   S.axialPairError=null;S.axialPairBusy=true;refreshReviewGate();
   try{
-    const response=await fetch('/api/axial-coding-review/pair-selection',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({run:S.cur,selections:state.items})});
+    const response=await decisionFetch('jtbd-selection','/api/axial-coding-review/pair-selection',{run:S.cur,selections:state.items});
     const d=await response.json();
+    if(isStaleBasis(d))throw new Error(noSaveText(d.error));
     // The refusal text is the command's own -- this screen does not write
     // its own message for a rule it does not implement.
     if(!response.ok||!d.ok)throw new Error((d.stderr||'').trim()||d.error||'送出失敗');
@@ -2495,10 +2702,13 @@ function personaMatrixPlotHTML(){
   const settled=picked.length===2;
   const q=personaSelectedQuadrant();
   const quadRect=q?`<rect class="pm-primary" x="${q[0]>0?cx:cx-qw}" y="${q[1]>0?cy-qh:cy}" width="${qw}" height="${qh}"/>`:'';
+  // persona-matrix-continuity：有目前的 Persona 時，標出它的族群在哪一格。
+  const current=q&&personaInputsCollapsible()?personaConfirmedQuadrant():null;
+  const currentLabel=current&&current[0]===q[0]&&current[1]===q[1]?`<text class="pm-primary-label" x="${q[0]>0?cx+12:cx-qw+12}" y="${q[1]>0?cy-qh+22:cy+22}">目前 Persona 的族群</text>`:'';
   return `<div class="pm-plot${settled?' is-selectable':''}"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="兩條軸交叉出的四個象限與受訪者落點">
     ${[[1,1],[-1,1],[-1,-1],[1,-1]].map(([sx,sy])=>
       `<rect class="pm-quad"${settled?` data-quad="${sx},${sy}"`:''} x="${sx>0?cx:cx-qw}" y="${sy>0?cy-qh:cy}" width="${qw}" height="${qh}"/>`).join('')}
-    ${quadRect}
+    ${quadRect}${currentLabel}
     <text class="pm-pole pm-mid" x="${cx}" y="${margin-10}">${esc(ay.pole_high||'')}</text>
     <text class="pm-pole pm-mid" x="${cx}" y="${H-margin+20}">${esc(ay.pole_low||'')}</text>
     <text class="pm-pole" x="${cx-qw+6}" y="${cy-8}">${personaAxisIsContrast(ax)?'':'← '}${esc(ax.pole_low||'')}</text>
@@ -2568,11 +2778,10 @@ function _pollPersonaJob(onDone){
 // persona-station-simplification：「產出 Persona」一次做完研究者這一站的決定——軸或
 // 目標族群有改就先存下來（不另跳確認視窗、不要求理由），接著用目前的選擇產出 Persona。
 async function applyPersonaSelection(gate,decision){
-  const body=JSON.stringify({run:S.cur,gate,decision,execution:executionPayload({retainKey:true})});
-  const preview=await(await fetch('/api/persona/preview',{method:'POST',headers:{'Content-Type':'application/json'},body})).json();
+  const preview=await(await scopedPost('/api/persona/preview',{run:S.cur,gate,decision,execution:executionPayload({retainKey:true})})).json();
   if(preview.error)throw new Error(preview.error);
-  const saved=await(await fetch('/api/persona/confirm',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({run:S.cur,gate,decision,preview_id:preview.preview_id,execution:executionPayload({retainKey:true})})})).json();
+  const saved=await(await scopedPost('/api/persona/confirm',
+    {run:S.cur,gate,decision,preview_id:preview.preview_id,execution:executionPayload({retainKey:true})})).json();
   if(saved.error)throw new Error(saved.error);
 }
 async function produceSelectedPersona(){
@@ -2670,12 +2879,12 @@ function viewPersonaTargetSelection(){
         <summary><h3>Persona Matrix</h3><span class="pm-inputs-summary">${esc(personaInputsSummaryText())}</span></summary>
         ${inputs}
       </details>
-      <section class="card"><h3>Persona</h3>${personaCardHTML()}</section>`;
+      <section class="card"><h3>Persona</h3>${personaSourceHTML()}${personaCardHTML()}</section>`;
   }
   return `${personaHmwDecisionHTML()}<section class="card"><h3>Persona Matrix</h3>
       ${inputs}
     </section>
-    <section class="card"><h3>Persona</h3>${personaCardHTML()}</section>`;
+    <section class="card"><h3>Persona</h3>${personaSourceHTML()}${personaCardHTML()}</section>`;
 }
 
 function personaDefaultNoticeHTML(){
@@ -2702,11 +2911,11 @@ async function keepPersonaAgainstHmw(){
   if(!S.cur||S.personaHmwKeepBusy)return;
   S.personaHmwKeepBusy=true;S.personaHmwKeepError=null;render();
   try{
-    const r=await fetch('/api/persona/hmw-basis/retain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run:S.cur})});
+    const r=await decisionFetch('persona','/api/persona/hmw-basis/retain',{run:S.cur});
     const d=await r.json();
     if(!r.ok||d.error)throw new Error(d.error||'沒有記下來。');
     S.personaMatrixProjection={...(S.personaMatrixProjection||{}),hmw_framing:d.hmw_framing};
-  }catch(error){S.personaHmwKeepError=researcherSafeError(error.message,'沒有記下來，請再試一次。');}
+  }catch(error){S.personaHmwKeepError=noSaveText(researcherSafeError(error.message,'沒有記下來，請再試一次。'));}
   S.personaHmwKeepBusy=false;render();
 }
 function personaHmwStaleHTML(){
@@ -2718,10 +2927,26 @@ function personaInputsCollapsible(){
   const list=((S.personaContent||{}).personas)||[];
   return list.length>0&&!S.personaGenerationBusy&&!personaIsStale()&&personaAxesMatchConfirmed()&&!personaTargetPickChanged();
 }
+// persona-matrix-continuity（2026-10-19）：這份 Persona 來自矩陣的哪一格——取已確認的
+// 軸與象限（產生它的那一格），不是目前正在改選的；象限 1＝pole_high、-1＝pole_low。
+function personaSourceCell(){
+  const confirmed=confirmedPersonaProjection(),axes=((S.personaMatrixProjection||{}).axes)||[];
+  if(!confirmed||!Array.isArray(confirmed.quadrant)||confirmed.quadrant.length!==2)return null;
+  const rows=confirmed.axis_ids.map((id,index)=>{
+    const axis=axes.find(a=>a.id===id),side=confirmed.quadrant[index];
+    if(!axis||!axis.pole_low||!axis.pole_high||(side!==1&&side!==-1))return null;
+    return {label:axis.label,chosen:side>0?axis.pole_high:axis.pole_low,other:side>0?axis.pole_low:axis.pole_high};
+  });
+  return rows.every(Boolean)?rows:null;
+}
+function personaSourceHTML(){
+  const rows=personaSourceCell();
+  if(!rows||!(((S.personaContent||{}).personas)||[]).length)return '';
+  return `<div class="pm-source" data-persona-source><p class="pm-source-title">來自 Persona Matrix 的這一格</p><ul>${rows.map(r=>`<li><span class="pm-source-axis">${esc(r.label)}</span><span class="pm-source-chosen">${esc(r.chosen)}</span><span class="pm-source-other">另一端：${esc(r.other)}</span></li>`).join('')}</ul></div>`;
+}
 function personaInputsSummaryText(){
-  const axes=((S.personaMatrixProjection||{}).axes)||[];
-  const names=(S.axialSegAxesSelected||[]).map(id=>(axes.find(a=>a.id===id)||{}).label).filter(Boolean);
-  return names.length?`這份 Persona 依「${names.join('」×「')}」與選定的主要目標族群產出；要換 Persona，展開這裡改選再按「產出 Persona」。`:'';
+  const rows=personaSourceCell();
+  return rows?`這份 Persona 來自「${rows.map(r=>`${r.label}：${r.chosen}`).join('」×「')}」這一格；要換 Persona，展開這裡改選再按「產出 Persona」。`:'';
 }
 /* persona 卡片：欄位照 persona-content.schema.json 真的產得出來的那些排；
    空的欄位留一格可以點進去填。 */
@@ -2853,8 +3078,7 @@ async function confirmPersona(){
   if(!c.persona_digest){S.personaConfirmError='這份 persona 內容目前讀不到版本標記，請重新整理頁面後再試一次。';render();return;}
   S.personaConfirmBusy=true;S.personaConfirmError=null;render();
   try{
-    const r=await fetch('/api/persona-content/confirm',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({run:S.cur,persona_digest:c.persona_digest})});
+    const r=await scopedPost('/api/persona-content/confirm',{run:S.cur,persona_digest:c.persona_digest});
     const d=await r.json();
     if(!r.ok||d.error)throw new Error(d.error||'確認沒有存到');
     S.personaContent=d;
@@ -2877,11 +3101,11 @@ async function savePersonaField(el){
   const before=field==='person_name'?(pn.person_name||pn.label||''):(pn[field]||'');
   if(value===String(before).trim())return;
   try{
-    const r=await fetch('/api/persona-content/field',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({run:S.cur,persona_id:pn.id,field,value})});
+    const r=await decisionFetch('persona','/api/persona-content/field',{run:S.cur,persona_id:pn.id,field,value});
     const d=await r.json();
+    if(!r.ok||d.error)keepUnsavedInput('persona|'+field+'|'+index,value);
     if(!r.ok||d.error)throw new Error(d.error||'存檔失敗');
-    S.personaContent=d;S.personaEditError=null;
+    S.personaContent=d;S.personaEditError=null;dropUnsavedInput('persona|'+field+'|'+index);
   }catch(error){S.personaEditError={index,message:'沒有存到：'+researcherSafeError(error.message,'請稍後再試。')};}
   // 存完重畫時，把游標還給研究者剛剛點進去的下一格。
   const next=document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.personaEdit
@@ -2892,13 +3116,13 @@ async function savePersonaField(el){
 async function loadPersonaMatrixProjection(){
   if(!S.cur)return;
   if(S.personaProjRun===S.cur&&S.personaMatrixProjection)return;
-  try{S.personaMatrixProjection=await(await fetch('/api/persona-matrix/projection?run='+encodeURIComponent(S.cur))).json();}
+  try{S.personaMatrixProjection=await scopedJSON('/api/persona-matrix/projection?run='+encodeURIComponent(S.cur));}
   catch(error){S.personaMatrixProjection={error:researcherSafeError(error.message,'Persona Matrix 讀取失敗，請稍後再試。')};}
   S.personaProjRun=S.cur;applyConfirmedPersonaProjection();render();
 }
 async function loadPersonaContent(){
   if(!S.cur)return;
-  try{S.personaContent=await(await fetch('/api/persona-content?run='+encodeURIComponent(S.cur))).json();}
+  try{S.personaContent=await scopedJSON('/api/persona-content?run='+encodeURIComponent(S.cur));}
   catch(error){S.personaContent={error:'persona 讀不到：'+error.message};}
   render();
   resumePersonaGenerationIfRunning();
@@ -2907,7 +3131,7 @@ async function loadSegmentationAxesPicker(){
   if(!S.cur)return;
   if(S.personaMatrixSegAxesRun===S.cur&&S.personaMatrixSegAxes){render();return;}
   S.personaMatrixSegAxes=null;S.axialSegAxesSelected=[];S.personaMatrixSegAxesError=null;render();
-  const d=await(await fetch('/api/persona-matrix/segmentation-axes-picker?run='+encodeURIComponent(S.cur))).json();
+  const d=await scopedJSON('/api/persona-matrix/segmentation-axes-picker?run='+encodeURIComponent(S.cur));
   S.personaMatrixSegAxes=d;S.personaMatrixSegAxesRun=S.cur;applyConfirmedPersonaProjection();
   render();
 }
@@ -2966,10 +3190,10 @@ async function submitSegmentationAxes(){
   const rationale=$('#seg-axes-rationale');
   if(!rationale)return;
   try{
-    const response=await fetch('/api/persona-matrix/segmentation-axes-picker/select',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({run:S.cur,answer:{axis_ids:S.axialSegAxesSelected.slice(),business_rationale:rationale.value.trim()}})});
+    const response=await decisionFetch('segmentation-axes','/api/persona-matrix/segmentation-axes-picker/select',
+      {run:S.cur,answer:{axis_ids:S.axialSegAxesSelected.slice(),business_rationale:rationale.value.trim()}});
     const d=await response.json();
+    if(isStaleBasis(d))throw new Error(noSaveText(d.error));
     if(!d.ok)throw new Error(d.stderr||d.error||'送出失敗');
     await loadSegmentationAxesPicker();
     // Submitting reflects the decision and reveals the target-segmentation
@@ -2991,7 +3215,7 @@ async function loadTargetSegmentationPicker(force){
   if(!force&&S.personaMatrixTargetSegRun===S.cur&&S.personaMatrixTargetSeg){render();return;}
   S.personaMatrixTargetSeg=null;S.axialPrimaryQuadrantId=null;S.axialSecondaryQuadrantId=null;
   S.axialUnplacedDispositions={};S.personaMatrixTargetSegError=null;render();
-  const d=await(await fetch('/api/persona-matrix/target-segmentation-picker?run='+encodeURIComponent(S.cur))).json();
+  const d=await scopedJSON('/api/persona-matrix/target-segmentation-picker?run='+encodeURIComponent(S.cur));
   S.personaMatrixTargetSeg=d;S.personaMatrixTargetSegRun=S.cur;
   render();
 }
@@ -3134,9 +3358,9 @@ async function submitTargetSegmentation(){
       return entry;
     });
   try{
-    const response=await fetch('/api/persona-matrix/target-segmentation-picker/select',{
-      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run:S.cur,answer})});
+    const response=await decisionFetch('target-segmentation','/api/persona-matrix/target-segmentation-picker/select',{run:S.cur,answer});
     const d=await response.json();
+    if(isStaleBasis(d))throw new Error(noSaveText(d.error));
     if(!d.ok)throw new Error(d.stderr||d.error||'送出失敗');
     loadTargetSegmentationPicker();
   }catch(error){
@@ -3187,7 +3411,17 @@ function reviewGateAction(stage,state){
     if(build.state==='persona_changed')return {id:'journey-stale-none',label:'',consequence:'',available:false,navigation:false,hidden:true};
     if(build.state!=='candidate')return {id:'build-customer-journey',label:'建立顧客旅程',consequence:'',available:!!build.available&&!S.poll&&!S.journeyBuildBusy&&!S.previewMode,navigation:false};
     if((map.confirmation||{}).state==='confirmed'){
-      const next=gate.continue_action||{id:'continue-to-as-is',label:'繼續'};
+      // cjm-builds-sbp（研究者 2026-10-15）：建立 SBP 是 CJM 的下一步。建立狀態有載入、而且
+      // 還有建立狀態，代表沒有藍圖；正在建或已有藍圖就只導航去看。
+      const noBlueprint=S.asIsBuildLoadedRun===S.cur&&!!S.asIsBuild;
+      if(noBlueprint&&!S.asIsBuildBusy){
+        const b=gate.build_action||{id:'build-sbp',label:'建立藍圖'};
+        // external-research-honest-status：這次不會網搜時，按下前先說清楚。
+        const research=(S.externalResearch||{}).state,reusable=research==='complete'||research==='no_admissible';
+        const noSearch=S.provider&&S.researchSearch&&S.researchSearch[S.provider]===false&&!reusable&&research!=='not_applicable';
+        return {id:b.id,label:b.label,consequence:noSearch?'目前選擇的 AI 執行方式不支援網路搜尋。這次將依既有研究資料與解方建立藍圖，不新增外部參考。':'',available:!!S.asIsBuild.available&&!S.poll&&!S.previewMode,navigation:false};
+      }
+      const next=gate.continue_action||{id:'continue-to-as-is',label:'查看 SBP'};
       return {id:next.id,label:next.label,consequence:'',available:true,navigation:true};
     }
     const confirm=gate.confirm_action||{id:'confirm-journey',label:'確認歷程'};
@@ -3196,6 +3430,8 @@ function reviewGateAction(stage,state){
   // generate-as-is-blueprint-candidate：新路徑 run 還沒有藍圖草稿時，⑥唯一的動作是
   // 另外觸發的「產生現況服務藍圖」；不確認現況、不要求改善目標。
   if(stage.id==='review-as-is'&&S.cur&&S.asIsBuild){
+    // cjm-builds-sbp：解方選擇流程在顧客旅程按「建立藍圖」，這一站不再放建立鍵。
+    if(S.asIsBuild.solution_selection||(S.journeyChannelMap||{}).solution_selection_model)return {id:'as-is-build-none',label:'',consequence:'',available:false,navigation:false,hidden:true};
     return {id:'generate-as-is',label:(S.journeyChannelMap||{}).solution_selection_model?'建立 SBP':'產生服務藍圖',consequence:S.asIsBuild.research_blocked?(S.asIsBuild.reason||''):'',available:!!S.asIsBuild.available&&!S.poll&&!S.asIsBuildBusy&&!S.irBusy&&!S.previewMode,navigation:false};
   }
   // confirm-as-is-save-only：新路徑有草稿時，⑥只給「確認現況」（只保存）或已確認後
@@ -3235,7 +3471,10 @@ function reviewGateAction(stage,state){
     const gate=(S.workbench||{}).as_is_candidate_confirmation||{},c=S.asIsConfirmation;
     // defer-research-evaluation-station：Public Preview 沒有研究站。確認後不再有
     // 通往研究的按鈕；確認鍵在兩種流程都只儲存並停在這一站。
-    if(c.downstream_eligible)return {id:'as-is-confirmed-none',label:'',consequence:'',available:false,navigation:false,hidden:true};
+    // solution-reconfirmation：上游未解決時不能確認；解方重新確認過的舊藍圖由研究者再確認一次。
+    if(c.upstream==='unresolved')return {id:'as-is-upstream-none',label:'',consequence:'',available:false,navigation:false,hidden:true};
+    // cjm-builds-sbp：SBP 是最後一段，確認後的下一步是輸出研究產物。
+    if(c.downstream_eligible&&c.upstream!=='reconsidered')return {id:'open-output',label:'輸出',consequence:'',available:!S.previewMode,navigation:false};
     const confirm={id:'confirm-as-is',label:(gate.confirm_action||{}).label||'確認 SBP'};
     return {id:confirm.id,label:confirm.label,consequence:'',available:!!c.journey_current&&!asIsStale()&&!S.asIsConfirmBusy&&!S.poll&&!S.previewMode&&!S.viewingVersion,navigation:false};
   }
@@ -3291,13 +3530,14 @@ function reviewGateAction(stage,state){
   return {...action,available};
 }
 function renderReviewGate(){
+  if(S.page){$('#app-shell').classList.add('gate-hidden');$('#review-gate').innerHTML='';return;}
   const stage=stageContractByStep(S.step);if(!stage){$('#review-gate').innerHTML='';return;}
   const state=runtimeStage(stage.id)||{},action=reviewGateAction(stage,state);
   const gateEmpty=action.id==='project-home-none'||!!action.hidden;
   $('#app-shell').classList.toggle('gate-hidden',gateEmpty);
   if(gateEmpty){$('#review-gate').innerHTML='';return;}
   const toBeState=state.to_be||state.research||effectiveToBeState();
-  const buttonId=action.navigation?action.id:action.id==='regenerate-for-proposal'?action.id:action.id==='build-customer-journey'?'build-journey':action.id==='confirm-journey'?'confirm-journey-candidate':action.id==='generate-as-is'?'generate-as-is':action.id==='confirm-as-is'?'confirm-as-is':action.id==='confirm-improvement-goal'?'confirm-improvement-goal':action.id==='start-research'?'start-research':action.id==='save-research-review'?'save-research-review':action.id==='form-to-be'?'form-to-be':stage.id==='journey-map'?'gen':stage.id==='review-as-is'?'mark-reviewed':stage.id==='project-home'?(action.id==='start-coding'?'start-coding':'read-intake'):stage.id==='review-to-be'&&toBeState.state==='to_be_draft_ready'?'accept-to-be':action.id||'to-be-no-action';
+  const buttonId=action.navigation?action.id:action.id==='regenerate-for-proposal'?action.id:action.id==='build-customer-journey'?'build-journey':action.id==='confirm-journey'?'confirm-journey-candidate':action.id==='generate-as-is'?'generate-as-is':action.id==='build-sbp'?'build-sbp':action.id==='open-output'?'open-output':action.id==='confirm-as-is'?'confirm-as-is':action.id==='confirm-improvement-goal'?'confirm-improvement-goal':action.id==='start-research'?'start-research':action.id==='save-research-review'?'save-research-review':action.id==='form-to-be'?'form-to-be':stage.id==='journey-map'?'gen':stage.id==='review-as-is'?'mark-reviewed':stage.id==='project-home'?(action.id==='start-coding'?'start-coding':'read-intake'):stage.id==='review-to-be'&&toBeState.state==='to_be_draft_ready'?'accept-to-be':action.id||'to-be-no-action';
   const unavailableToBe=stage.id==='review-to-be'&&!action.available;
   const secondary=stage.id==='review-to-be'&&toBeState.state==='to_be_draft_ready'&&!S.toBeDecisionPending?`<div class="review-secondary-actions" aria-label="其他方案決策"><button id="request-to-be-revision">要求調整方案</button><button class="decline" id="decline-to-be">保留現況，不採用提案</button></div>`
     :'';
@@ -3337,7 +3577,6 @@ function currentImprovementGoal(){
   return String(known.improvement_goal||'').trim();
 }
 // 版面稿（2026-09-27）在這兩站不畫判斷句那一行；契約仍宣告各站的判斷。
-const STAGES_WITHOUT_DECISION_LINE=new Set(['selective-coding','journey-map']);
 // fix-walkthrough-flow-blockers：點到還不能打開的站時，原因寫在頁首，不只寫在收合的側欄裡。
 function blockedStageLabel(){
   const stage=(S.workbench&&S.workbench.stages||[]).find(item=>item.id===S.navBlockedStage);
@@ -3368,8 +3607,16 @@ function go(n){
     S.navBlockedMsg=journeyBusyBlocked?'這個案例的歷程需要重新辨識完成後才能確認。':(state.blocked_reason||'請先完成前面的決定。');
     render();return;
   }
-  S.navBlockedStage=null;S.navBlockedMsg=null;S.step=n;S.mode=(stage.modes||[])[0]||'';render();
+  S.navBlockedStage=null;S.navBlockedMsg=null;S.page=null;S.basisCandidatesReady=false;S.step=n;S.mode=(stage.modes||[])[0]||'';render();
   loadStageContent(stage.id,{skipIfLoaded:true});
+}
+// v3-shell：AI 設定、資料與編碼、輸出是頁面，不是 runtime stage；打開只讀資料。
+function openPage(id){
+  if(!NAV_PAGES[id])return;
+  S.navBlockedStage=null;S.navBlockedMsg=null;S.page=id;render();
+  const work=$('#stage-work-area');if(work)work.scrollTop=0;
+  if(id==='coding'&&S.cur)loadAxialCodingReview();
+  if(id==='ai')loadProviderStatus();
 }
 // route-current-stage-through-framework-points: the per-stage "go fetch
 // this station's content" dispatch used to live only inside go() -- landing
@@ -3378,7 +3625,7 @@ function go(n){
 // nav correctly pointed at it. Anywhere S.step changes outside a plain
 // re-render should call this.
 function loadStageContent(stageId,{skipIfLoaded}={}){
-  if(stageId==='review-as-is'&&S.cur&&!(skipIfLoaded&&S.report))loadReport();
+  if(stageId==='review-as-is'&&S.cur&&!(skipIfLoaded&&S.report&&S.reportRun===S.cur))loadReport();
   // 新路徑的⑦由改善目標關卡自己讀調研狀態；舊的調研刷新會把 research_ready 當成
   // 「接著產生方案」而一直輪詢，只留給舊 run。
   if(stageId==='review-to-be'&&S.cur){loadImprovementGoal().then(()=>{if(!S.goalGate||S.goalGate.to_be)refreshAsIsResearch({renderAfter:true});});}
@@ -3538,6 +3785,200 @@ function bindProviderCheckControls(){
   const button=$('#provider-check-button');if(button)button.onclick=runProviderCheck;
   const cause=$('#provider-check-cause');if(cause)cause.onclick=showProviderCheckCause;
 }
+const UI_TERMINOLOGY = [
+  {"title": "專案與研究流程", "entries": [
+    {"name": "專案", "aliases": [], "meaning": "容納研究資料、研究成果、分析版本、設定與輸出檔案的工作單位。", "note": ""},
+    {"name": "案例", "aliases": [], "meaning": "這次被研究的服務與使用情境；部分既有畫面也用它指目前開啟的專案。", "note": ""},
+    {"name": "研究目的", "aliases": [], "meaning": "這次研究想了解什麼，作為分析資料與整合主題的範圍。", "note": ""},
+    {"name": "資料與編碼", "aliases": [], "meaning": "prototype-v3 外殼「準備」組的頁面：編碼的進度、開放／主軸／選擇編碼結果與研究資料都在這裡；不是研究步驟。", "note": ""},
+    {"name": "研究步驟", "aliases": ["工作階段", "研究站"], "meaning": "工作台中的研究任務位置；瀏覽其他步驟本身不代表確認研究成果。", "note": ""},
+    {"name": "分析版本", "aliases": ["版本", "產出版本"], "meaning": "專案首頁可開啟的一批分析產出；同一專案可保留多批產出。", "note": ""},
+    {"name": "成果版本", "aliases": [], "meaning": "某份研究成果在特定時間保存或確認的內容；與整批分析版本不同。", "note": ""},
+    {"name": "研究成果", "aliases": ["研究產物", "產物"], "meaning": "研究過程形成的編碼、Persona、地圖、藍圖與相關紀錄。", "note": ""},
+    {"name": "研究依據", "aliases": ["證據池"], "meaning": "查閱資料、分析與支持理由的集合概念；原始資料與 AI 分析應分開辨識。", "note": "側欄「準備」組的「資料與編碼」頁，任何一個研究步驟都能打開；它不是研究步驟，也沒有確認。"},
+    {"name": "研究歷程", "aliases": ["設計決策歷程"], "meaning": "研究如何分析、修改、選擇與確認的過程，以及成果之間的版本關係。", "note": "目前尚未提供獨立的完整歷程入口；AI 使用紀錄只涵蓋執行資訊。"}
+  ]},
+  {"title": "資料、證據與判斷", "entries": [
+    {"name": "研究資料", "aliases": ["原始資料", "研究材料"], "meaning": "上傳的訪談、觀察紀錄與其他原始研究材料。", "note": ""},
+    {"name": "原文", "aliases": ["原話", "逐字稿原文"], "meaning": "從研究資料保留下來的原始文字；引用內容保留原來措辭。", "note": ""},
+    {"name": "出處", "aliases": ["來源位置"], "meaning": "原文來自哪份材料、誰說的或做的，以及可以定位的位置。", "note": ""},
+    {"name": "證據", "aliases": [], "meaning": "用來支持某項研究判斷的資料；可能包含轉述、矛盾與適用限制，不等於已證實的事實。", "note": ""},
+    {"name": "依據", "aliases": ["判斷依據", "建立依據"], "meaning": "支持內容的證據、分析理由、上游選擇或外部參考；要看清楚各項的性質。", "note": ""},
+    {"name": "AI 分析", "aliases": [], "meaning": "AI 對資料做的分類、比較、整理與推論；保留與原始資料的連結。", "note": ""},
+    {"name": "AI 起草", "aliases": ["AI 生成", "AI 初稿"], "meaning": "內容最初由 AI 提出，仍需要研究者檢查與判斷；說明內容由誰產生。", "note": ""},
+    {"name": "AI 推論", "aliases": ["AI 推斷", "AI 推的"], "meaning": "資料未直接陳述、由 AI 根據材料推導的判斷或服務安排；要能查看推導理由。", "note": ""},
+    {"name": "研究者修改", "aliases": ["人工修改"], "meaning": "研究者改寫的內容；不會因此自動變成原始證據或已驗證事實。", "note": ""},
+    {"name": "研究者決策", "aliases": ["人工裁定"], "meaning": "研究者對選擇、採用、保留或確認所做的決定。", "note": ""},
+    {"name": "研究發現", "aliases": [], "meaning": "根據資料與分析形成的判斷，應能說明支持來源及限制。", "note": ""},
+    {"name": "設計假設", "aliases": ["假設"], "meaning": "對服務安排或預期效果的待驗證主張。", "note": ""},
+    {"name": "外部參考", "aliases": ["參考資料", "外部資料"], "meaning": "其他服務、文獻與網站提供的設計參考；不是本案受訪者的經驗證據。", "note": ""},
+    {"name": "說法不一致", "aliases": ["衝突", "說法衝突"], "meaning": "不同材料對同一件事有不同描述，需要查閱出處再由研究者處理。", "note": ""},
+    {"name": "資料不足", "aliases": ["缺少資料", "沒有資料"], "meaning": "目前材料不足以支持某項判斷；不能用沒有提到來證明事情沒有發生。", "note": ""}
+  ]},
+  {"title": "編碼與 JTBD、HMW", "entries": [
+    {"name": "資料整理", "aliases": ["Align", "萃取"], "meaning": "從上傳材料整理可分析與定位的內容，保留與來源的關聯。", "note": ""},
+    {"name": "開放編碼", "aliases": ["Open Coding"], "meaning": "將資料中的具體行為、想法與經驗整理成接近原意的短標記。", "note": ""},
+    {"name": "主軸編碼", "aliases": ["Axial Coding"], "meaning": "比較編碼，整理共同模式、條件及彼此關係。", "note": ""},
+    {"name": "選擇編碼", "aliases": ["Selective Coding"], "meaning": "整合主要現象與相關分析，作為形成 JTBD 的材料；不是勾選某條編碼的操作。", "note": ""},
+    {"name": "核心現象", "aliases": ["核心主題"], "meaning": "選擇編碼整理出的主要研究現象，供後續分析使用。", "note": ""},
+    {"name": "JTBD", "aliases": ["顧客任務", "Jobs to Be Done"], "meaning": "人在特定情境下想取得的進展與結果，包含情境、想做的事、動機與結果；不是預設的功能方案。", "note": ""},
+    {"name": "HMW", "aliases": ["設計問題", "How Might We"], "meaning": "針對選定 JTBD 形成的開放設計提問，界定這次尋找解方的方向；不預先指定解法。", "note": ""},
+    {"name": "候選", "aliases": ["候選內容", "候選項目"], "meaning": "供研究者比較、修改與選擇的內容；產生候選不代表已選定。", "note": ""},
+    {"name": "形成理由", "aliases": ["分析理由"], "meaning": "解釋某個候選或判斷如何從資料與分析中得到。", "note": ""}
+  ]},
+  {"title": "Persona 與矩陣", "entries": [
+    {"name": "Persona Matrix", "aliases": ["分群矩陣", "Persona 矩陣"], "meaning": "透過兩個矩陣維度，呈現受訪者的行為與判斷差異及其分布。", "note": ""},
+    {"name": "矩陣維度", "aliases": ["分群軸", "分群維度"], "meaning": "用來比較受訪者差異的一個面向；兩端可以是程度差異或兩種取向，不一定有高低好壞。", "note": ""},
+    {"name": "矩陣落點", "aliases": ["落點"], "meaning": "某位受訪者在矩陣維度上的位置；應有該受訪者的資料與理由支持。", "note": ""},
+    {"name": "象限", "aliases": ["矩陣四格"], "meaning": "兩個矩陣維度交叉形成的其中一格，用來查看相近的受訪者。", "note": ""},
+    {"name": "主要目標族群", "aliases": ["目標族群", "主要目標"], "meaning": "研究者決定這次優先為其設計的族群。", "note": ""},
+    {"name": "Persona", "aliases": [], "meaning": "根據已選族群及研究資料整理出的行為、情境、困難與需求代表，協助從該群人的角度設計。", "note": ""},
+    {"name": "使用者故事", "aliases": ["User Story"], "meaning": "依受訪者資料整理的 Persona 視角敘述，不是受訪者逐字原話。", "note": ""},
+    {"name": "代表資料", "aliases": ["代表句"], "meaning": "Persona 卡片選用的代表性資料摘錄；仍應透過依據查看來源性質。", "note": ""},
+    {"name": "情境", "aliases": ["Context"], "meaning": "行為與判斷發生時的環境、條件及處境。", "note": ""},
+    {"name": "動機與目標", "aliases": ["Motivation", "Goal"], "meaning": "這群人為什麼採取行動，以及想達成什麼。", "note": ""},
+    {"name": "判斷方式", "aliases": ["Decision Pattern"], "meaning": "這群人如何衡量資訊、作出選擇。", "note": ""},
+    {"name": "行為與策略", "aliases": ["Behavior", "Strategy"], "meaning": "這群人實際怎麼做，以及如何應對所處情境。", "note": ""},
+    {"name": "困難", "aliases": ["Challenge"], "meaning": "這群人在完成任務時遭遇的阻礙。", "note": ""},
+    {"name": "需求", "aliases": ["Need"], "meaning": "為完成任務所需要的條件或支持；不直接等於某項功能。", "note": ""}
+  ]},
+  {"title": "顧客旅程地圖與解方", "entries": [
+    {"name": "顧客旅程地圖（CJM）", "aliases": ["CJM", "Customer Journey Map", "顧客旅程", "顧客旅程圖"], "meaning": "呈現使用者隨時間經歷服務的過程、行為與體驗；與團隊的研究歷程不同。", "note": ""},
+    {"name": "旅程階段", "aliases": ["Stage", "階段"], "meaning": "將相鄰旅程步驟整理成較大的服務過程段落。", "note": ""},
+    {"name": "旅程步驟", "aliases": ["Journey", "步驟", "時刻"], "meaning": "顧客旅程中一段具體的服務經歷；目前可勾選時刻以發展解方。", "note": ""},
+    {"name": "顧客行動", "aliases": ["Customer Action", "User Action"], "meaning": "使用者在該段服務經歷中實際做的事。", "note": ""},
+    {"name": "痛點", "aliases": ["Pain Point"], "meaning": "使用者在特定情境下遭遇的具體阻礙、困難或負擔。", "note": ""},
+    {"name": "情緒", "aliases": ["Emotion", "Emotions"], "meaning": "對經驗的情緒反應；可能由資料支持或經研究者綜合判斷，不能一律當成直接量測。", "note": ""},
+    {"name": "滿意度", "aliases": ["Satisfaction"], "meaning": "對服務經驗的評價與理由；目前新主線可以是文字評價，不必是數字分數。", "note": ""},
+    {"name": "優先核心問題", "aliases": ["核心問題", "優先問題"], "meaning": "研究者認為值得優先處理、可能跨越多個旅程步驟的問題。", "note": "這是規劃中的獨立決策概念；目前主線仍以勾選時刻發展解方。"},
+    {"name": "解方", "aliases": ["Solution", "做法", "方案"], "meaning": "為回應問題而提出的具體介入做法；本清單以「解方」統一稱呼。", "note": ""},
+    {"name": "候選解方", "aliases": ["Solution Candidate"], "meaning": "已提出、供研究者檢查的解方；語意上與研究者採用的決定不同。", "note": ""},
+    {"name": "已採用解方", "aliases": ["Selected Solution", "Adopted Solution"], "meaning": "目前記為要帶入服務藍圖的解方。", "note": "現行新主線勾選「發展解方」後產生的解方即列為採用，之後仍需確認 CJM 與解方。"},
+    {"name": "體驗維度", "aliases": ["Channel", "Channels", "管道"], "meaning": "本系統對解方交付方式的統一顯示名稱，沿用人員、實體環境、數位工具、數位環境四類；與 Persona 的矩陣維度不同。", "note": "此處是名稱對照，尚未新增體驗評分，也未改變它在現行流程的位置。"},
+    {"name": "人員", "aliases": ["People"], "meaning": "透過人的服務與互動交付解方。", "note": ""},
+    {"name": "實體環境", "aliases": ["Physical Environment"], "meaning": "透過實體空間及其配置交付解方。", "note": ""},
+    {"name": "數位工具", "aliases": ["Digital Tools"], "meaning": "透過可操作的數位工具交付解方。", "note": ""},
+    {"name": "數位環境", "aliases": ["Digital Environments"], "meaning": "透過數位介面、內容或服務環境交付解方。", "note": ""},
+    {"name": "接觸點", "aliases": ["Touchpoint", "Touchpoints", "觸點"], "meaning": "使用者實際接觸到的具體人、物件或介面，例如櫃台人員、活動頁與通知訊息。", "note": ""},
+    {"name": "設計機會", "aliases": ["Opportunity"], "meaning": "研究過程辨識出的可能改善方向，仍需發展與判斷。", "note": ""}
+  ]},
+  {"title": "服務藍圖與外部研究", "entries": [
+    {"name": "服務藍圖（SBP）", "aliases": ["SBP", "Service Blueprint", "服務藍圖"], "meaning": "呈現服務需要的顧客行動、前台、後台與支援流程如何配合。", "note": ""},
+    {"name": "顧客接觸得到的東西", "aliases": ["Physical Evidence", "實體證據"], "meaning": "顧客可接觸或感知的服務物件與介面；此處「證據」不是研究證據的意思。", "note": ""},
+    {"name": "顧客做的", "aliases": ["顧客行為層"], "meaning": "藍圖中承接已確認顧客旅程的顧客行動。", "note": ""},
+    {"name": "前台行動", "aliases": ["前台", "顧客看得到的店家動作"], "meaning": "服務提供者在顧客可見範圍內進行的服務動作。", "note": ""},
+    {"name": "後台行動", "aliases": ["後台", "顧客看不到的店家動作"], "meaning": "服務提供者在顧客不可見範圍內進行的服務動作。", "note": ""},
+    {"name": "支援流程", "aliases": ["背後撐著的流程", "Support Process"], "meaning": "支援前台與後台運作的組織、系統及協作流程。", "note": ""},
+    {"name": "服務機制", "aliases": [], "meaning": "讓採用解方實際運作所需的人員安排、作業與支持關係；推斷的安排仍需標清理由。", "note": ""},
+    {"name": "現況", "aliases": ["As-is"], "meaning": "研究資料所描述的既有服務狀態。", "note": ""},
+    {"name": "設計提案", "aliases": ["改善後", "To-be", "未來狀態", "提案"], "meaning": "設計希望形成的服務狀態；包含尚待驗證的安排，不代表已實施。", "note": ""},
+    {"name": "關係", "aliases": ["關聯"], "meaning": "服務動作之間如何接續、支持或依賴；推斷的關係需有說明。", "note": ""},
+    {"name": "待確認清單", "aliases": ["待處理事項"], "meaning": "彙整需要研究者處理的說法不一致、解方落實問題或其他待判斷事項。", "note": ""},
+    {"name": "落地研究", "aliases": ["外部研究", "外部調研"], "meaning": "查找其他服務如何讓既定解方運作、需要哪些條件及限制；目前主線整合於建立藍圖過程，能力依執行方式而異。", "note": ""},
+    {"name": "適用情境", "aliases": [], "meaning": "外部參考成立時的條件與服務範圍；不代表已能直接套用到本案。", "note": ""},
+    {"name": "不確定性", "aliases": [], "meaning": "目前資料尚不能確認、需要保留條件或進一步查證的部分。", "note": ""},
+    {"name": "失誤點", "aliases": ["F"], "meaning": "藍圖中可能發生服務失誤的位置。", "note": ""},
+    {"name": "等候點", "aliases": ["W"], "meaning": "藍圖中涉及等待的位置。", "note": ""},
+    {"name": "決策點", "aliases": ["D"], "meaning": "藍圖中需要作出選擇或判斷的位置。", "note": ""}
+  ]},
+  {"title": "狀態", "entries": [
+    {"name": "草稿", "aliases": [], "meaning": "已產生或已保存，但尚未完成研究者確認的內容。", "note": ""},
+    {"name": "處理中", "aliases": ["正在執行", "生成中"], "meaning": "系統正在執行工作；顯示的進度應來自實際執行資訊。", "note": ""},
+    {"name": "等待模型回應", "aliases": ["等待模型", "waiting for model"], "meaning": "工作正在等待模型回覆，或提示詞已準備完成等待提供回覆。", "note": ""},
+    {"name": "待確認", "aliases": ["需要確認"], "meaning": "內容已可檢查，仍需要研究者審閱與決定。", "note": ""},
+    {"name": "已確認", "aliases": [], "meaning": "研究者已接受特定版本；不代表其中每項推論都經實際驗證。", "note": ""},
+    {"name": "已採用", "aliases": ["已採納"], "meaning": "已決定將某項內容帶入後續設計；不等於已驗證或已實施。", "note": ""},
+    {"name": "待驗證", "aliases": ["尚待驗證"], "meaning": "某項假設、安排或預期效果仍需透過研究或測試檢查。", "note": ""},
+    {"name": "需更新", "aliases": ["過期", "需要重新檢視"], "meaning": "相關內容或上游決定已改變，需要研究者判斷保留、重新確認或重新產生。", "note": ""},
+    {"name": "尚未儲存", "aliases": ["未保存", "未存檔"], "meaning": "目前修改尚未成功保存；畫面上的預覽不一定等於已保存內容。", "note": ""},
+    {"name": "產出失敗", "aliases": ["生成失敗", "未完成"], "meaning": "這次工作未成功完成，應依畫面說明查看保留內容與可採取的操作。", "note": ""},
+    {"name": "已取消", "aliases": [], "meaning": "這次工作已停止；保留內容以畫面與執行紀錄為準。", "note": ""},
+    {"name": "已封存", "aliases": ["封存版本"], "meaning": "版本從一般清單收起，研究資料仍保留，可取消封存。", "note": ""}
+  ]},
+  {"title": "操作用詞", "entries": [
+    {"name": "建立", "aliases": [], "meaning": "建立專案等工作容器。", "note": "範例：建立專案。"},
+    {"name": "產生", "aliases": ["生成", "產出", "形成"], "meaning": "由系統產生分析或研究內容；AI 工作會使用所選執行方式的額度。", "note": "範例：產生 HMW、產生 Persona。舊按鈕中的「建立藍圖」屬於產生內容。"},
+    {"name": "查看", "aliases": ["檢視", "審閱"], "meaning": "開啟並閱讀內容，本身不表示已確認或已採用。", "note": "範例：查看依據、查看原文。"},
+    {"name": "修改", "aliases": ["編輯", "改寫"], "meaning": "變更內容；是否已保存與是否已確認要分開判斷。", "note": ""},
+    {"name": "選擇", "aliases": ["勾選", "選取"], "meaning": "指定項目；要依控制項說明判斷它用於預覽、探索或採用。", "note": ""},
+    {"name": "預覽", "aliases": [], "meaning": "查看暫時選擇或預計產生的呈現；不等於已保存或確認。", "note": ""},
+    {"name": "儲存", "aliases": ["保存", "存檔"], "meaning": "保存輸入與修改；不代表研究者接受整份研究成果。", "note": "範例：儲存修改。"},
+    {"name": "確認", "aliases": [], "meaning": "接受目前這份研究成果並留下確認紀錄；若按鈕同時啟動生成，應完整寫出兩個動作。", "note": "範例：確認 Persona。確認不等於驗證。"},
+    {"name": "採用", "aliases": ["採納"], "meaning": "決定將解方或外部參考帶入後續設計。", "note": "範例：採用解方。"},
+    {"name": "驗證", "aliases": [], "meaning": "透過另外的研究或測試，檢查判斷或方案是否成立。", "note": ""},
+    {"name": "前往", "aliases": ["繼續", "回到", "返回"], "meaning": "切換到明確指名的工作位置；若同時儲存或啟動 AI，應完整說明。", "note": "範例：前往服務藍圖。"},
+    {"name": "重新產生", "aliases": ["重產", "重新生成", "重新建立"], "meaning": "依目前條件再次產生內容；是否保留舊版依既有版本規則與畫面說明處理。", "note": ""},
+    {"name": "重試", "aliases": ["再試一次"], "meaning": "先前工作失敗後再執行；AI 重試會再次使用額度。", "note": ""},
+    {"name": "保留", "aliases": ["沿用"], "meaning": "經研究者判斷繼續使用現有內容；不應宣稱內容是依新條件重新產生。", "note": ""},
+    {"name": "略過", "aliases": [], "meaning": "明確跳過這次可選工作；後續是否帶入既有資料依畫面說明。", "note": ""},
+    {"name": "取消", "aliases": [], "meaning": "停止目前操作或關閉尚未送出的決定；執行中工作的取消依實際狀態回報。", "note": ""},
+    {"name": "輸出", "aliases": ["匯出"], "meaning": "整理並取得交付檔案；研究成果與完整專案應指明不同用途。", "note": "範例：輸出研究成果、輸出完整專案。"},
+    {"name": "下載", "aliases": [], "meaning": "將已準備好的檔案存到自己的電腦。", "note": "範例：下載 PDF。"},
+    {"name": "測試連線", "aliases": ["連線測試"], "meaning": "用實際請求檢查執行方式的連線；結果只代表當時測試，不保證整個研究流程會完成。", "note": ""},
+    {"name": "封存", "aliases": [], "meaning": "將版本從一般清單收起並保留資料，之後可以取消封存。", "note": ""},
+    {"name": "刪除", "aliases": [], "meaning": "移除指定專案或內容；依畫面列出的影響確認後再執行。", "note": ""}
+  ]},
+  {"title": "輸出與 AI 執行資訊", "entries": [
+    {"name": "輸出研究成果", "aliases": ["輸出研究產物"], "meaning": "選擇要交付的研究成果與格式。", "note": ""},
+    {"name": "輸出完整專案", "aliases": ["匯出完整專案"], "meaning": "取得專案資料與相關內容，供保存或移轉；與交付研究成果的用途不同。", "note": ""},
+    {"name": "導讀", "aliases": ["圖表導讀"], "meaning": "協助讀者理解圖表的文字，可由 AI 起草及研究者修改；不是新的研究證據。", "note": ""},
+    {"name": "PDF", "aliases": [], "meaning": "適合閱讀、列印及交付的文件格式。", "note": ""},
+    {"name": "XLSX", "aliases": [], "meaning": "可用試算表工具開啟的表格檔案格式。", "note": ""},
+    {"name": "Markdown", "aliases": ["MD"], "meaning": "以純文字記錄內容與基本格式的文件格式。", "note": ""},
+    {"name": "AI 執行方式", "aliases": ["Provider", "執行器"], "meaning": "工作台使用哪一種已設定的方式執行 AI，例如 Codex、Claude Code 或 OpenAI API。", "note": ""},
+    {"name": "CLI", "aliases": [], "meaning": "透過電腦上已安裝並登入的命令列工具執行 AI。", "note": ""},
+    {"name": "API", "aliases": [], "meaning": "透過服務介面與自己的 API key 執行 AI；費用依所選服務計算。", "note": ""},
+    {"name": "模型", "aliases": ["Model"], "meaning": "AI 工作要求使用的模型；設定值與實際執行紀錄應分別辨識。", "note": ""},
+    {"name": "推理強度", "aliases": ["Effort"], "meaning": "要求模型使用的推理強度設定；不同執行方式可支援的選項可能不同。", "note": ""},
+    {"name": "Tokens", "aliases": ["Token", "用量"], "meaning": "執行器回報的文字處理量；不是研究品質分數，未回報時應顯示未記錄。", "note": ""},
+    {"name": "執行時間", "aliases": ["耗時", "牆鐘時間"], "meaning": "一次工作的實際經過時間，與模型用量是不同資訊。", "note": ""},
+    {"name": "AI 執行資訊", "aliases": [], "meaning": "目前工作階段的模型設定、時間、用量與執行結果。", "note": ""},
+    {"name": "AI 使用紀錄", "aliases": ["AI 協作紀錄"], "meaning": "彙整專案 AI 工作的執行資訊；不等於完整的研究者決策歷程或研究發現。", "note": ""},
+    {"name": "已安裝", "aliases": [], "meaning": "電腦上找得到所選執行工具。", "note": ""},
+    {"name": "已登入", "aliases": [], "meaning": "所選工具已具備登入狀態。", "note": ""},
+    {"name": "已設定", "aliases": [], "meaning": "工作台已完成所選執行方式需要的設定；不代表一定能完成所有工作。", "note": ""}
+  ]}
+];
+
+function terminologyGroups(query){
+  const normalize=value=>String(value||'').normalize('NFKC').trim().toLocaleLowerCase('zh-TW');
+  const needle=normalize(query);
+  return UI_TERMINOLOGY.map(group=>({...group,entries:group.entries.filter(entry=>
+    !needle||normalize([entry.name,...entry.aliases,entry.meaning,entry.note].join(' ')).includes(needle)
+  )})).filter(group=>group.entries.length);
+}
+function terminologyCount(groups){return groups.reduce((total,group)=>total+group.entries.length,0);}
+function terminologyResultText(groups){
+  const count=terminologyCount(groups),total=terminologyCount(UI_TERMINOLOGY);
+  return count?`顯示 ${count} / ${total} 項用語`:'找不到符合的用語，請改用名稱、舊稱或說明中的文字搜尋。';
+}
+function terminologyGroupsHTML(groups){
+  return groups.map(group=>`<section class="terminology-group"><h4>${esc(group.title)}</h4><dl>${group.entries.map(entry=>
+    `<div class="terminology-entry"><dt>${esc(entry.name)}</dt><dd>${esc(entry.meaning)}</dd>${entry.aliases.length?`<dd class="terminology-alias">舊稱／英文：${entry.aliases.map(esc).join('、')}</dd>`:''}${entry.note?`<dd class="terminology-note">${esc(entry.note)}</dd>`:''}</div>`
+  ).join('')}</dl></section>`).join('');
+}
+function settingsTerminologyHTML(){
+  const groups=terminologyGroups(S.terminologyQuery);
+  return `<details class="terminology-reference" id="settings-terminology"${S.terminologyOpen?' open':''}>
+    <summary>名詞與操作說明</summary>
+    <p class="form-note">統一名稱、意義與舊稱對照。舊稱只供查詢，部分既有畫面仍會出現；原始資料與研究內容保留原文。</p>
+    <p class="form-note">AI 起草、資料依據與研究者確認分開辨識；確認不代表推論已驗證。規劃中的入口會另外註明。</p>
+    <label for="terminology-search">搜尋用語</label>
+    <input id="terminology-search" name="terminology-query" type="search" autocomplete="off" spellcheck="false" placeholder="例如 Channel、矩陣維度、確認…" value="${esc(S.terminologyQuery||'')}" aria-controls="terminology-results" aria-describedby="terminology-result-count">
+    <p class="form-note" id="terminology-result-count" role="status" aria-live="polite">${esc(terminologyResultText(groups))}</p>
+    <div id="terminology-results">${terminologyGroupsHTML(groups)}</div>
+  </details>`;
+}
+function bindTerminologyReference(){
+  const details=$('#settings-terminology'),input=$('#terminology-search');
+  if(details)details.ontoggle=()=>{if(details.isConnected)S.terminologyOpen=details.open;};
+  if(input)input.oninput=()=>{
+    S.terminologyQuery=input.value;
+    const groups=terminologyGroups(input.value);
+    $('#terminology-result-count').textContent=terminologyResultText(groups);
+    $('#terminology-results').innerHTML=terminologyGroupsHTML(groups);
+  };
+}
 function accountSectionHTML(){
   const auth=S.authState||{};
   if(auth.mode==='email'&&auth.authenticated&&auth.user)return `<p class="settings-account">${esc(auth.user.email||auth.user.display_name||'')}</p><button class="text-link" id="settings-logout">登出</button>`;
@@ -3546,6 +3987,7 @@ function accountSectionHTML(){
 function shellPanelHTML(){
   if(S.shellPanel==='settings')return `<aside class="shell-panel settings-panel" role="dialog" aria-modal="true" aria-labelledby="shell-panel-title">
       <h2 id="shell-panel-title" tabindex="-1">設定</h2>
+      ${settingsTerminologyHTML()}
       ${providerSettingsHTML()}
       <div class="actions"><button class="ghost" id="shell-panel-close">關閉</button></div>
     </aside>`;
@@ -3559,8 +4001,13 @@ function shellPanelHTML(){
 }
 function renderShellPanel(){
   const host=$('#shell-panel-host');if(!host)return;
+  const searchFocused=document.activeElement&&document.activeElement.id==='terminology-search';
+  const previousPanel=host.querySelector('.shell-panel');
+  const scrollTop=S.terminologyOpen&&previousPanel?previousPanel.scrollTop:0;
   const panel=shellPanelHTML();
   host.innerHTML=panel?`<div class="shell-panel-scrim" id="shell-panel-scrim"></div>${panel}`:'';
+  if(searchFocused&&$('#terminology-search'))$('#terminology-search').focus({preventScroll:true});
+  const nextPanel=host.querySelector('.shell-panel');if(nextPanel&&scrollTop)nextPanel.scrollTop=scrollTop;
 }
 function openShellPanel(kind,trigger){
   if(kind==='settings')loadProviderStatus();
@@ -3588,6 +4035,96 @@ document.addEventListener('keydown',event=>{
 // patching it, so stage gating never keeps describing a run that is no
 // longer the one the researcher has open. Returns false when the contract
 // itself is unsupported; callers still own navigation after this returns.
+// cross-project-state-isolation：研究內容的讀取與研究決定的寫入，都只對發出當時的
+// 專案與切換世代生效。換專案（S.cur 改變，或 openExistingRun 重新開啟）就換世代；
+// 舊世代的回應一律不交回給呼叫端——後面那段更新畫面的程式根本不會執行，所以不會
+// 把上一個專案的內容或錯誤寫進目前畫面。每份可編輯內容的身份（identity）連同產生
+// 它的那次讀寫的世代一起記；寫入只拿得到目前世代的身份，伺服器再比對一次。
+const STALE_BASIS_MESSAGE='畫面上的內容不是這個專案目前的版本，請重新載入後再做一次。';
+// 研究決定寫入的「處理中」：回應屬於舊專案時不會交回，所以換專案時一律放掉，新專案的按鈕不會卡住。
+const DECISION_BUSY_FLAGS=['asIsConfirmBusy','personaConfirmBusy','goalBusy','researchReviewBusy','journeyCandidateBusy',
+  'axialPairBusy','hmwSubmitBusy','personaHmwKeepBusy','journeyKeepBusy','solutionKeepBusy','irBusy'];
+function newProjectScope(){
+  S.switchGen=(S.switchGen||0)+1;S.identities={};S.writeChains={};S.unsavedInputs={};
+  DECISION_BUSY_FLAGS.forEach(flag=>{S[flag]=false;});S.irJob=null;
+}
+(function bindCurrentProject(){
+  let cur=S.cur;
+  Object.defineProperty(S,'cur',{enumerable:true,configurable:true,
+    get(){return cur;},
+    set(value){if(value!==cur){cur=value;newProjectScope();}}});
+})();
+function currentScope(){return {run:S.cur,gen:S.switchGen||0};}
+function scopeIsCurrent(scope){return !!scope&&scope.run===S.cur&&scope.gen===(S.switchGen||0);}
+const _staleReply=()=>new Promise(()=>{});
+function rememberIdentity(identity,scope){
+  if(identity&&identity.artifact&&scopeIsCurrent(scope))(S.identities||(S.identities={}))[identity.artifact]={identity,scope};
+}
+// 一次讀取或寫入可能帶回好幾份身份（依操作計算：同一份內容服務好幾種寫入）。
+function rememberIdentities(map,scope){Object.values(map||{}).forEach(identity=>rememberIdentity(identity,scope));}
+function noSaveText(message){const text=String(message||'').trim();return /^沒有存到/.test(text)?text:'沒有存到：'+text;}
+function basisFor(artifact){const entry=(S.identities||{})[artifact];return entry&&scopeIsCurrent(entry.scope)?entry.identity:null;}
+// 讀取：回應屬於已經不在畫面上的專案（或舊世代）就不交回。
+function scopedFetch(url,opts){
+  const scope=currentScope();
+  return fetch(url,opts).then(async response=>{
+    let data={};try{data=await response.json();}catch(_){}
+    if(!scopeIsCurrent(scope))return _staleReply();
+    if(response.ok&&data&&data.identities)rememberIdentities(data.identities,scope);
+    return {ok:response.ok,status:response.status,data};
+  },error=>{if(!scopeIsCurrent(scope))return _staleReply();throw error;});
+}
+function scopedJSON(url,opts){return scopedFetch(url,opts).then(reply=>reply.data);}
+// 不是研究決定、但會改到內容的寫入（確認旅程、移動步驟）：回應過期就不交回，成功就記下新身份。
+function scopedPost(url,body){
+  return scopedFetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(reply=>_decisionReply(reply.status,reply.data));
+}
+// 寫入：帶上被操作那份內容的身份；同一份內容的寫入逐筆送出，下一筆用上一筆回來的新身份。
+// 被拒（stale_basis）之後，同一份內容排隊中的寫入不再送出，一律提示重新載入。
+function decisionFetch(artifact,url,body){
+  // 排隊當下就記下專案與世代；輪到時已換專案就取消，舊專案的寫入不會在新專案送出。
+  const queued=currentScope();
+  const send=()=>{
+    if(!scopeIsCurrent(queued))return _staleReply();
+    const scope=currentScope(),basis=basisFor(artifact);
+    if(!basis)return Promise.resolve(_decisionReply(409,{error:STALE_BASIS_MESSAGE,reason:'stale_basis'}));
+    return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,basis})})
+      .then(async response=>{
+        let data={};try{data=await response.json();}catch(_){}
+        if(!scopeIsCurrent(scope))return _staleReply();
+        if(response.ok&&data&&data.identities)rememberIdentities(data.identities,scope);
+        if(data&&data.reason==='stale_basis'&&S.identities)delete S.identities[artifact];
+        return _decisionReply(response.status,data);
+      },error=>{if(!scopeIsCurrent(scope))return _staleReply();throw error;});
+  };
+  // 共用檔案的寫入（同一個 group）排在同一條佇列，後一筆用前一筆帶回來的新身份。
+  const known=basisFor(artifact),queue=(known&&known.group)||artifact;
+  const chains=S.writeChains||(S.writeChains={});
+  const next=(chains[queue]||Promise.resolve()).then(send,send);
+  chains[queue]=next.catch(()=>{});
+  return next;
+}
+function _decisionReply(status,data){return {ok:status>=200&&status<300,status,json:async()=>data};}
+function isStaleBasis(data){return !!data&&data.reason==='stale_basis';}
+// 被拒時研究者打的字或選的值留在原處、標成沒有存到；只有重新載入或那一格之後存成功才放掉。
+function keepUnsavedInput(key,value){(S.unsavedInputs||(S.unsavedInputs={}))[key]=value;}
+function dropUnsavedInput(key){if(S.unsavedInputs)delete S.unsavedInputs[key];}
+function unsavedInput(key){const box=S.unsavedInputs||{};return Object.prototype.hasOwnProperty.call(box,key)?box[key]:undefined;}
+function journeyFieldKey(d){return 'jc|'+[d.jcKind,d.jcStep,d.jcStage,d.jcIndex,d.jcTouchpoint,d.jcChannel,d.jcSolutionId].join('|');}
+function reapplyUnsavedInputs(){
+  const box=S.unsavedInputs||{};if(!Object.keys(box).length)return;
+  const mark=(el,value)=>{
+    if(el.tagName==='TEXTAREA'||el.tagName==='INPUT'||el.tagName==='SELECT')el.value=value;
+    else el.innerText=Array.isArray(value)?value.join('\n'):value;
+    el.setAttribute('aria-invalid','true');el.title='沒有存到';
+  };
+  document.querySelectorAll('[data-jc-kind]').forEach(el=>{const v=unsavedInput(journeyFieldKey(el.dataset));if(v!==undefined)mark(el,v);});
+  document.querySelectorAll('[data-persona-edit]').forEach(el=>{const v=unsavedInput('persona|'+el.dataset.personaEdit+'|'+el.dataset.personaIndex);if(v!==undefined)mark(el,v);});
+  document.querySelectorAll('[data-selective-edit]').forEach(el=>{const v=unsavedInput('selective|'+el.dataset.selectiveEdit+'|'+el.dataset.selectiveTheme);if(v!==undefined)mark(el,v);});
+  document.querySelectorAll('[data-annotation-satisfaction]').forEach(el=>{const v=unsavedInput('annotation|satisfaction|'+el.dataset.annotationSatisfaction);if(v!==undefined)mark(el,v==null?'':String(v));});
+}
+
 function applyBootstrapPayload(d){
   S.cases=d.cases||[];S.runs=d.runs||[];S.ui=d.ui||null;S.workbench=d.workbench||null;
   if(!S.workbench||S.workbench.contract_status!=='supported'){
@@ -3678,10 +4215,9 @@ const CHART_GUIDE_TITLES={persona:'Persona Matrix＋Persona',journey:'顧客旅�
 function chartGuidePointsText(points){return (points||[]).map(point=>`・${point}`).join('\n');}
 function chartGuidePointsFrom(text){return String(text||'').split('\n').map(line=>line.replace(/^\s*[・•\-*]\s*/,'').trim()).filter(Boolean);}
 async function fetchChartGuide(run,kind){
-  const response=await fetch(`/api/chart-guide?run=${encodeURIComponent(run)}&kind=${kind}`);
-  const data=await response.json();
-  if(!response.ok)throw new Error(data.error||'讀不到導讀。');
-  return data;
+  const reply=await scopedFetch(`/api/chart-guide?run=${encodeURIComponent(run)}&kind=${kind}`);
+  if(!reply.ok)throw new Error(reply.data.error||'讀不到導讀。');
+  return reply.data;
 }
 function exportGuideSectionHTML(preview,kind){
   const data=preview.guides[kind]||{},error=preview.errors[kind];
@@ -3724,9 +4260,9 @@ async function openExportGuidePreview(panel,run,kinds,download){
     const value=block==='points'?chartGuidePointsFrom(element.innerText):element.innerText.trim();
     if(JSON.stringify(value)===JSON.stringify(block==='points'?data.guide.points:data.guide.summary))return;
     try{
-      const response=await fetch('/api/chart-guide/edit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run,kind,block,text:value})});
+      const response=await decisionFetch('chart-guides','/api/chart-guide/edit',{run,kind,block,text:value});
       const body=await response.json();
-      if(!response.ok)throw new Error(body.error||'導讀沒有存起來。');
+      if(!response.ok)throw new Error(isStaleBasis(body)?noSaveText(body.error):(body.error||'導讀沒有存起來。'));
       preview.guides[kind]=body;preview.errors[kind]=null;
     }catch(error){preview.errors[kind]=researcherSafeError(error.message,'導讀沒有存起來。');}
     if(redraw)draw();
@@ -3771,7 +4307,7 @@ const PRINT_DELIVERABLES={
     {stage:'persona-target-selection',selector:'.persona-detail-card',heading:'Persona',newPage:true},
     {guide:'persona'}]},
   cjm:{title:'顧客旅程圖',fit:true,parts:[{stage:'journey-map',selector:'.cjm-table-region',heading:null},{guide:'journey'}]},
-  blueprint:{title:'服務藍圖',fit:true,parts:[{stage:'review-as-is',selector:'.as-is-blueprint',heading:null},{guide:'blueprint'}]},
+  blueprint:{title:'服務藍圖',fit:true,parts:[{stage:'review-as-is',html:()=>{const t=asIsUpstreamStatusText(S.asIsConfirmation);return t?`<section class="print-part"><p class="print-status" data-print-upstream>${esc(t)}</p></section>`:'';},ready:()=>S.asIsBuildLoadedRun===S.cur},{stage:'review-as-is',selector:'.as-is-blueprint',heading:null},{guide:'blueprint'}]},
 };
 function printWaitUntil(predicate,timeoutMs=45000){
   return new Promise((resolve,reject)=>{
@@ -3789,9 +4325,9 @@ function printWaitUntil(predicate,timeoutMs=45000){
 // 只負責排版：開放、主軸用表格，選擇編碼每個主題一塊。O／A／S 編號是輸出內的閱讀編號。
 async function loadCodingDeliverable(){
   S.codingDeliverable=null;S.codingDeliverableRun=null;S.codingDeliverableError=null;
-  const response=await fetch('/api/coding-deliverable?run='+encodeURIComponent(S.cur));
-  if(!response.ok)throw new Error('編碼交付物讀不到。');
-  S.codingDeliverable=await response.json();S.codingDeliverableRun=S.cur;
+  const reply=await scopedFetch('/api/coding-deliverable?run='+encodeURIComponent(S.cur));
+  if(!reply.ok)throw new Error('編碼交付物讀不到。');
+  S.codingDeliverable=reply.data;S.codingDeliverableRun=S.cur;
 }
 function printCodingList(items){
   return (items||[]).length?`<ul class="print-coding-list">${items.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>`:'';
@@ -3828,9 +4364,9 @@ function printCodingHTML(){
     <section class="print-part print-new-page"><h2>選擇編碼</h2>${selectiveBody}</section>`;
 }
 async function printChartGuideHTML(kind){
-  const response=await fetch(`/api/chart-guide?run=${encodeURIComponent(S.cur)}&kind=${kind}`);
+  const response=await scopedFetch(`/api/chart-guide?run=${encodeURIComponent(S.cur)}&kind=${kind}`);
   if(!response.ok)return '';
-  const data=await response.json();
+  const data=response.data;
   if(!data.guide||data.stale)return '';
   const summary=String(data.guide.summary||'').trim(),points=(data.guide.points||[]).filter(Boolean);
   if(!summary&&!points.length)return '';
@@ -3946,7 +4482,10 @@ function render(){
   // category picker embedded in the third section. The "備查" backlog no
   // longer renders here (see reviewGateAction() below for the matching
   // footer removal).
-  if(stageId==='selective-coding')m.innerHTML=viewAxialCodingReview();
+  if(S.page==='coding')m.innerHTML=viewResearchBasis();
+  else if(S.page==='ai')m.innerHTML=viewAiPage();
+  else if(S.page==='output')m.innerHTML=viewOutputPage();
+  else if(stageId==='selective-coding')m.innerHTML=viewAxialCodingReview();
   // embed-persona-matrix-selection-screens: this framework-point stage
   // hosts real content now (proxied from tools/workbench/) instead of the
   // generic pointer; primary-hmw and persona-dimensions keep the pointer
@@ -3966,6 +4505,7 @@ function render(){
   else if(stageId==='review-to-be')m.innerHTML=viewToBe();
   renderShellPanel();
   wire();_syncRunStatusPollState();
+  reapplyUnsavedInputs();
 }
 
 const TO_BE_MODE_LABELS={'to-be-blueprint':'提案藍圖','proposal-summary':'方案摘要','basis-validation':'依據與驗證'};
@@ -4159,11 +4699,12 @@ async function saveResearchReview(){
   const draft=researchReviewDraft();
   const decisions=researchReviewClaims().map(id=>({claim_ref:id,decision:draft[id].decision,researcher_rationale:String(draft[id].rationale||'').trim()}));
   try{
-    const r=await fetch('/api/research-review/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run:S.cur,decisions})});
+    const r=await decisionFetch('research-review','/api/research-review/save',{run:S.cur,decisions});
     const res=await r.json();
+    if(isStaleBasis(res))throw new Error(noSaveText(res.error));
     if(!r.ok||res.error)throw new Error(res.error||'審查沒有存到');
     S.goalGate=res.goal;S.researchReviewDraft=null;
-  }catch(error){S.researchReviewError='沒有保存：'+researcherSafeError(error.message,'請稍後再試。');S.researchReviewBusy=false;render();return;}
+  }catch(error){const message=researcherSafeError(error.message,'請稍後再試。');S.researchReviewError=/^沒有存到/.test(message)?message:'沒有保存：'+message;S.researchReviewBusy=false;render();return;}
   S.researchReviewBusy=false;
   // golden-path-transitions：審查保存就是形成改善方案的觸發。
   const g=S.goalGate||{};
@@ -4189,11 +4730,11 @@ async function startFreshResearch(){
 async function loadImprovementGoal(){
   if(!S.cur){S.goalGate=null;return;}
   const run=S.cur;
-  try{const d=await(await fetch('/api/improvement-goal?run='+encodeURIComponent(run))).json();S.goalGate=d&&d.goal||null;}
+  try{const d=await scopedJSON('/api/improvement-goal?run='+encodeURIComponent(run));S.goalGate=d&&d.goal||null;}
   catch(_){S.goalGate=null;}
   S.freshResearchDetail=null;
   if(S.goalGate&&S.goalGate.research&&S.goalGate.research.phase==='research_ready'){
-    try{const r=await fetch('/api/as-is-research-detail?run='+encodeURIComponent(run));S.freshResearchDetail=r.ok?await r.json():null;}catch(_){S.freshResearchDetail=null;}
+    try{const r=await scopedFetch('/api/as-is-research-detail?run='+encodeURIComponent(run));S.freshResearchDetail=r.ok?r.data:null;}catch(_){S.freshResearchDetail=null;}
   }
   // 重新載入不能蓋掉研究者正在打的字；只有換了一份產出才清掉草稿。
   if(S.goalGateRun!==run){S.goalDraft=null;S.researchReviewDraft=null;S.goalGateRun=run;}
@@ -4203,7 +4744,7 @@ async function confirmImprovementGoal(){
   if(!S.cur||!S.goalGate||S.goalBusy)return;
   S.goalBusy=true;S.goalError=null;render();
   try{
-    const r=await fetch('/api/improvement-goal/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run:S.cur,operative_goal:currentGoalDraft()})});
+    const r=await decisionFetch('improvement-goal','/api/improvement-goal/confirm',{run:S.cur,operative_goal:currentGoalDraft()});
     const res=await r.json();
     if(!r.ok||res.error)throw new Error(res.error||'確認沒有存到');
     S.goalGate=res.goal;S.goalDraft=null;
@@ -4410,7 +4951,7 @@ async function loadPrimaryHmw(){
   // but never carry one run's reading state into another run.
   S.hmwCustomOpen=false;S.hmwChoice=null;S.hmwRationales={};S.hmwCustom={};S.hmwSubmitError=null;
   try{
-    S.hmwPicker=await(await fetch('/api/primary-hmw-picker?run='+encodeURIComponent(S.cur))).json();
+    S.hmwPicker=await scopedJSON('/api/primary-hmw-picker?run='+encodeURIComponent(S.cur));
   }catch(error){S.hmwPicker={error:'主要 HMW 候選讀不到：'+error.message};}
   hmwApplyRecordedChoice(S.hmwPicker&&S.hmwPicker.selected);
   S.hmwPickerRun=S.cur;render();
@@ -4482,10 +5023,12 @@ function viewPrimaryHmw(){
   const cards=candidateList.map((c,index)=>{
     const id=c.hmw_id,chosen=choice===id;
     const jobs=(c.supporting_jtbds||[]).map(job=>`<li>${esc(jtbdStatement(job))}</li>`).join('');
+    // formation-time-basis-display：形成時的顧客任務驗證不了，就照實說，不拿目前選的頂替。
+    const jobsUnknown=c.supporting_jtbds_unknown?'<p class="hmw-card-label">支撐的顧客任務</p><p class="hmw-card-structure" data-basis-unknown>形成時依據無法確認</p>':'';
     const entry=basisContentHTML('hmw',c.basis)?basisEntryHTML('hmw',index,c.statement||c.label||''):'';
     return `<div class="hmw-candidate-item"><article class="hmw-candidate${chosen?' picked':''}" data-hmw-choose="${esc(id)}" tabindex="0" role="button" aria-pressed="${chosen}">
       <h3>${esc(c.statement||c.label||'')}</h3>
-      ${jobs?`<p class="hmw-card-label">支撐的顧客任務</p><ul class="hmw-card-jobs">${jobs}</ul>`:''}
+      ${jobs?`<p class="hmw-card-label">支撐的顧客任務</p><ul class="hmw-card-jobs">${jobs}</ul>`:jobsUnknown}
       ${c.problem_structure?`<p class="hmw-card-label">形成理由</p><p class="hmw-card-structure">${esc(c.problem_structure)}</p>`:''}
     </article>${entry}</div>`;
   }).join('');
@@ -4612,14 +5155,13 @@ async function continuePrimaryHmw(){
   S.hmwSubmitBusy=true;S.hmwSubmitError=null;render();
   let result;
   try{
-    result=await(await fetch('/api/primary-hmw-picker/select',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({run:S.cur,answer:state.answer})})).json();
+    result=await(await decisionFetch('primary-hmw','/api/primary-hmw-picker/select',{run:S.cur,answer:state.answer})).json();
   }catch(error){
     S.hmwSubmitBusy=false;S.hmwSubmitError='沒有送出：'+error.message;render();return;
   }
   if(!result.ok){
     S.hmwSubmitBusy=false;
-    S.hmwSubmitError=(result.stderr||result.stdout||result.error||'送出失敗').trim();
+    S.hmwSubmitError=isStaleBasis(result)?noSaveText(result.error):(result.stderr||result.stdout||result.error||'送出失敗').trim();
     render();return;
   }
   S.hmwSubmitBusy=false;
@@ -4627,6 +5169,8 @@ async function continuePrimaryHmw(){
   // resolve-stale-at-researcher-gates：HMW 換了，Persona 是否依目前 HMW 要重新讀，不能用先前的暫存
   // （舊的投影先留著畫圖，讀到新的再換）。
   S.personaProjRun=null;
+  // solution-reconfirmation：先前載入的顧客旅程是依舊 HMW 判讀的，下次進旅程站重新取得。
+  S.journeyChannelMap=null;loadAsIsBuild();
   // golden-path-transitions：Persona 分群還沒有產出時，確認 HMW 就接著分析；
   // 已經有分群就只是前往下一站。只由這次確認觸發，單純打開這一站不會。
   S.autoStartNext={run:S.cur,artifact:'persona_segmentation'};
@@ -5375,9 +5919,19 @@ function viewOut(){
   // 這一頁在問「這張圖可不可信」；切到別的案例是離開這個問題，不是回答它。案例名稱
   // 左上已經寫著，換案例屬於①建立案例那一頁。
   const runtime=runtimeStage('review-as-is');
-  if(S.asIsBuild)return `<div id="rep">${asIsBuildEmptyHTML(S.asIsBuild)}</div>`;
+  if(S.asIsBuild)return `${asIsStationStatusContainer('')}<div id="rep">${asIsBuildEmptyHTML(S.asIsBuild)}</div>`;
   if(runtime&&runtime.availability==='blocked')return asIsBuildEmptyHTML({available:false});
-  return asIsFreshnessHTML()+asIsConfirmationStatusHTML()+asIsModeNavigation()+`<div id="rep">${S.report?renderAsIsContent(S.report):'<section class="card"><p class="empty">載入中⋯</p></section>'}</div>`;
+  return `${asIsStationStatusContainer(asIsStationStatusHTML())}<div id="rep">${S.report?renderAsIsContent(S.report):'<section class="card"><p class="empty">載入中⋯</p></section>'}</div>`;
+}
+// sbp-status-render-consistency：服務藍圖站上方狀態區（內容更新提示、確認／上游狀態句、檢視模式切換，
+// 以及它們帶的按鈕）唯一的產生處。只組合既有的呈現規則，讀的是 /api/as-is-build 已載入的狀態，
+// 不另外判斷藍圖是否有效。第一次畫面與狀態載入後的重畫都用它。
+function asIsStationStatusHTML(){
+  return asIsFreshnessHTML()+asIsConfirmationStatusHTML()+asIsModeNavigation();
+}
+// 容器在有藍圖區塊時一律存在（還在建立說明時是空的），狀態稍後才到也有地方畫。
+function asIsStationStatusContainer(inner){
+  return `<div id="as-is-station-status" class="as-is-station-status">${inner}</div>`;
 }
 function asIsBuildEmptyHTML(build){
   const job=S.asIsBuildJob;
@@ -5388,6 +5942,12 @@ function asIsBuildEmptyHTML(build){
   // While research blocks the build, its reason is said once in the research
   // card and once beside the disabled button -- not a third time here.
   const text=build.available||build.research_blocked?`還沒有服務藍圖。會根據已確認 CJM、選取的 Solution、證據與編碼${adopted?'，並參考你採用的外部資料，':''}建立 SBP，完成後停在這裡供你檢視。`:(build.reason||'現在還不能產生服務藍圖。');
+  // cjm-builds-sbp：解方選擇流程在顧客旅程建立，這一站不畫建立鍵與落地研究卡片。
+  if(build.solution_selection||(S.journeyChannelMap||{}).solution_selection_model){
+    // fix-sbp-retry-and-cjm-enter：建立失敗時要能在這裡重試，不必回顧客旅程。
+    if(status||error)return `<section class="card">${status}${error}${error&&!status?'<p><button type="button" class="ghost" id="retry-as-is-build">重試</button></p>':''}</section>`;
+    return `<section class="card"><p class="empty" data-as-is-build-note>還沒有服務藍圖。回到顧客旅程按「建立藍圖」。</p><p><button type="button" class="ghost" id="back-to-journey">回到顧客旅程</button></p></section>`;
+  }
   return `<section class="card"><p class="empty" data-as-is-build-note>${esc(text)}</p>${status}${error}</section>${implementationResearchHTML()}`;
 }
 // pre-blueprint-implementation-research：建立 SBP 前可選的落地研究。每個已採用
@@ -5461,9 +6021,16 @@ function irReviewComplete(){
 }
 async function irPost(action,body){
   S.irVersion=(S.irVersion||0)+1;
-  const r=await fetch('/api/implementation-research/'+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run:S.cur,...body})});
+  const payload={run:S.cur,...body};
+  // 勾選、略過、審查是研究決定，帶身份；開始研究是啟動工作，只要回應屬於目前專案。
+  const send={
+    select:()=>decisionFetch('implementation-research','/api/implementation-research/select',payload),
+    skip:()=>decisionFetch('implementation-research','/api/implementation-research/skip',payload),
+    review:()=>decisionFetch('implementation-research','/api/implementation-research/review',payload),
+    start:()=>scopedPost('/api/implementation-research/start',payload)}[action];
+  const r=await send();
   const d=await r.json();
-  if(!r.ok||d.error)throw new Error(d.error||'沒有存到，請再試一次。');
+  if(!r.ok||d.error)throw new Error(isStaleBasis(d)?noSaveText(d.error):(d.error||'沒有存到，請再試一次。'));
   return d;
 }
 function irApply(d){
@@ -5526,15 +6093,35 @@ async function loadAsIsBuild(){
   if(!S.cur){S.asIsBuild=null;return;}
   // A research change made while this request was in flight wins over its answer.
   const irVersion=S.irVersion||0;
-  try{const d=await(await fetch('/api/as-is-build?run='+encodeURIComponent(S.cur))).json();S.asIsConfirmation=d&&d.confirmation||null;S.asIsFreshness=d&&d.freshness||null;
-    if((S.irVersion||0)===irVersion){S.asIsBuild=d&&d.build||null;S.implementationResearch=d&&d.implementation_research||null;S.irTicked=null;}}
-  catch(_){S.asIsBuild=null;S.asIsConfirmation=null;S.asIsFreshness=null;S.implementationResearch=null;}
+  try{const d=await scopedJSON('/api/as-is-build?run='+encodeURIComponent(S.cur));S.asIsConfirmation=d&&d.confirmation||null;S.asIsFreshness=d&&d.freshness||null;
+    if((S.irVersion||0)===irVersion){S.asIsBuild=d&&d.build||null;S.implementationResearch=d&&d.implementation_research||null;S.irTicked=null;}
+    S.externalResearch=d&&d.external_research||null;S.researchSearch=d&&d.research_search||null;}
+  catch(_){S.asIsBuild=null;S.asIsConfirmation=null;S.asIsFreshness=null;S.implementationResearch=null;S.externalResearch=null;S.researchSearch=null;}
+  S.asIsBuildLoadedRun=S.cur;
   if((S.implementationResearch||{}).state==='running'&&!S.poll){S.irBusy=true;irPoll();}
+}
+// solution-reconfirmation：上游還沒解決時，先前確認的藍圖可以看但不是目前的；解方重新確認之後，
+// 藍圖仍標成「在那之前建立」，直到研究者自己確認或重新產生。列印也帶同一句。
+function asIsUpstreamStatusText(c){
+  if(!c||!c.upstream)return '';
+  // 從沒確認過的草稿不能說成「依先前確認的⋯建立」。
+  const everConfirmed=c.state==='confirmed'||!!c.previously_confirmed;
+  if(c.upstream==='unresolved')return everConfirmed
+    ?'這份服務藍圖依先前確認的顧客旅程與解方建立。目前部分上游決定已變更，尚未重新確認。'
+    :'這份服務藍圖草稿還沒確認過；目前部分上游決定已變更、尚未重新確認，先解決之後才能確認。';
+  return '這份服務藍圖建立在你重新確認部分解方之前，藍圖本身還沒有重新確認。你可以確認目前這份，或依目前內容重新產生。';
+}
+function asIsUpstreamStatusHTML(c){
+  const reason=c.upstream==='unresolved'&&c.upstream_reason?`<p class="stage-runner-hint">${esc(c.upstream_reason)}</p>`:'';
+  return `<div class="status-line" role="status" data-as-is-upstream="${esc(c.upstream)}"><p>${esc(asIsUpstreamStatusText(c))}</p>${reason}</div>`;
 }
 function asIsConfirmationStatusHTML(){
   const c=S.asIsConfirmation;if(!c)return '';
   const error=S.asIsConfirmError?`<p class="warn" role="alert">${esc(S.asIsConfirmError)}</p>`:'';
   const journeyName=(S.journeyChannelMap||{}).solution_selection_model?'CJM':'顧客旅程';
+  if(c.upstream==='unresolved')return `${asIsUpstreamStatusHTML(c)}${error}`;
+  // 內容已更新的提示（保留／更新）在時，它就是重新產生的入口，這裡只留狀態句。
+  if(c.upstream==='reconsidered')return `${asIsUpstreamStatusHTML(c)}${asIsStale()?'':`<div class="actions"><button type="button" class="ghost" id="as-is-reconsidered-regenerate"${S.asIsBuildBusy?' disabled':''}>依目前內容重新產生服務藍圖</button></div>`}${error}`;
   if(c.downstream_eligible)return `<p class="status-line" role="status" data-as-is-confirmed>SBP 已確認。可以從「輸出」匯出服務藍圖。</p>${error}`;
   if(!c.journey_current)return `<p class="status-line" role="status" data-as-is-needs-confirmation>${journeyName}在確認後又改過，請先回到顧客旅程重新確認。</p>${error}`;
   return `<p class="status-line" role="status" data-as-is-needs-confirmation>${c.previously_confirmed?'確認之後又改過服務藍圖，需要重新確認。':'檢視並調整服務藍圖後，按「確認 SBP」。'}</p>${error}`;
@@ -5548,7 +6135,7 @@ async function confirmAsIs(){
   if(!S.cur||!c||S.asIsConfirmBusy)return;
   S.asIsConfirmBusy=true;S.asIsConfirmError=null;render();
   try{
-    const r=await fetch('/api/as-is/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run:S.cur,fingerprint:c.fingerprint})});
+    const r=await scopedPost('/api/as-is/confirm',{run:S.cur,fingerprint:c.fingerprint});
     const res=await r.json();
     if(!r.ok||res.error)throw new Error(res.error||'確認沒有存到');
     S.asIsConfirmation=res.confirmation;
@@ -5565,6 +6152,7 @@ function asIsStale(){return ((S.asIsFreshness||{}).state)==='stale';}
 function asIsFreshnessHTML(){
   const f=S.asIsFreshness;
   if(!f||f.state!=='stale')return '';
+  if(((S.asIsConfirmation||{}).upstream)==='unresolved')return '';
   const job=S.asIsBuildJob,running=S.asIsBuildBusy&&job&&job.state==='running';
   const error=S.asIsFreshnessError?`<p class="warn" role="alert">${esc(S.asIsFreshnessError)}</p>`:'';
   if(running)return `<section class="card as-is-freshness" data-as-is-stale>${processingIndicatorHTML(researcherPhase(job.phase,'正在重新產生服務藍圖'),'as-is-rebuild-progress',jobElapsedText())}</section>`;
@@ -5574,11 +6162,11 @@ function asIsFreshnessHTML(){
 async function retainAsIs(){
   S.asIsFreshnessError=null;
   try{
-    const r=await fetch('/api/sbp-basis/retain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run:S.cur})});
+    const r=await decisionFetch('blueprint','/api/sbp-basis/retain',{run:S.cur});
     const d=await r.json();
     if(!r.ok||d.error)throw new Error(d.error||'沒有記下來。');
     S.asIsFreshness=d.freshness;
-  }catch(error){S.asIsFreshnessError=researcherSafeError(error.message,'沒有記下來，請再試一次。');}
+  }catch(error){S.asIsFreshnessError=noSaveText(researcherSafeError(error.message,'沒有記下來，請再試一次。'));}
   render();
 }
 async function startAsIsBuild({regenerate=false}={}){
@@ -5901,7 +6489,8 @@ function isToBeReport(d){return (((d||S.report)||{}).meta||{}).blueprint_method=
 const TO_BE_FORMATION={
   evidence:{kind:'evidence',label:'研究證據',glyph:''},
   researcher:{kind:'researcher',label:'研究者決策',glyph:'◆'},
-  inference:{kind:'inference',label:'設計推演',glyph:'◇'},
+  // reduce-to-be-sbp-cognitive-load：AI 推斷改由整張卡的淡底虛線表達，卡面不再放 ◇。
+  inference:{kind:'inference',label:'設計推演',glyph:''},
 };
 function toBeFormation(node){
   const claims=(node&&node.claims)||[];
@@ -5915,25 +6504,66 @@ function toBeCardFaceHTML(node){
   return `${state?`<span class="to-be-state">${esc(state)}</span>`:''}${formation.glyph?`<span class="to-be-formation" title="${esc(formation.label)}" aria-label="${esc(formation.label)}">${formation.glyph}</span>`:''}`;
 }
 const TO_BE_UNCERTAINTY={bounded:'適用範圍有限定',uncertain:'還不確定能否套用',disputed:'來源之間有爭議'};
-// 依據在詳情最上面：形成方式、支撐對象（伺服器換好的名稱，不印編號）、必要性。
-// 外部參考是另一節——它補充「可以怎麼做」，不是這張卡的形成方式。
-function toBeBasisHTML(node){
-  const formation=toBeFormation(node);
-  const targets=(node.anchor_display||[]).map(anchor=>`<li>${esc(anchor.label||'')}</li>`).join('');
-  const basis=`<section class="inspector-section to-be-basis" data-to-be-basis><div class="sub">依據</div>
-    <p class="inspector-meta">形成方式</p><p>${esc(formation.label)}</p>
-    ${targets?`<p class="inspector-meta">支撐對象</p><ul>${targets}</ul>`:''}
-    ${node.necessity?`<p class="inspector-meta">必要性</p><p>${esc(node.necessity)}</p>`:''}</section>`;
-  const refs=(node.external_refs||[]).map(id=>(((S.report||{}).external_references)||[]).find(ref=>ref&&ref.id===id)).filter(Boolean);
-  if(!refs.length)return basis;
+// sbp-review-information-design：區塊與卡片詳情共用的不確定性說法。生成程式在模型沒給說明時
+// 填的兩句固定英文（research_policy.py）跟中文狀態意思相同，不再重複；其他說明照原文。
+const EXTERNAL_UNCERTAINTY_FALLBACKS=new Set(['Transferability to this service context has not been tested.','Transferability remains uncertain.']);
+function externalUncertaintyText(uncertainty){
+  const u=uncertainty||{},label=TO_BE_UNCERTAINTY[u.state]||'';
+  if(!label)return '';
+  const note=String(u.explanation||'').trim();
+  return note&&!EXTERNAL_UNCERTAINTY_FALLBACKS.has(note)?`${label}（${note}）`:label;
+}
+// reduce-to-be-sbp-cognitive-load（研究者 2026-10-16／10-17）：改善後藍圖的卡片詳情只留研究者看得懂、
+// 用得到的內容。形成方式、支撐對象、連到、推論三態都拿掉；AI 推斷卡保留「為什麼提出這項安排」，
+// 理由只取存檔文字（necessity，沒有才用推斷 claim 原文），經過 P1 的編號清理，不另外改寫或補造。
+// 外部參考：補充「別人怎麼做」，跟本案證據分開，不是這張卡的形成方式。
+function toBeExternalRefsHTML(node){
+  const refs=((node&&node.external_refs)||[]).map(id=>(((S.report||{}).external_references)||[]).find(ref=>ref&&ref.id===id)).filter(Boolean);
+  if(!refs.length)return '';
   const sourceLine=src=>`<p class="inspector-meta">${esc(src.title||'')}${src.publisher?`・${esc(src.publisher)}`:''}${src.url?`・<a href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.url)}</a>`:''}</p>`;
   const items=refs.map(ref=>{
     const uncertainty=ref.uncertainty||{};
     return `<li data-to-be-external-ref><p>${esc(ref.text||'')}</p>${(ref.supports||[]).map(sourceLine).join('')}
       ${ref.applicability_context?`<p class="inspector-meta">適用情境：${esc(ref.applicability_context)}</p>`:''}
-      ${uncertainty.state?`<p class="inspector-meta">不確定性：${esc(TO_BE_UNCERTAINTY[uncertainty.state]||'')}${uncertainty.explanation?`（${esc(uncertainty.explanation)}）`:''}</p>`:''}</li>`;
+      ${externalUncertaintyText(uncertainty)?`<p class="inspector-meta">不確定性：${esc(externalUncertaintyText(uncertainty))}</p>`:''}</li>`;
   }).join('');
-  return basis+`<section class="inspector-section to-be-external" data-to-be-external><div class="sub">外部參考</div><ul>${items}</ul></section>`;
+  return `<section class="inspector-section to-be-external" data-to-be-external><div class="sub">外部參考</div><ul>${items}</ul></section>`;
+}
+function isInferredClaim(cl){return !!cl&&(cl.source_level==='inference'||!!cl.inferred);}
+function toBeScrub(text){return withoutEvidenceIds(text||'',reportIdLookup(S.report));}
+// AI 推斷卡：「AI 推斷」→ 說明 → 為什麼提出這項安排 → 推論身分句。證據卡與研究者決策卡只有說明。
+function toBeCardIntroHTML(node,description){
+  const desc=description?`<p class="node-description">${esc(toBeScrub(description))}</p>`:'';
+  if(toBeFormation(node)!==TO_BE_FORMATION.inference)return desc;
+  const reasons=node.necessity?[node.necessity]:(node.claims||[]).filter(isInferredClaim).map(cl=>cl.text).filter(Boolean);
+  const reason=reasons.length?`<p class="to-be-reason"><b>為什麼提出這項安排：</b>${reasons.map(text=>esc(toBeScrub(text))).join(' ')}</p>`:'';
+  return `<p class="to-be-inference-tag"><span class="tag t-inf">AI 推論</span></p>${desc}${reason}
+    <p class="to-be-inference-note">資料沒有直接提到這項安排，這是 AI 提出的設計推論。</p>`;
+}
+// 證據卡上也有 AI 推斷的 claim 時，照原文列出——拿掉三態區塊不能讓它們跟著消失。
+function toBeInferredPartHTML(node){
+  if(toBeFormation(node)===TO_BE_FORMATION.inference)return '';
+  const texts=(node.claims||[]).filter(isInferredClaim).map(cl=>toBeScrub(cl.text)).filter(Boolean);
+  return texts.length?`<div class="to-be-inferred-part"><div class="sub">AI 推論的部分</div><ul class="inference-claims">${texts.map(text=>`<li>${esc(text)}</li>`).join('')}</ul></div>`:'';
+}
+// AI 推斷的前後關係：每條一行，兩張卡的名稱＋AI 寫的關係說明；有證據時附原話與出處行。不給判斷按鈕。
+function toBeInferredRelationsHTML(relations,shownQuotes){
+  const items=(relations||[]).map(rel=>{
+    const pair=`「${nodeName(rel.from)}」→「${nodeName(rel.to)}」`;
+    const line=rel.note?`${pair}：${toBeScrub(rel.note)}`:`${pair}（${relationTypeLabel(rel.type)}）`;
+    // 這張卡的原話已經印過同一段，就不再印一次（完全相同才算）。
+    const evidence=(rel.evidence||[]).filter(e=>!(shownQuotes&&e&&evidenceAlreadyShown(e.text,shownQuotes)));
+    return `<li><p>${esc(line)}</p>${relationEvidenceHTML(evidence)}</li>`;
+  }).join('');
+  return items?`<div class="to-be-inferred-relations"><div class="sub">AI 推論的關係</div><ul class="inference-claims">${items}</ul></div>`:'';
+}
+// 同一句只印一次：claim 摘要跟卡名、卡片說明或它自己的原話完全相同（去頭尾空白與句尾「。」）
+// 就不印摘要。只決定摘要，出處行照舊。
+function toBeClaimSummary(cl,title,description){
+  const norm=text=>String(text||'').trim().replace(/。$/,'');
+  const summary=norm(cl&&cl.text);
+  if(!summary)return '';
+  return [title,description,cl&&cl.source_text].some(other=>norm(other)===summary)?'':cl.text;
 }
 // fix-walkthrough-ui-feedback：卡片上標 F／W／D（研究者 2026-09-27）；「有人講過」是預設，不另外標。
 function asIsMarkerBadgesHTML(node){
@@ -5945,8 +6575,8 @@ function asIsGridHTML(steps,nodes,pendingCardIds,gridId){
   const toBe=isToBeReport();
   const card=node=>{
     const source=asIsCardSource(node);
-    // 改善後藍圖不加 is-<來源> class：推論不再用虛線外框標，只用卡面那個符號。
-    const sourceClass=toBe?'':` is-${source.kind}`;
+    // 改善後藍圖只有 AI 推斷卡帶 is-to-be-inference（淡底虛線）；研究證據、研究者決策不加來源 class。
+    const sourceClass=toBe?(toBeFormation(node)===TO_BE_FORMATION.inference?' is-to-be-inference':''):` is-${source.kind}`;
     const face=toBe?toBeCardFaceHTML(node):(source.kind==='evidence'?'':`<span>${esc(source.label)}</span>`);
     return `<button type="button" class="as-is-card ${LAYER_COLOR_CLASS[node.layer]||''}${sourceClass}${S.asIsJumpCard===node.id?' is-jump-target':''}" data-node="${esc(node.id)}" data-cell="${node.step}|${esc(node.layer)}" aria-label="${esc(node.label||'未命名服務動作')}，${toBe?'查看依據':'查看證據'}">
       ${asIsMarkerBadgesHTML(node)}<b>${pendingCardIds.has(node.id)?'⚑ ':''}${esc(node.label||'')}</b>${face}</button>`;
@@ -5997,19 +6627,70 @@ function asIsBlueprintHTML(d,steps){
   return `<section class="as-is-blueprint">
     <div class="as-is-blueprint-heading"><h2>服務藍圖</h2>
       ${isToBeReport(d)
-        ?'<span class="as-is-legend to-be-legend"><span class="to-be-legend-group"><b>來源</b><span>◇ 設計推演</span><span>◆ 研究者決策</span></span><span class="to-be-legend-group"><b>待處理</b><span>⚑ 需要確認</span></span></span>'
+        ?'<span class="as-is-legend to-be-legend"><span class="to-be-legend-group"><b>來源</b><span><span class="as-is-legend-card is-to-be-inference" aria-hidden="true"></span>AI 推論</span><span>◆ 研究者決策</span></span><span class="to-be-legend-group"><b>待處理</b><span>⚑ 需要確認</span></span></span>'
         :'<span class="as-is-legend"><span class="as-is-legend-solid">有人講過</span><span class="as-is-legend-dashed">AI 推的</span><span>⚑ 待確認</span></span>'}${altToggle}</div>
     ${asIsGridHTML(steps,primaryNodes,pendingIds,'as-is-grid-primary')}
     ${alt&&S.asIsAltOpen?asIsGridHTML(altSteps,alt.nodes||[],pendingIds,'as-is-grid-alternate'):''}
   </section>`;
 }
+// built-in-implementation-research／external-research-honest-status（研究者 2026-10-15）：
+// 建立前研究找到的參考資料依採用解方分組、標出藍圖有沒有引用；沒有參考時依實際研究紀錄說明原因。
+const EXTERNAL_RESEARCH_NOTE={
+  unsupported:'這次未執行外部研究：目前的 AI 執行方式不支援網路搜尋。',
+  failed:'外部研究未完成，這次藍圖未新增外部參考。',
+  not_run:'外部研究未完成，這次藍圖未新增外部參考。',
+  no_admissible:'已完成搜尋，但沒有找到符合來源標準的資料。',
+};
+function blueprintReferencesHTML(d){
+  if(!isToBeReport(d))return '';
+  const refs=((d||{}).external_references||[]);
+  if(!refs.length){
+    const note=EXTERNAL_RESEARCH_NOTE[(S.externalResearch||{}).state];
+    return note?`<section class="as-is-pending" data-blueprint-references><h2>外部參考</h2><p class="empty">${esc(note)}</p></section>`:'';
+  }
+  const cited=new Set(((d||{}).nodes||[]).flatMap(n=>n.external_refs||[]));
+  const scenario=(((d||{}).journey||{}).scenarios||[]).find(s=>s.id===((d||{}).journey||{}).primary_scenario)||{};
+  const solutionText={},solutionOrder={};
+  (scenario.steps||[]).forEach(step=>(step.solution_candidates||[]).forEach(c=>{if(c&&c.id&&!(c.id in solutionOrder)){solutionText[c.id]=c.text||'';solutionOrder[c.id]=Object.keys(solutionOrder).length;}}));
+  // sbp-review-information-design（2026-10-18 走查 #30、2026-10-19 研究者裁定）：一則一卡，
+  // 依序是外部參考案例→可借鏡的機制→適用情境→不確定性→與目前解方的關聯；不再以解方敘述當大標題。
+  const rank=ref=>{const orders=(ref.related_solution_refs||[]).map(id=>solutionOrder[id]).filter(n=>n!==undefined);return orders.length?Math.min(...orders):Infinity;};
+  const sourceHTML=src=>`${src.url?`<a href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.title||src.url)}</a>`:esc(src.title||'')}${src.publisher?`・${esc(src.publisher)}`:''}`;
+  const row=(label,value)=>value?`<dt>${label}</dt><dd>${value}</dd>`:'';
+  const cards=refs.map((ref,index)=>({ref,index})).sort((a,b)=>rank(a.ref)-rank(b.ref)||a.index-b.index).map(({ref})=>{
+    const sources=(ref.supports||[]).map(sourceHTML).filter(Boolean);
+    const limits=(ref.limits||[]).map(src=>esc((src&&(src.title||src.url))||'')).filter(Boolean);
+    const related=(ref.related_solution_refs||[]).map(id=>conciseText(solutionText[id]||'已採用的解方',40));
+    const context=[ref.applicability_context?esc(ref.applicability_context):'',limits.length?`限制來源：${limits.join('、')}`:''].filter(Boolean).join('<br>');
+    return `<article class="reference-card" data-reference-card><p class="reference-kind">外部參考案例</p><h3>${sources.join('<br>')||'未記錄來源'}</h3><dl>
+      ${row('可借鏡的機制',esc(ref.text||''))}${row('適用情境',context)}${row('不確定性',esc(externalUncertaintyText(ref.uncertainty)))}
+      ${row('與目前解方的關聯',`${related.length?related.map(esc).join('、'):'未對應到特定解方'}<span class="inspector-meta">・${cited.has(ref.id)?'藍圖有引用':'藍圖未引用'}</span>`)}</dl></article>`;
+  }).join('');
+  return `<section class="as-is-pending" data-blueprint-references><h2>外部參考</h2><p class="reference-role">其他服務的做法，只是設計參考，不是本案受訪者的經驗證據，也不證明解方一定可行。</p>${cards}</section>`;
+}
+// reduce-to-be-sbp-cognitive-load（研究者 2026-10-16）：改善後藍圖的待確認分兩組，組標題下講一次研究者要做什麼；
+// 沒有項目的組不出現。舊藍圖照原本一條清單。
+const PENDING_GROUPS=[
+  {id:'contradiction',title:'說法不一致',todo:'查閱雙方證據，判斷藍圖要採用哪一個說法。'},
+  {id:'uncarried',title:'解方還沒落進藍圖',todo:'依每一項的原因處理。'},
+];
 function asIsPendingListHTML(d){
   const items=buildPendingConfirmationList(d);
+  // 改善後藍圖的原因與處理方向各占一行，不跟主題擠成一句。
+  const rows=list=>list.map(item=>`<div class="as-is-pending-row${S.asIsJumpRow===item.id?' is-highlighted':''}" data-pending-item="${esc(item.id)}">
+        <span>${esc(item.topic)}${item.next
+          ?`${item.detail?`<span class="pending-reason">${esc(item.detail)}</span>`:''}<span class="pending-next">處理方式：${esc(item.next)}</span>`
+          :item.detail?` ${esc(item.detail)}`:''}</span>
+        ${item.cardId?`<button type="button" class="as-is-pending-jump pending-jump" data-jump-card="${esc(item.cardId)}">查看卡片 ›</button>`:''}</div>`).join('');
+  const body=!items.length?'<p class="empty">目前沒有待確認事項。</p>'
+    :isToBeReport(d)?PENDING_GROUPS.map(group=>{
+        const list=items.filter(item=>item.group===group.id);
+        return list.length?`<div class="pending-group" data-pending-group="${group.id}"><h3>${group.title}</h3><p class="pending-todo">${group.todo}</p>${rows(list)}</div>`:'';
+      }).join('')
+    :rows(items);
   return `<section class="as-is-pending"><h2>待確認清單</h2>
     <div class="pending-list" id="pending-confirmation-list" tabindex="-1">
-      ${items.length?items.map(item=>`<div class="as-is-pending-row${S.asIsJumpRow===item.id?' is-highlighted':''}" data-pending-item="${esc(item.id)}">
-        <span>${esc(item.topic)}${item.detail?` ${esc(item.detail)}`:''}</span>
-        ${item.cardId?`<button type="button" class="as-is-pending-jump pending-jump" data-jump-card="${esc(item.cardId)}">查看卡片 ›</button>`:''}</div>`).join(''):'<p class="empty">目前沒有待確認事項。</p>'}
+      ${body}
     </div></section>`;
 }
 function renderReport(d){
@@ -6126,7 +6807,7 @@ ${blueprintLegendItemsHTML()}
   }).join('')}</div></section>`;
   const viewTabs=`<section class="card viewtabs"><button data-review-tab="blueprint" aria-pressed="true">服務藍圖</button><button data-review-tab="diagram">關係全圖</button><button data-review-tab="journey">顧客歷程</button></section>`;
 
-  if(d.format==='action-graph')return asIsBlueprintHTML(d,steps)+asIsPendingListHTML(d)+asIsBaselineGoalHTML();
+  if(d.format==='action-graph')return asIsBlueprintHTML(d,steps)+asIsPendingListHTML(d)+blueprintReferencesHTML(d)+asIsBaselineGoalHTML();
   const pendingList=pendingConfirmationListHTML(d);
 
   // 「研究者確認」整塊的內容是：一個標題、一個上面待確認清單已經寫過的數字、以及一句
@@ -6224,7 +6905,15 @@ function computeConfirmationState(d){
 // 編號對研究者沒有意義（他看不到 E-049 是哪一則），但緊接著的括號正是他要的
 // 「誰說的」。所以把「編號（描述）」收斂成「描述」；萬一沒有括號可用，退成一個
 // 中性名詞，句子才不會缺主詞。展開的原文區塊仍可保留編號當定位用。
-function withoutEvidenceIds(text){
+function withoutEvidenceIds(text,lookup){
+  // readable-source-location：第二個參數可以是 P0 的「編號→說話者」函式，也可以是
+  // reportIdLookup 回傳的 {speaker,solution}。
+  const speakerOf=typeof lookup==='function'?lookup:(lookup&&lookup.speaker);
+  const solutionOf=lookup&&typeof lookup==='object'&&lookup.solution;
+  // 藍圖節點編號（P-lookup、A-release）只換成畫面上同一份報告裡那張卡的名稱；
+  // 查不到名稱的照原樣留著，不猜、不刪。
+  const nodeIds=(lookup&&typeof lookup==='object'&&lookup.nodeIds)||[];
+  const nodeOf=lookup&&typeof lookup==='object'&&lookup.node;
   // 多字元前綴（AXIS/CAT/HMW/JOB/PERSONA/QUADRANT/SRC/STEP）要跟
   // tools/internal_id_patterns.py 的 MULTICHAR_ID_PREFIXES 保持一致——
   // test_internal_id_patterns.py 會逐一核對這份清單真的出現在這個檔案裡，
@@ -6234,13 +6923,57 @@ function withoutEvidenceIds(text){
   // `function X(){...}` 區塊丟進獨立的 Node 執行環境驗證，放在外面會讓
   // 這個常數在那些抽出來的區塊裡變成未定義。
   const EVIDENCE_ID_SHAPE='(?:E|AXIS|CAT|HMW|JOB|JTBD|PERSONA|PROP|QUADRANT|SEG|SRC|STEP)-\\d+';
+  // 2026-10-16 P0：模型常把幾個編號並列後才接一個括號（「E-034、E-037（受訪者甲）」），
+  // 括號講的是整串的說話者；也常寫「沛欣在 E-343、E-344 說」，那裡的編號是
+  // 「哪一段話」的定位，不是主詞。以前逐個換成「某位受訪者」，句子變成
+  // 「沛欣在某位受訪者、某位受訪者說」。整串一起處理：有括號取括號，
+  // 「在＋編號」是定位詞組，整段拿掉；剩下的光編號查得到說話者就用說話者，
+  // 查不到退成「某則資料」——證據不一定是受訪者說的（也有走查記錄）。
+  const ID_LIST=EVIDENCE_ID_SHAPE+'(?:\\s*[、,，]\\s*'+EVIDENCE_ID_SHAPE+')*';
+  const E_LIST='\\bE-\\d+(?:\\s*[、,，]\\s*E-\\d+)*\\b';
+  // 2026-10-16 P1：同一張卡下方已經列出那條矛盾，「（見 C-003）」只是指向語，整段拿掉。
+  // 解方編號（step-1-2-SOL-1）換成解方本身的名稱；畫面上查不到名稱就說「已採用的解方」。
+  // 最後，伺服器 ID_SHAPE 的一到兩字母前綴（C-003、A-12…）換成「這一項」。
+  const CONFLICT='C-\\d+(?:\\s*[、,，]\\s*C-\\d+)*';
   return String(text||'')
-    .replace(new RegExp(EVIDENCE_ID_SHAPE+'\\s*（([^）]*)）','g'),'$1')
-    .replace(new RegExp(EVIDENCE_ID_SHAPE+'\\s*\\(([^)]*)\\)','g'),'$1')
-    // E- 特別退成「某位受訪者」（證據永遠是某個人說的話）；其餘前綴不是
-    // 人，退成中性的「這一項」，不假裝知道是誰說的。
-    .replace(/\bE-\d+\b/g,'某位受訪者')
-    .replace(new RegExp('\\b'+EVIDENCE_ID_SHAPE+'\\b','g'),'這一項');
+    .replace(new RegExp('\\s*[（(]\\s*見\\s*'+CONFLICT+'\\s*[）)]','g'),'')
+    .replace(new RegExp('\\s*[，、,]\\s*見\\s*'+CONFLICT,'g'),'')
+    .replace(/\b[a-z]+(?:-\d+)+-SOL-\d+\b/g,id=>{
+      const name=String((solutionOf&&solutionOf(id))||'').trim().replace(/。$/,'');
+      return name?`解方「${name}」`:'已採用的解方';
+    })
+    .replace(nodeIds.length?new RegExp('(?<![A-Za-z0-9-])(?:'+nodeIds.map(id=>id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')(?![A-Za-z0-9-])','g'):/(?!)/g,id=>`「${nodeOf(id)}」`)
+    .replace(new RegExp(ID_LIST+'\\s*（([^）]*)）','g'),'$1')
+    .replace(new RegExp(ID_LIST+'\\s*\\(([^)]*)\\)','g'),'$1')
+    .replace(new RegExp('在\\s*'+ID_LIST+'\\s*(?:中|裡)?\\s*','g'),'')
+    .replace(new RegExp(E_LIST,'g'),list=>{
+      const names=[...new Set(list.match(/E-\d+/g).map(id=>(speakerOf&&speakerOf(id))||'某則資料'))];
+      return names.join('、');
+    })
+    .replace(new RegExp('\\b'+EVIDENCE_ID_SHAPE+'\\b','g'),'這一項')
+    .replace(/\b[A-Z]{1,2}-\d+\b/g,'這一項');
+}
+// 證據編號→說話者、解方編號→解方名稱，用畫面已經拿到的資料（claim 的 evidence_ref、
+// 矛盾的 evidence、卡片的 anchor_display），不另外向伺服器要資料。說話者只取存檔的
+// participant_or_role／role，不從任何 AI 描述推定。
+function reportIdLookup(report){
+  const names=new Map(),solutions=new Map(),nodes=new Map();
+  const add=(id,e)=>{
+    const name=((e&&e.provenance)||{}).participant_or_role||(e&&e.role)||'';
+    if(id&&name&&!names.has(id))names.set(id,name);
+  };
+  ((report&&report.conflicts)||[]).forEach(c=>(c.evidence||[]).forEach(e=>add(e.id,e)));
+  ((report&&report.nodes)||[]).forEach(n=>{
+    (n.claims||[]).forEach(cl=>add(cl.evidence_ref,cl));
+    const label=String(n.label||'').trim();
+    if(n.id&&label&&!nodes.has(n.id))nodes.set(n.id,label);
+    (n.anchor_display||[]).forEach(a=>{
+      if(a&&a.kind==='selected_solution'&&a.ref&&a.label&&!/^（找不到/.test(a.label)&&!solutions.has(a.ref))solutions.set(a.ref,a.label);
+    });
+  });
+  // 最長的編號先比對，A-re 不會吃掉 A-release 的前半。
+  const nodeIds=[...nodes.keys()].sort((a,b)=>b.length-a.length);
+  return {speaker:id=>names.get(id)||'',solution:id=>solutions.get(id)||'',node:id=>nodes.get(id)||'',nodeIds};
 }
 function conciseText(text,limit=88){
   const value=String(text||'').replace(/\s+/g,' ').trim();
@@ -6251,11 +6984,25 @@ function conciseText(text,limit=88){
 // 認不出說話者時才退回位置編號。用的人物描述跟出處欄位同一份，同一個人到處同名。
 function conflictSpeaker(e,index){
   const provenance=(e&&e.provenance)||{};
-  return provenance.participant_or_role||(e&&e.role)||`說法${index===0?'一':'二'}`;
+  return provenance.participant_or_role||(e&&e.role)||`說法${'一二三四五六七八九十'[index]||index+1}`;
 }
+// 2026-10-16 P0：一條矛盾可以引用不只兩則證據（例如同一位受訪者兩則、
+// 服務人員一則、另一位受訪者一則）。以前只看前兩則，畫面變成「甲 ⇄ 甲」，
+// 真正對立的另一方完全沒出現。改成列出全部不同的說話者；同一人前後說法不同
+// 也照實講。同名不等於同一人：存檔常只記「受訪者」，所以要同名而且出自
+// 同一份文件才算同一人。
 function conflictSpeakerPair(evidence){
-  const a=conflictSpeaker(evidence[0]||{},0),b=conflictSpeaker(evidence[1]||{},1);
-  return `${a}　⇄　${b}`;
+  const people=new Map();
+  (evidence||[]).forEach((e,i)=>{
+    const name=conflictSpeaker(e||{},i);
+    const key=name+'\u0000'+(((e||{}).provenance||{}).document_title||(e||{}).source||'');
+    if(!people.has(key))people.set(key,name);
+  });
+  const names=[...people.values()];
+  if(!names.length)return '';
+  if(names.length===1)return `${names[0]}（同一人前後說法不同）`;
+  if(names.length===2)return `${names[0]}　⇄　${names[1]}`;
+  return '牽涉：'+names.join('、');
 }
 // 說法一／說法二底下那一行要回答「這是誰說的」。原本第一順位取 document_title，
 // 那是檔案路徑；受訪者描述被排到第二順位、實務上永遠不會被選到。順序對調，
@@ -6296,6 +7043,9 @@ function buildPendingConfirmationList(d){
   const {conflicts,unheard}=computeJudgment(d);
   const nodes=d.nodes||[];
   const items=[];
+  // reduce-to-be-sbp-cognitive-load（研究者 2026-10-16）：改善後藍圖只留兩組——說法不一致、解方還沒落進藍圖；
+  // 後者的兩種原因各自成項、各有處理方向（一個回顧客旅程改，一個在藍圖補）。舊藍圖照原本四類、不分組。
+  const toBe=isToBeReport(d);
   // 待確認清單原本用角色名或原始矛盾描述當主題，看不出是畫布上哪一張卡片；
   // 找得到對應卡片時，主題改成點名那張卡片的實際名稱，使用者不用先點開才
   // 知道要跳去哪裡。
@@ -6303,8 +7053,8 @@ function buildPendingConfirmationList(d){
     const card=nodesMatchingConflict(c,nodes)[0];
     const topic=card&&card.label
       ?`說法不一致：「${card.label}」`
-      :'說法不一致：'+conciseText(withoutEvidenceIds(c.description),40);
-    items.push({id:'conflict-'+(c.id||i),kind:'contradiction',topic,cardId:card?card.id:null});
+      :'說法不一致：'+conciseText(withoutEvidenceIds(c.description,reportIdLookup({conflicts:[c]})),40);
+    items.push({id:'conflict-'+(c.id||i),kind:'contradiction',topic,cardId:card?card.id:null,...(toBe?{group:'contradiction'}:{})});
   });
   // spec「The review screen SHALL summarise attribution coverage and name unheard
   // parties」要求每個角色都要講出「他背了幾個動作」跟「現在是誰在替他發言」——
@@ -6312,7 +7062,7 @@ function buildPendingConfirmationList(d){
   //
   // 順序照伺服器給的來，不照動作數重排：同一條 spec 有 scenario「No ranking」明文
   // 禁止排序、評分、或宣稱哪一個最重要。講清楚各自背了多少，讓研究者自己排。
-  unheard.forEach((u,i)=>{
+  if(!toBe)unheard.forEach((u,i)=>{
     const card=nodes.find(n=>n.actor===u.actor);
     const topic=card&&card.label
       ?`轉述內容：「${card.label}」`
@@ -6330,7 +7080,16 @@ function buildPendingConfirmationList(d){
   (d.topology_flags||[]).forEach((flag,i)=>{
     const where=flag.step?`（${flag.step}）`:'';
     items.push({id:'topology-'+i,kind:'topology',topic:`需要調整顧客走法：${conciseText(flag.solution||'已採用的解方',40)}${where}`,
-      detail:flag.reason||'',cardId:null});
+      detail:flag.reason||'',cardId:null,...(toBe?{group:'uncarried',next:'回顧客旅程修改相關步驟。'}:{})});
+  });
+  // to-be-solution-carry-through：程式依錨點算出沒被承接的採用解方。只提示，不擋確認，也不補卡片。
+  (d.uncarried_solutions||[]).forEach((item,i)=>{
+    const where=item.step?`（${item.step}）`:'';
+    items.push(toBe
+      ?{id:'uncarried-'+i,kind:'uncarried',group:'uncarried',topic:`沒有對應的服務機制：${conciseText(item.solution||'已採用的解方',40)}${where}`,
+        detail:'',next:'在服務藍圖補上所需的服務安排。',cardId:null}
+      :{id:'uncarried-'+i,kind:'uncarried',topic:`這個解方沒有對應的服務機制：${conciseText(item.solution||'已採用的解方',40)}${where}`,
+        detail:'',cardId:null});
   });
   return items;
 }
@@ -7347,11 +8106,13 @@ async function saveReviewedVersion(){
 // 現在全部走同一支。
 function provenanceHTML(source){
   const p=source&&source.provenance;
-  if(!p)return `<p class="loc">${esc(source&&source.source||'來源資訊不完整')}${source&&source.source_locator?'<br>'+esc(source.source_locator):''}</p>`;
-  const place=[p.section,p.page?`第 ${p.page} 頁`:'',p.paragraph?`第 ${p.paragraph} 段`:'',p.locator].filter(Boolean).join('｜');
+  // 2026-10-16 readable-source-location：關著是「誰・位置」，點開才看到檔名（不帶資料夾）
+  // 與存檔的原始 locator；section／頁／段有存才列，沒有就不補。
+  if(!p)return `<div class="loc">${sourceLineHTML({locator:source&&source.source_locator,source:source&&source.source,incomplete:true})}</div>`;
+  const place=[p.section,p.page?`第 ${p.page} 頁`:'',p.paragraph?`第 ${p.paragraph} 段`:''].filter(Boolean).join('｜');
   const who=p.participant_or_role||'';
-  return `${who?`<div class="who">${esc(who)}</div>`:''}
-    ${place?`<p class="loc">${esc(place)}</p>`:''}${(p.incomplete||(!who&&!place))?'<p class="loc">來源資訊不完整</p>':''}`;
+  const file=p.incomplete?p.source_file:(p.document_title||p.source_file);
+  return `<div class="loc">${sourceLineHTML({who,place,locator:p.locator,source:file,incomplete:p.incomplete||(!who&&!place&&!readableLocator(p.locator))})}</div>`;
 }
 // 一則證據＝一個有邊界的區塊：先講摘要（AI 的一句判讀），原話收在點開才看到的
 // 區塊裡（淺黃底，一眼看得出是原始材料不是判讀），出處小字收尾，然後一條分隔線。
@@ -7374,8 +8135,9 @@ function relatedDataDetails(text,open,question){
 function relationEvidenceHTML(list){
   return (list||[]).filter(e=>e&&e.text).map(e=>{
     const p=e.provenance||{};
-    const meta=[p.participant_or_role||e.role,p.locator||e.locator].filter(Boolean).join('・');
-    return `<div class="evidence-item">${e.question_context?`<p class="evidence-question">${esc(e.question_context)}（訪員）</p>`:''}<blockquote>${esc(e.text)}</blockquote><p class="loc">${esc(meta||'來源資訊不完整')}</p></div>`;
+    const who=p.participant_or_role||e.role||'',locator=p.locator||e.locator||'';
+    const file=p.incomplete?p.source_file:(p.document_title||p.source_file||e.source);
+    return `<div class="evidence-item">${e.question_context?`<p class="evidence-question">${esc(e.question_context)}（訪員）</p>`:''}<blockquote>${esc(e.text)}</blockquote><div class="loc">${sourceLineHTML({who,locator,source:file,incomplete:!who&&!readableLocator(locator)})}</div></div>`;
   }).join('');
 }
 // 完全相同的文字才算同一段；不比相似、不看措辭，差一個標點就兩邊都印。
@@ -7482,7 +8244,7 @@ function popup(step,layer,nodeId,invoker=null){
       evidence?'':'沒有找到能直接證明這個先後順序的段落。'
     ].filter(Boolean);
     return inferenceDecisionHTML({
-      heading:'AI 推斷的前後關係',target:'relation',id:rel.id||'',decision:rel.inference_review,
+      heading:'AI 推論的前後關係',target:'relation',id:rel.id||'',decision:rel.inference_review,
       body:`<p class="inference-statement">${esc(statement)}</p>`,
       question:'這個關係合理嗎？',evidence,reasoning});
   };
@@ -7498,13 +8260,13 @@ function popup(step,layer,nodeId,invoker=null){
   // 這條矛盾被報出來要防的事。
   const conflictHTML=cft=>{
     const evidence=cft.evidence||[];
-    const accounts=[0,1].map(i=>{
-      const text=(evidence[i]||{}).text;
-      return text?`${conflictSpeaker(evidence[i]||{},i)}：${text}`:'';
+    const accounts=evidence.map((e,i)=>{
+      const text=(e||{}).text;
+      return text?`${conflictSpeaker(e||{},i)}：${text}`:'';
     }).filter(Boolean).join('\n\n');
     return `<div class="sub">說法對不上</div>
       <p class="conflict-parties">${esc(conflictSpeakerPair(evidence))}</p>
-      ${evidenceBlock({summary:withoutEvidenceIds(cft.description),quote:accounts,related:true})}
+      ${evidenceBlock({summary:withoutEvidenceIds(cft.description,reportIdLookup({conflicts:[cft]})),quote:accounts,related:true})}
       <p class="conflict-account"><b>需要確認：</b>${esc(cft.review_question||'請確認實際採用哪一個說法，並據此修正藍圖。')}</p>`;
   };
   const relatedConflictsHTML=relatedConflicts.map(conflictHTML).join('');
@@ -7516,8 +8278,8 @@ function popup(step,layer,nodeId,invoker=null){
   // 不提供這個按鈕）。
   const inferredClaims=claims.filter(cl=>cl.source_level==='inference'||cl.inferred);
   const nodeDecisionHTML=inferenceFlagNode&&inferredClaims.length?inferenceDecisionHTML({
-    heading:'AI 推斷的內容',target:'node',id:inferenceFlagNode.id,decision:inferenceFlagNode.inference_review,
-    body:`<ul class="inference-claims">${inferredClaims.map(cl=>`<li>${esc(withoutEvidenceIds(cl.text||''))}</li>`).join('')}</ul>`,
+    heading:'AI 推論的內容',target:'node',id:inferenceFlagNode.id,decision:inferenceFlagNode.inference_review,
+    body:`<ul class="inference-claims">${inferredClaims.map(cl=>`<li>${esc(withoutEvidenceIds(cl.text||'',reportIdLookup(S.report)))}</li>`).join('')}</ul>`,
     question:'這個推斷合理嗎？',evidence:'',
     reasoning:['資料沒有直接說明，這是依現有資料推出、解釋這個互動所需的最少內容。']}):'';
   // distinguish-planned-from-observed-actions：計畫節點的標題把狀態、生效
@@ -7536,21 +8298,43 @@ function popup(step,layer,nodeId,invoker=null){
   // 用卡片自己的名字，內文那個重複的小標題一併移除。
   const panelTitle=isPlanned?plannedTitle:title;
   const toBe=!!node&&isToBeReport();
-  const sourceLabel=node?(toBe?toBeFormation(node).label:asIsCardSource(node).label):'';
+  if(toBe){
+    // reduce-to-be-sbp-cognitive-load：改善後藍圖的詳情另走這一段，舊藍圖下面那段完全不變。
+    const evidenceClaims=claims.filter(cl=>!isInferredClaim(cl));
+    const toBeClaimHTML=cl=>cl.source_level==='researcher'?claimHTML(cl):evidenceBlock({
+      summary:toBeClaimSummary(cl,title,description),quote:cl.source_text,source:provenanceHTML(cl),related:true,question:cl.question_context});
+    const shownQuotes=new Set(evidenceClaims.map(cl=>cl.source_text).filter(Boolean));
+    const empty=!description&&!claims.length&&!markers.length&&!inferenceRelations.length&&!relatedConflicts.length;
+    const toBeContent=`<p class="inspector-meta">${esc(layer)}・步驟 ${step}</p>
+      <section class="inspector-section">
+      ${toBeCardIntroHTML(node,description)}
+      ${markerNoteHTML}
+      ${echoedMarkerReasonHTML}
+      ${relatedConflictsHTML}
+      ${evidenceClaims.map(toBeClaimHTML).join('')}
+      ${toBeInferredPartHTML(node)}
+      ${standaloneMarkers.map(markerHTML).join('')}
+      ${toBeInferredRelationsHTML(inferenceRelations,shownQuotes)}
+      ${empty?'<p class="empty">沒有找到支持這張卡片的證據。</p>':''}</section>
+      ${toBeExternalRefsHTML(node)}
+      <div class="actions"><button type="button" class="ghost" id="as-is-card-close">關閉</button></div>`;
+    openInspector({kind:'blueprint-cell',id:nodeId,title:panelTitle,relatedNodeIds:[nodeId]},toBeContent,invoker);
+    const closeToBe=$('#as-is-card-close');if(closeToBe)closeToBe.onclick=()=>closeInspector();
+    return;
+  }
+  const sourceLabel=node?asIsCardSource(node).label:'';
   const linkedTo=relatedRelations.map(rel=>{
     const tag=id=>{
       const other=(S.report.nodes||[]).find(n=>n.id===id);if(!other)return '';
-      if(toBe){const formation=toBeFormation(other);return `${other.label}${formation.kind==='inference'?'（設計推演）':''}`;}
       return `${other.label}${asIsCardSource(other).kind==='inference'?'（AI 推的）':''}`;
     };
     return `${tag(rel.from)} → ${tag(rel.to)}`;
   }).filter(Boolean);
   const content=`<p class="inspector-meta">${esc(layer)}・步驟 ${step}${sourceLabel?`・${esc(sourceLabel)}`:''}</p>
-    ${toBe?toBeBasisHTML(node):''}
     ${nodeDecisionHTML||inferenceRelationsHTML?`<section class="inspector-section inference-decisions">${nodeDecisionHTML}${inferenceRelationsHTML}</section>`:''}
     <section class="inspector-section">
-    ${(nodeDecisionHTML||inferenceRelationsHTML)&&(claims.length>inferredClaims.length||standaloneMarkers.length||relatedConflicts.length)?`<div class="sub">${toBe?'相關資料':'依據'}</div>`:''}
-    ${(!isPlanned&&description)?`<p class="node-description">${esc(withoutEvidenceIds(description))}</p>`:''}
+    ${(nodeDecisionHTML||inferenceRelationsHTML)&&(claims.length>inferredClaims.length||standaloneMarkers.length||relatedConflicts.length)?'<div class="sub">依據</div>':''}
+    ${(!isPlanned&&description)?`<p class="node-description">${esc(withoutEvidenceIds(description,reportIdLookup(S.report)))}</p>`:''}
     ${(isPlanned&&inferenceFlagNode.committed_actor)?`<p class="committed-actor">誰承諾要做：<b>${esc(roleLabel(inferenceFlagNode.committed_actor))}</b></p>`:''}
     ${markerNoteHTML}
     ${echoedMarkerReasonHTML}
@@ -7629,8 +8413,7 @@ function inferenceDecisionHTML({heading,target,id,decision,body,question,evidenc
 }
 async function submitInferenceReview(target,id,decision,step,layer,nodeId){
   try{
-    const r=await fetch('/api/inference-review',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({run:S.cur,target,id,decision})});
+    const r=await decisionFetch('inference-reviews','/api/inference-review',{run:S.cur,target,id,decision});
     const j=await r.json();
     if(j.error){showToast('沒有存到：'+j.error);return;}
     if(target==='relation')(S.report.relations||[]).forEach(rel=>{if(rel&&rel.id===id){rel.inference_review=j.decision;rel.muted=j.decision==='plausible';}});
@@ -7645,10 +8428,9 @@ async function submitInferenceReview(target,id,decision,step,layer,nodeId){
 }
 async function submitCellCoverage(step,layer,coverageState,absenceEvidenceRef){
   try{
-    const r=await fetch('/api/cell-coverage',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({run:S.cur,step,layer,coverage_state:coverageState,absence_evidence_ref:absenceEvidenceRef})});
+    const r=await decisionFetch('blueprint','/api/cell-coverage',{run:S.cur,step,layer,coverage_state:coverageState,absence_evidence_ref:absenceEvidenceRef});
     const j=await r.json();
-    if(j.error){alert('標記失敗：'+j.error);return;}
+    if(j.error){showToast(noSaveText(j.error));return;}
     const cell=S.report&&S.report.cells&&S.report.cells.find(x=>x.step===step&&x.layer===layer);
     if(cell){
       cell.coverage_state=coverageState;
@@ -7657,7 +8439,7 @@ async function submitCellCoverage(step,layer,coverageState,absenceEvidenceRef){
     }
     renderReportIntoPage();
     await afterAsIsEdit();
-  }catch(e){alert('標記失敗：'+e.message);}
+  }catch(e){showToast(noSaveText(researcherSafeError(e.message,'請稍後再試。')));}
 }
 
 // report-view-fidelity-budget 3.6: expanding a collapsed column opens a
@@ -7725,7 +8507,7 @@ async function acceptToBe(){
   const fingerprint=currentToBeFingerprint();if(!S.cur||!fingerprint)return;
   S.toBeDecisionPending=true;render();
   try{
-    const response=await fetch('/api/to-be-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run:S.cur,fingerprint,decision:'accept'})});
+    const response=await scopedPost('/api/to-be-review',{run:S.cur,fingerprint,decision:'accept'});
     const result=await response.json();if(!response.ok)throw new Error(result.error||'方案決策未完成');
     await refreshToBe();
     const toBe=(S.workbench.runtime.stages||[]).find(item=>item.id==='review-to-be');
@@ -7743,7 +8525,7 @@ async function submitToBeRevision(event){
   const instruction=field&&field.value.trim(),fingerprint=currentToBeFingerprint();if(!instruction||!fingerprint)return;
   const submit=event.currentTarget.querySelector('[type="submit"]');if(submit){submit.disabled=true;submit.textContent='開始調整中…';}
   try{
-    const response=await fetch('/api/to-be-revision',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run:S.cur,fingerprint,instruction,execution:executionPayload()})});
+    const response=await scopedPost('/api/to-be-revision',{run:S.cur,fingerprint,instruction,execution:executionPayload()});
     const result=await response.json();if(!response.ok)throw new Error(result.error||'無法開始調整');
     S.toBeDecisionPending=true;closeInspector({returnFocus:false,skipDirtyCheck:true});
     S.toBeDetail={...(S.toBeDetail||{}),operation:result,state:{state:'to_be_revision_processing',status:'processing',heading:'方案調整中',phase_label:'正在整合一個建議方向',what_happened:'系統正在依調整說明建立完整替代方案。',why_it_matters:'完成前仍保留目前版本。',next_action:'等待完整替代方案。'}};
@@ -7758,7 +8540,7 @@ async function confirmToBeDecline(){
   const fingerprint=currentToBeFingerprint(),error=$('#to-be-decline-error'),button=$('#confirm-to-be-decline');if(!fingerprint)return;
   if(button)button.disabled=true;
   try{
-    const response=await fetch('/api/to-be-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run:S.cur,fingerprint,decision:'decline',impact_confirmed:true})});
+    const response=await scopedPost('/api/to-be-review',{run:S.cur,fingerprint,decision:'decline',impact_confirmed:true});
     const result=await response.json();if(!response.ok)throw new Error(result.error||'方案決策未完成');
     closeInspector({returnFocus:false,skipDirtyCheck:true});await refreshToBe({renderAfter:true});
   }catch(caught){if(error){error.hidden=false;error.textContent=caught.message;}if(button)button.disabled=false;}
@@ -7772,6 +8554,10 @@ function wire(){
   if(purposeInput){purposeInput.onblur=()=>saveResearchPurpose(purposeInput);purposeInput.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();purposeInput.blur();}};}
   document.querySelectorAll('[data-selective-generate]').forEach(button=>button.onclick=startSelectiveThemes);
   document.querySelectorAll('[data-selective-edit]').forEach(element=>element.onblur=()=>saveSelectiveField(element));
+  document.querySelectorAll('[data-open-page]').forEach(button=>button.onclick=()=>openPage(button.dataset.openPage));
+  document.querySelectorAll('[data-open-research-basis]').forEach(button=>button.onclick=()=>openPage('coding'));
+  document.querySelectorAll('[data-go-jtbd]').forEach(button=>button.onclick=()=>go(stageStepById('selective-coding')));
+  document.querySelectorAll('[data-go-home]').forEach(button=>button.onclick=()=>go(stageStepById('project-home')));
   const navToggle=$('#stage-nav-toggle');if(navToggle)navToggle.onclick=()=>{S.navExpanded=!S.navExpanded;render();const next=$('#stage-nav-toggle');if(next)next.focus();};
   document.querySelectorAll('[data-workbench-mode]').forEach(button=>button.onclick=()=>{
     S.mode=button.dataset.workbenchMode;render();
@@ -7936,6 +8722,7 @@ function wire(){
   on('#open-account-panel',event=>S.shellPanel==='account'?closeShellPanel():openShellPanel('account',event.currentTarget));
   on('#shell-panel-close',closeShellPanel);
   on('#shell-panel-scrim',closeShellPanel);
+  bindTerminologyReference();
   on('#settings-logout',async()=>{try{await fetch('/api/auth/logout',{method:'POST'});}catch(error){}location.reload();});
   document.querySelectorAll('[data-open-run]').forEach(el=>el.onclick=()=>openProjectRun(el.dataset.openRun));
   const toggleAxis=el=>{
@@ -8365,6 +9152,9 @@ function wireReviewGateOnly(){
   const button=$('#gen');if(button)button.onclick=handleJourneyPrimaryAction;
   const buildButton=$('#build-journey');if(buildButton)buildButton.onclick=startJourneyBuild;
   const asIsBuildButton=$('#generate-as-is');if(asIsBuildButton)asIsBuildButton.onclick=startAsIsBuild;
+  const retryBuildButton=$('#retry-as-is-build');if(retryBuildButton)retryBuildButton.onclick=startAsIsBuild;
+  const buildFromJourneyButton=$('#build-sbp');if(buildFromJourneyButton)buildFromJourneyButton.onclick=()=>{go(stageStepById('review-as-is'));startAsIsBuild();};
+  const outputButton=$('#open-output');if(outputButton)outputButton.onclick=()=>openSelectiveExport({versions:[{name:S.cur}]});
   wireImplementationResearch();
   const asIsConfirmButton=$('#confirm-as-is');if(asIsConfirmButton)asIsConfirmButton.onclick=confirmAsIs;
   const goalConfirmButton=$('#confirm-improvement-goal');if(goalConfirmButton)goalConfirmButton.onclick=confirmImprovementGoal;
@@ -8378,6 +9168,7 @@ function wireReviewGateOnly(){
   const confirmJourneyButton=$('#confirm-journey-candidate');if(confirmJourneyButton)confirmJourneyButton.onclick=confirmJourneyCandidate;
   const retainButton=$('#as-is-retain');if(retainButton)retainButton.onclick=retainAsIs;
   const regenerateButton=$('#as-is-regenerate');if(regenerateButton)regenerateButton.onclick=()=>startAsIsBuild({regenerate:true});
+  const reconsideredRegenerate=$('#as-is-reconsidered-regenerate');if(reconsideredRegenerate)reconsideredRegenerate.onclick=()=>startAsIsBuild({regenerate:true});
   const continueJourneyButton=$('#continue-to-as-is');if(continueJourneyButton)continueJourneyButton.onclick=()=>go(stageStepById('review-as-is'));
   wireJourneyCandidateCells();
   document.querySelectorAll('[data-journey-candidate-evidence]').forEach(btn=>btn.onclick=()=>openJourneyCandidateEvidence(Number(btn.dataset.journeyCandidateEvidence),btn));
@@ -8401,6 +9192,20 @@ function _clearRunHasUpdate(name){
   option.textContent=String(option.textContent||'').replace(/\s*·\s*有新版本\s*$/,'');
 }
 async function openExistingRun(name){
+  // 換世代之前先讓上一個專案排隊中的旅程存檔寫完（最多等 10 秒），否則它們會隨世代作廢。
+  await waitForJourneySaves();
+  // cross-project-state-isolation：開啟（含重新開啟同一個專案）就換世代，之前發出、
+  // 還沒回來的讀寫一律作廢；各站上一個專案的研究內容與「已載入」標記一起清掉。
+  newProjectScope();
+  S.reportRun=null;S.versions=[];
+  S.axialCodingReview=null;S.axialCodingReviewRun=null;S.axialPairBusy=false;S.selectiveError=null;
+  S.hmwPicker=null;S.hmwPickerRun=null;S.hmwSubmitBusy=false;
+  S.personaMatrixSegAxes=null;S.personaMatrixSegAxesRun=null;S.personaMatrixProjection=null;S.personaProjRun=null;
+  S.personaContent=null;S.personaEditError=null;S.personaHmwKeepBusy=false;
+  S.journeyChannelMap=null;S.journeyChannelMapRun=null;S.journeyCandidateSave=null;S.journeySavesPending=0;S.emotionSavesInFlight={};S.journeyCandidateError=null;S.journeyKeepBusy=false;
+  S.personaMatrixTargetSeg=null;S.personaMatrixTargetSegRun=null;S.personaMatrixTargetSegError=null;
+  S.goalGate=null;S.freshResearchDetail=null;S.researchDetail=null;S.toBeDetail=null;
+  S.codingDeliverable=null;S.codingDeliverableRun=null;
   // fix-walkthrough-flow-blockers：另一份 run 的旅程編輯只屬於那份 run；開新的
   // run 時放下它，否則上一份沒重新檢查的編輯會把這份的第 6、7 站也鎖住。
   S.journeyFlowActive=false;S.journeyState=null;S.journeySteps=[];S.journeyStages=[];
@@ -8744,8 +9549,7 @@ async function markReviewed(){
   renderReviewGate();
   const settle=()=>{S.proposalStarting=null;renderReviewGate();};
   try{
-    const r=await fetch('/api/review',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(body)});
+    const r=await decisionFetch('blueprint','/api/review',body);
     const j=await r.json();
     if(j.error){
       settle();
@@ -8820,21 +9624,21 @@ function updateToBeRuntime(research){
 
 async function loadResearchDetail(){
   if(!S.cur)return;
-  try{const r=await fetch('/api/as-is-research-detail?run='+encodeURIComponent(S.cur));const d=await r.json();S.researchDetail=r.ok?d:null;}catch(_){S.researchDetail=null;}
+  try{const r=await scopedFetch('/api/as-is-research-detail?run='+encodeURIComponent(S.cur));S.researchDetail=r.ok?r.data:null;}catch(_){S.researchDetail=null;}
 }
 
 function startToBePolling(){if(!S.researchPoll)S.researchPoll=setInterval(()=>refreshToBe({renderAfter:true}),1200);}
 async function refreshToBe({renderAfter=false}={}){
   if(!S.cur)return;
   try{
-    const r=await fetch('/api/as-is-research?run='+encodeURIComponent(S.cur)),operation=await r.json();
+    const r=await scopedFetch('/api/as-is-research?run='+encodeURIComponent(S.cur)),operation=r.data;
     if(!r.ok)throw new Error(operation.error||'調研狀態無法讀取');
     const previous=effectiveToBeState().state,research=operationToResearchState(operation);S.asIsResearch=research;
     let state=research;
     if(research.state==='research_ready'){
       await loadResearchDetail();
-      const response=await fetch('/api/to-be?run='+encodeURIComponent(S.cur));
-      if(response.ok){S.toBeDetail=await response.json();state=S.toBeDetail.state||research;}
+      const response=await scopedFetch('/api/to-be?run='+encodeURIComponent(S.cur));
+      if(response.ok){S.toBeDetail=response.data;state=S.toBeDetail.state||research;}
       else{state={state:'to_be_processing',status:'processing',heading:'方案產生中',phase_label:'正在啟動完整方案產生',what_happened:'調研已完成，系統正在接續產生方案。',why_it_matters:'完成前不顯示部分內容。',next_action:'等待完整方案。',primary_action:null,primary_action_available:false};}
     }else{S.toBeDetail=null;if(research.state!=='research_processing')S.researchDetail=null;}
     updateToBeRuntime(state);S.toBeDecisionPending=false;
@@ -8884,7 +9688,7 @@ async function loadJourneyChannelMap(){
   if(!S.cur)return;
   if(S.journeyChannelMapRun===S.cur&&S.journeyChannelMap){render();return;}
   S.journeyChannelMap=null;S.journeyBranchNotice=null;S.journeyBranchError=null;render();
-  const d=await(await fetch('/api/journey-channel-map?run='+encodeURIComponent(S.cur))).json();
+  const d=await scopedJSON('/api/journey-channel-map?run='+encodeURIComponent(S.cur));
   S.journeyChannelMap=d;S.journeyChannelMapRun=S.cur;
   render();
 }
@@ -8919,15 +9723,14 @@ function journeyBranchNoticeHTML(){
 async function refreshJourneyBranchMap(){
   if(!S.cur)return;
   try{
-    const response=await fetch('/api/journey-channel-map?run='+encodeURIComponent(S.cur));
-    const data=await response.json();
-    if(!response.ok||data.error)throw new Error(data.error||'無法載入目前的 Journey。');
+    const data=await scopedJSON('/api/journey-channel-map?run='+encodeURIComponent(S.cur));
+    if(data.error)throw new Error(data.error||'無法載入目前的 Journey。');
     S.journeyChannelMap=data;S.journeyChannelMapRun=S.cur;render();
   }catch(error){S.journeyBranchError=researcherSafeError(error.message,'目前的歷程讀取失敗，請稍後再試。');render();}
 }
 async function submitJourneyBranchOperation(operation,argumentsValue,rationale){
   try{
-    const response=await fetch('/api/journey-operation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run:S.cur,operation,arguments:argumentsValue||{},rationale:rationale||null})});
+    const response=await decisionFetch('journey','/api/journey-operation',{run:S.cur,operation,arguments:argumentsValue||{},rationale:rationale||null});
     const data=await response.json();
     if(!response.ok||data.error)throw new Error(data.error||'這個調整沒有送出成功。');
     S.journeyBranchError=null;S.journeyBranchNotice={changed:!!data.as_is_projection_changed};
@@ -9021,20 +9824,39 @@ function journeyStepAnnotations(step){
 // distinct dashed placeholder, never a face.
 function journeyEmotionLevel(step){
   // 2026-10-02 研究者裁定：不留「未判斷」。沒有資料的一步就是中間情緒（3），研究者自己調。
-  if((S.journeyChannelMap||{}).solution_selection_model)return Number.isInteger(step.emotion)?step.emotion:3;
+  if((S.journeyChannelMap||{}).solution_selection_model){
+    // 還在存檔佇列裡的情緒先照研究者拖到的位置畫，不讓前一筆存檔的重繪把它拉回舊值。
+    const pending=unsavedInput('jc-emotion|'+journeyAnnotationStepId(step));
+    if(pending!==undefined)return pending;
+    return Number.isInteger(step.emotion)?step.emotion:3;
+  }
+  const unsaved=unsavedInput('annotation|emotion|'+journeyAnnotationStepId(step));
+  if(unsaved!==undefined)return unsaved;
   const saved=journeyStepAnnotations(step).emotion;
   return saved?saved.level:3;
 }
 async function saveJourneyAnnotation(stepId,field,value,after){
+  const key='annotation|'+field+'|'+stepId;
   try{
-    const response=await fetch('/api/journey-annotations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run:S.cur,step_id:stepId,field,value})});
+    const response=await decisionFetch('journey-annotations','/api/journey-annotations',{run:S.cur,step_id:stepId,field,value});
     const data=await response.json();
+    if((!response.ok||data.error)&&field!=='emotion'&&field!=='satisfaction'){
+      // 小視窗裡打的字：重新打開同一個小視窗，字還在。
+      const message=noSaveText(researcherSafeError(data.error,'註記沒有存成功，請稍後再試。'));
+      const live=$('#workbench-live');if(live)live.textContent=message;
+      showToast(message);
+      return 'stale';
+    }
+    if(!response.ok||data.error)keepUnsavedInput(key,value);
     if(!response.ok||data.error)throw new Error(data.error||'註記沒有存成功。');
+    dropUnsavedInput(key);
     if(S.journeyChannelMap)S.journeyChannelMap.annotations=data.annotations;
     render();
     if(after)requestAnimationFrame(after);
   }catch(error){
-    const live=$('#workbench-live');if(live)live.textContent=researcherSafeError(error.message,'註記沒有存成功，請稍後再試。');
+    const message=noSaveText(researcherSafeError(error.message,'註記沒有存成功，請稍後再試。'));
+    const live=$('#workbench-live');if(live)live.textContent=message;
+    showToast(message);
     render();
   }
 }
@@ -9116,7 +9938,18 @@ function wireEmotionCurve(container){
   };
   const save=(dot,level)=>{
     const owner=dot.dataset.emotionAnnotation;
-    if(owner&&(S.journeyChannelMap||{}).solution_selection_model){editJourneyCandidateStep({kind:'emotion',step_id:owner,value:String(level)});return;}
+    if(owner&&(S.journeyChannelMap||{}).solution_selection_model){
+      // 存檔要排隊（約 3 秒才重繪），期間拖下一個點，前一筆的重繪會把這個點畫回舊值。
+      // 這一點最後一筆存檔成功才放掉暫存值；沒存到就留著，畫面照研究者拖的位置並顯示錯誤。
+      const key='jc-emotion|'+owner,pending=S.emotionSavesInFlight||(S.emotionSavesInFlight={});
+      keepUnsavedInput(key,level);pending[key]=(pending[key]||0)+1;
+      editJourneyCandidateStep({kind:'emotion',step_id:owner,value:String(level)}).then(()=>{
+        pending[key]-=1;
+        if(pending[key]>0||S.journeyCandidateError)return;
+        delete pending[key];dropUnsavedInput(key);render();
+      });
+      return;
+    }
     if(owner)saveJourneyAnnotation(owner,'emotion',level,()=>{const again=document.querySelector(`[data-emotion-annotation="${CSS.escape(owner)}"]`);if(again)again.focus();});
   };
   dots.forEach(dot=>{
@@ -9173,12 +10006,17 @@ function journeyCellTexts(field,stepId){
   const entry=(map.pain_points||[]).find(item=>item.step===index+1);
   return {texts:entry&&entry.texts||[],source:null};
 }
+// readable-source-location：CJM「原文」每則記錄的出處行跟 ① 編碼同一套——說話者照存檔，
+// 位置可讀，點開看檔名與原始位置。
+function journeyEvidenceRecordsHTML(records){
+  return records.map(record=>`<section class="inspector-section"><blockquote>${esc(record.text||'')}</blockquote><div class="inspector-meta">${sourceLineHTML({who:record.role,locator:record.locator,source:record.source,fallback:'說話者未記錄'})}</div></section>`).join('');
+}
 function journeyStepEvidenceHTML(column){
   const step=journeyColumnSteps()[column];
   const bound=step?journeyBoundStep(step):null;
   const records=bound===null?[]:(((S.journeyChannelMap||{}).step_evidence||[])[bound-1]||[]);
   if(!records.length)return '<p class="empty">這一步沒有連到原文。</p>';
-  return records.map(record=>`<section class="inspector-section"><p class="pm-detail-who">${esc(record.role||'說話者未記錄')}</p><blockquote>${esc(record.text||'')}</blockquote><p class="inspector-meta">${esc(record.locator||'')}</p></section>`).join('');
+  return journeyEvidenceRecordsHTML(records);
 }
 function openJourneyStepEvidence(column,invoker){
   const step=journeyColumnSteps()[column];if(!step)return;
@@ -9191,7 +10029,8 @@ function journeyPopoverHTML(){
   const source=JOURNEY_TEXT_SOURCE_LABELS[pop.source]||'AI 整理';
   return `<div class="cjm-popover" id="cjm-popover" role="dialog" aria-labelledby="cjm-popover-title" style="left:${pop.left}px;top:${pop.top}px">
     <p class="cjm-popover-title" id="cjm-popover-title">${esc(kind.noun)}・${esc(step?step.label:'')}</p>
-    <textarea id="cjm-popover-text" rows="2">${esc(pop.text)}</textarea>
+    <textarea id="cjm-popover-text" rows="2"${pop.unsaved?' aria-invalid="true"':''}>${esc(pop.text)}</textarea>
+    ${pop.unsaved?'<p class="warn" role="alert" data-annotation-unsaved>沒有存到：這段文字還沒有存起來，請重新載入後再做一次。</p>':''}
     <p class="cjm-popover-source">來源：${esc(source)}（你改過之後標成研究者）</p>
     <button type="button" class="cjm-popover-evidence" id="cjm-popover-evidence">支持這一格的原文 ›</button>
     <div class="cjm-popover-actions"><button type="button" class="go" id="cjm-popover-save">儲存</button><button type="button" class="ghost" id="cjm-popover-cancel">取消</button><button type="button" class="ghost" id="cjm-popover-delete">刪除</button></div>
@@ -9217,7 +10056,9 @@ function saveJourneyPopover(remove){
   else texts[pop.index]=value.trim();
   S.cjmPopover=null;
   if(remove&&pop.index<0){render();return;}
-  saveJourneyAnnotation(pop.stepId,pop.field,texts.filter(Boolean));
+  saveJourneyAnnotation(pop.stepId,pop.field,texts.filter(Boolean)).then(result=>{
+    if(result==='stale'){S.cjmPopover={...pop,text:remove?pop.text:value,unsaved:true};render();}
+  });
 }
 function journeySatisfactionCellHTML(step,column){
   const id=journeyAnnotationStepId(step),saved=journeyStepAnnotations(step).satisfaction,level=saved?saved.level:null;
@@ -9286,6 +10127,42 @@ const CJM_ICONS={
   journey:'<circle cx="4.5" cy="18.5" r="2.8"/><circle cx="19.5" cy="5.5" r="2.8"/><path d="M4.5 18.5c0-5 4-5.5 7.5-5.5s7.5-.5 7.5-7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="3 3"/>',
   physical:'<path d="M2.5 9.5 4.5 3h15l2 6.5c0 1.7-1.3 3-3 3s-3-1.3-3-3c0 1.7-1.3 3-3 3s-3-1.3-3-3c0 1.7-1.3 3-3 3s-3-1.3-3-3z"/><path d="M4.5 13.8V21h15v-7.2a4.4 4.4 0 0 1-3-1 4.5 4.5 0 0 1-4.5 1.5 4.5 4.5 0 0 1-4.5-1.5 4.4 4.4 0 0 1-3 1zM9.5 21v-4.5h5V21z"/>',
 };
+// solution-reconfirmation：上游改過時，已採用的解方由研究者決定保留或重新發展；保留不呼叫 AI。
+// 說法只講「改了什麼、需要重新確認」，不說解方是依哪一則 HMW 形成的（舊解方沒有這個紀錄）。
+function solutionReconfirmHTML(step){
+  const a=step.solution_applicability||{},reasons=a.reasons||[];
+  const lines=[];
+  if(reasons.includes('step_changed'))lines.push('這一步改過，下面的解方是根據改之前的內容發展的。');
+  if(reasons.includes('hmw_changed'))lines.push('選定的 HMW 改過，這個解方是在先前的 HMW 下發展的。');
+  if(reasons.includes('hmw_unverified'))lines.push('選定的 HMW 和這份旅程形成時的不同，無法確認這個解方是否順著目前的 HMW。');
+  if(!lines.length)lines.push('這一步的解方需要重新確認。');
+  const busy=S.solutionKeepBusy===step.id,error=S.solutionKeepError&&S.solutionKeepError.step===step.id?`<p class="warn" role="alert">${esc(S.solutionKeepError.text)}</p>`:'';
+  return `<div class="status-line" role="status" data-solutions-stale><p>${lines.map(esc).join('')}請確認原本採用的解方是否仍然適用：保留目前解方，或按「為選定歷程發展解方」重新發展。</p>
+    <button type="button" class="ghost" data-solution-keep="${esc(step.id)}"${busy?' disabled':''}>保留目前解方</button>${error}</div>`;
+}
+async function keepSolution(stepId){
+  const map=S.journeyChannelMap||{},step=(map.steps||[]).find(item=>item.id===stepId),a=(step||{}).solution_applicability;
+  if(!S.cur||!a||S.solutionKeepBusy)return;
+  S.solutionKeepBusy=stepId;S.solutionKeepError=null;render();
+  try{
+    const r=await scopedPost('/api/journey/solution-reconfirm',
+      {run:S.cur,step_id:stepId,step_digest:a.step_digest,hmw_digest:a.hmw_digest,solution_ids:a.solution_ids});
+    const d=await r.json();
+    if(!r.ok||d.error)throw new Error(d.error||'沒有記下來。');
+  }catch(error){S.solutionKeepError={step:stepId,text:researcherSafeError(error.message,'沒有記下來，請重新載入後再試。')};}
+  S.solutionKeepBusy=null;S.journeyChannelMap=null;
+  await loadJourneyChannelMap();await loadAsIsBuild();await refreshJourneyRuntime();render();
+}
+// formation-time-basis-display：已建立的旅程，主題寫它形成時的設計問題；和目前選定的不同或無法確認時，
+// 兩者分開寫，不把目前選的 HMW 說成這份旅程的依據。沒有 topic（舊回應）照舊一行。
+function cjmTopicRowHTML(header,span){
+  const t=header.topic,current=header.primary_hmw||'';
+  if(!t||t.state==='same')return `${cjmRowHeadHTML('主題 TOPIC',null)}<td class="cjm-cell cjm-span" colspan="${span}">${esc(current)}</td>`;
+  return `${cjmRowHeadHTML('主題 TOPIC',null)}<td class="cjm-cell cjm-span" colspan="${span}" data-cjm-topic-split>
+    <p class="cjm-topic-line"><span class="cjm-topic-label">形成時的設計問題</span>${t.formation?esc(t.formation):'無法確認'}</p>
+    <p class="cjm-topic-line"><span class="cjm-topic-label">目前選定的設計問題</span>${esc(current)}</p>
+    <p class="cjm-topic-note">這份顧客旅程還沒有依目前選定的設計問題重新確認。</p></td>`;
+}
 function cjmRowHeadHTML(label,icon){
   const art=icon?`<svg class="cjm-row-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${CJM_ICONS[icon]}</svg>`:'';
   return `<th scope="row"><span class="cjm-row-head"><span class="cjm-row-label">${esc(label)}</span>${art}</span></th>`;
@@ -9406,7 +10283,7 @@ function journeyMapTableHTML(map,steps){
   const header=map.header||{};
   const span=steps.length||1;
   const assessments=S.journeyRecheck&&S.journeyRecheck.step_assessments||[];
-  const head=`<tr>${cjmRowHeadHTML('主題 TOPIC',null)}<td class="cjm-cell cjm-span" colspan="${span}">${esc(header.primary_hmw||'')}</td></tr>
+  const head=`<tr>${cjmTopicRowHTML(header,span)}</tr>
     <tr>${cjmRowHeadHTML('PERSONA','persona')}<td class="cjm-cell cjm-span" colspan="${span}">${esc(header.primary_target||'')}</td></tr>
     ${journeyStageRowHTML(map,steps)}
     <tr class="cjm-step-row">${cjmRowHeadHTML('CUSTOMER JOURNEY','journey')}${steps.map((step,i)=>journeyStepHeadHTML(step,i,steps.length,assessments.some(item=>item.step_ref===step.id))).join('')}</tr>`;
@@ -9424,6 +10301,12 @@ function journeyBuildEmptyHTML(build){
   const error=S.journeyBuildError?`<p class="warn" role="alert">${esc(S.journeyBuildError)}</p>`:'';
   const text=build.available?'還沒有建立顧客旅程。按「建立顧客旅程」會重讀證據與編碼，整理出一份 CJM 候選，完成後停在這裡等你檢視。':(build.reason||'現在還不能建立顧客旅程。');
   return `<section class="card"><h2>顧客旅程</h2><p class="empty">${esc(text)}</p>${status}${error}</section>`;
+}
+// cjm-problem-solution-workspace（2026-10-19 研究者裁定）：同一張全圖分兩區——理解問題
+// （行動、痛點、情緒、滿意度）與發展解方（解方與四列體驗維度）。區名列只有標籤，
+// 不加說明或控制項（2026-09-27 不加說明層）。
+function cjmGroupRowHTML(kind,span){
+  return `<tr class="cjm-group-row" data-cjm-group="${kind}"><th scope="rowgroup" colspan="${span+1}"><span class="cjm-group-label">${kind==='problem'?'理解問題':'發展解方'}</span></th></tr>`;
 }
 function journeyCandidateHTML(map){
   if(map.solution_selection_model)return journeyAnalyticalCandidateHTML(map);
@@ -9458,9 +10341,9 @@ function journeyCandidateHTML(map){
     <p class="cjm-map-heading"><b>CUSTOMER JOURNEY MAP</b><span>旅程候選：每一格都可以直接改寫；先檢視每一步與它的原文，確認之後才會產生服務藍圖。</span></p>
     ${journeyCandidateStatusHTML(map)}
     <div class="cjm-table-region" tabindex="0" aria-label="可水平捲動的顧客旅程候選"><table class="cjm-table"><thead>
-      <tr>${cjmRowHeadHTML('主題 TOPIC',null)}<td class="cjm-cell cjm-span" colspan="${span}">${esc(header.primary_hmw||'')}</td></tr>
+      <tr>${cjmTopicRowHTML(header,span)}</tr>
       <tr>${cjmRowHeadHTML('PERSONA','persona')}<td class="cjm-cell cjm-span" colspan="${span}">${esc(header.primary_target||'')}</td></tr>
-      ${stageRow}${stepRow}</thead><tbody>${actionRow}${painRow}${emotionRow}${satisfactionRow}${solutionRow}${channelRows}</tbody></table></div>
+      ${stageRow}${stepRow}</thead><tbody>${cjmGroupRowHTML('problem',span)}${actionRow}${painRow}${emotionRow}${satisfactionRow}${solutionRow?cjmGroupRowHTML('solution',span):''}${solutionRow}${channelRows}</tbody></table></div>
     ${journeyPopoverHTML()}
     ${journeyAlternativesHTML(map)}
   </section>`;
@@ -9528,7 +10411,7 @@ function journeyAnalyticalCandidateHTML(map){
     const moment=step.moment_selection?`<label class="cjm-develop-moment"><input type="checkbox" data-jc-develop="${esc(step.id)}" ${step.develop_solution?'checked':''}> 發展解方</label>`:'';
     const developing=!!S.journeySolutionsJob&&step.develop_solution;
     const stale=developing?'<p class="status-line" role="status" data-solutions-developing>正在發展這一刻的解方⋯</p>'
-      :step.moment_selection&&step.solutions_stale?'<p class="status-line" role="status" data-solutions-stale>這一步改過，下面的解方是根據改之前的內容發展的；要用新內容，請再按一次「為選定歷程發展解方」。</p>':'';
+      :step.moment_selection&&step.solutions_stale?solutionReconfirmHTML(step):'';
     if(!candidates.length)return step.moment_selection?`<td class="cjm-cell ${step.develop_solution?'cjm-content':'cjm-empty'}">${moment}${stale}</td>`:'<td class="cjm-cell cjm-empty">—</td>';
     if(step.moment_selection){
       // 2026-10-02 研究者裁定：勾「發展解方」就是採用；格子裡只有勾選和那一句解方，不另設採用勾選與外框。
@@ -9551,10 +10434,10 @@ function journeyAnalyticalCandidateHTML(map){
     <p class="cjm-map-heading"><b>CUSTOMER JOURNEY MAP</b><span>${momentModel?'檢視每一步的體驗，勾選想發展解方的時刻；勾選的時刻就是採用。':'檢視每一步的體驗，選擇適用的做法；「查看管道」不會採用該做法。'}</span></p>
     ${journeyCandidateStatusHTML(map)}${splitNotice}
     <div class="cjm-table-region" tabindex="0" aria-label="可水平捲動的顧客旅程候選"><table class="cjm-table"><thead>
-      <tr>${cjmRowHeadHTML('主題 TOPIC',null)}<td class="cjm-cell cjm-span" colspan="${span}">${esc(header.primary_hmw||'')}</td></tr>
+      <tr>${cjmTopicRowHTML(header,span)}</tr>
       <tr>${cjmRowHeadHTML('PERSONA','persona')}<td class="cjm-cell cjm-span" colspan="${span}">${esc(header.primary_target||'')}</td></tr>
-      ${stageRow}${stepRow}</thead><tbody>${momentModel?'':textRow('ACTION','action_texts','actions')}${momentModel?`<tr data-cjm-row="pain_points">${cjmRowHeadHTML('PAIN POINT','pain')}${steps.map(painCell).join('')}</tr>`:textRow('PAIN POINT','pain_points','pain_points')}
-      ${emotionRow}<tr data-cjm-row="satisfaction">${cjmRowHeadHTML('SATISFACTION','satisfaction')}${steps.map(satisfactionCell).join('')}</tr>${solutionRow}${!momentModel||steps.some(step=>(step.solution_candidates||[]).length)?channelRows:''}</tbody></table></div>
+      ${stageRow}${stepRow}</thead><tbody>${cjmGroupRowHTML('problem',span)}${momentModel?'':textRow('ACTION','action_texts','actions')}${momentModel?`<tr data-cjm-row="pain_points">${cjmRowHeadHTML('PAIN POINT','pain')}${steps.map(painCell).join('')}</tr>`:textRow('PAIN POINT','pain_points','pain_points')}
+      ${emotionRow}<tr data-cjm-row="satisfaction">${cjmRowHeadHTML('SATISFACTION','satisfaction')}${steps.map(satisfactionCell).join('')}</tr>${cjmGroupRowHTML('solution',span)}${solutionRow}${!momentModel||steps.some(step=>(step.solution_candidates||[]).length)?channelRows:''}</tbody></table></div>
     ${momentModel?'':journeyAlternativesHTML(map)}
   </section>`;
 }
@@ -9619,16 +10502,35 @@ function pickJourneySolution(stepId,index){
 }
 function editJourneyCandidateStep(body){
   // 確認要等這一筆存完，跟 blur 存檔走同一條佇列。
-  S.journeyCandidateSave=(S.journeyCandidateSave||Promise.resolve()).then(()=>_editJourneyCandidateStep(body));
+  S.journeyCandidateSave=trackJourneySave((S.journeyCandidateSave||Promise.resolve()).then(()=>_editJourneyCandidateStep(body)));
   return S.journeyCandidateSave;
 }
+// 旅程候選的存檔要排隊，一筆從送出到重繪約 3 秒。排隊中離開頁面或切專案，後面幾筆就不會送出：
+// 切專案前先等它們存回原專案（openExistingRun），關分頁或重新整理時讓瀏覽器問一次。
+function trackJourneySave(promise){
+  S.journeySavesPending=(S.journeySavesPending||0)+1;
+  const done=()=>{S.journeySavesPending=Math.max(0,(S.journeySavesPending||0)-1);};
+  promise.then(done,done);
+  return promise;
+}
+const JOURNEY_SAVE_SWITCH_WAIT_MS=10000;
+function waitForJourneySaves(){
+  if(!S.journeySavesPending||!S.journeyCandidateSave)return Promise.resolve();
+  showToast('正在儲存顧客旅程的修改，存好就切換。');
+  return Promise.race([S.journeyCandidateSave.catch(()=>{}),new Promise(resolve=>setTimeout(resolve,JOURNEY_SAVE_SWITCH_WAIT_MS))]);
+}
+if(typeof window!=='undefined'&&window.addEventListener)window.addEventListener('beforeunload',event=>{
+  if(!S.journeySavesPending)return;
+  event.preventDefault();event.returnValue='';
+});
 async function _editJourneyCandidateStep(body){
   try{
-    const r=await fetch('/api/journey-candidate/field',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run:S.cur,...body})});
+    const r=await decisionFetch('journey','/api/journey-candidate/field',{run:S.cur,...body});
     const res=await r.json();
     if(!r.ok||res.error)throw new Error(res.error||'沒有存到');
     S.journeyChannelMap=res;S.journeyCandidateError=null;
-    await refreshJourneyRuntime();
+    // solution-reconfirmation：旅程改了，服務藍圖站的狀態也要重新讀。
+    await loadAsIsBuild();await refreshJourneyRuntime();
   }catch(error){S.journeyCandidateError='沒有存到：'+researcherSafeError(error.message,'請稍後再試。');}
   render();
 }
@@ -9641,6 +10543,12 @@ function wireJourneyCandidateCells(){
   document.querySelectorAll('[data-journey-alt]').forEach(button=>button.onclick=()=>{
     const i=Number(button.dataset.journeyAlt);S.journeyAltOpen={...(S.journeyAltOpen||{}),[i]:!(S.journeyAltOpen||{})[i]};render();});
   document.querySelectorAll('[data-jc-kind]').forEach(el=>el.onblur=()=>saveJourneyCandidateField(el));
+  // fix-sbp-retry-and-cjm-enter：Enter 結束編輯（失去焦點就會儲存），Shift+Enter 換行；
+  // 輸入法選字中的 Enter 不算。
+  document.querySelectorAll('[data-jc-kind],[data-jc-sat]').forEach(el=>el.addEventListener('keydown',event=>{
+    if(event.key!=='Enter'||event.shiftKey||event.isComposing||event.keyCode===229)return;
+    event.preventDefault();el.blur();
+  }));
   document.querySelectorAll('[data-jc-level]').forEach(el=>el.onchange=()=>{if(el.value)editJourneyCandidateStep({kind:el.dataset.jcLevel,step_id:el.dataset.jcStep,value:el.value});});
   document.querySelectorAll('[data-jc-select-solution]').forEach(input=>input.onchange=()=>{
     const stepId=input.dataset.jcStep;
@@ -9676,6 +10584,7 @@ function wireJourneyCandidateCells(){
     const [stepId,row]=key.split('|');
     const box=document.querySelector(`[data-jc-kind="candidate_delivery_add"][data-jc-step="${CSS.escape(stepId)}"][data-jc-channel="${CSS.escape(row)}"]`);if(box)box.focus();});
   const developButton=$('#build-journey-solutions');if(developButton)developButton.onclick=startJourneySolutionsBuild;
+  document.querySelectorAll('[data-solution-keep]').forEach(button=>button.onclick=()=>keepSolution(button.dataset.solutionKeep));
   document.querySelectorAll('[data-jc-preview-solution]').forEach(button=>button.onclick=()=>{
     const region=document.querySelector('[data-journey-candidate] .cjm-table-region'),left=region&&region.scrollLeft||0;
     S.journeyPreviewSolution={...(S.journeyPreviewSolution||{}),[button.dataset.jcStep]:button.dataset.jcPreviewSolution};
@@ -9701,11 +10610,13 @@ function journeyCandidateStatusHTML(map){
       <button type="button" class="go" data-journey-rebuild${((S.journeyChannelMap||{}).build||{}).available===false||S.journeyBuildBusy?' disabled':''}>依目前 Persona 重新建立顧客旅程</button></div>${keepError}</div>${error}`;
   }
   if(map.solution_selection_model){
+    const pending=(map.steps||[]).filter(step=>step.moment_selection&&step.solutions_stale).length;
+    if(c.state==='confirmed'&&pending)return `<p class="status-line" role="status" data-journey-confirmed>CJM 已確認。</p><p class="status-line" role="status" data-journey-solutions-pending>部分已採用的解方需要重新確認：上游決定改過，請確認原本採用的解方是否仍然適用。</p>${error}`;
     if(c.state==='confirmed')return `<p class="status-line" role="status" data-journey-confirmed>CJM 與選取的 Solution 已確認；SBP 會依這份決定建立。</p>${error}`;
     const moments=(map.steps||[]).some(step=>step.moment_selection);
-    return `<p class="status-line" role="status" data-journey-needs-confirmation>${c.previously_confirmed?'內容改過，需要重新確認。':moments?'先改好旅程，再勾選想發展解方的時刻並按「為選定歷程發展解方」；勾選的時刻就是採用；確認後到服務藍圖，由你按「建立 SBP」。可以不勾任何時刻。':'檢視並選擇適用的 Solution；確認後到服務藍圖，由你按「建立 SBP」。可以不選任何 Solution。'}</p>${error}`;
+    return `<p class="status-line" role="status" data-journey-needs-confirmation>${c.previously_confirmed?'內容改過，需要重新確認。':moments?'先改好旅程，再勾選想發展解方的時刻並按「為選定歷程發展解方」；勾選的時刻就是採用；確認後按「建立藍圖」。可以不勾任何時刻。':'檢視並選擇適用的 Solution；確認後按「建立藍圖」。可以不選任何 Solution。'}</p>${error}`;
   }
-  if(c.state==='confirmed')return `<p class="status-line" role="status" data-journey-confirmed>旅程已確認。按「繼續」前往服務藍圖。</p>${error}`;
+  if(c.state==='confirmed')return `<p class="status-line" role="status" data-journey-confirmed>旅程已確認。</p>${error}`;
   return `<p class="status-line" role="status" data-journey-needs-confirmation>${c.previously_confirmed?'確認之後又改過內容，需要重新確認。':'檢視完、改好之後按「確認歷程」；確認後會前往服務藍圖，還沒有服務藍圖時接著產生。'}</p>${error}`;
 }
 async function refreshJourneyRuntime(){
@@ -9714,7 +10625,7 @@ async function refreshJourneyRuntime(){
 // 研究者改完一格直接按「確認歷程」時，blur 觸發的存檔與確認會同時送出；確認要先等
 // 存檔回來，拿存檔後的版本確認，否則會確認到改之前的那一版。
 function saveJourneyCandidateField(el){
-  S.journeyCandidateSave=(S.journeyCandidateSave||Promise.resolve()).then(()=>_saveJourneyCandidateField(el));
+  S.journeyCandidateSave=trackJourneySave((S.journeyCandidateSave||Promise.resolve()).then(()=>_saveJourneyCandidateField(el)));
   return S.journeyCandidateSave;
 }
 async function _saveJourneyCandidateField(el){
@@ -9729,11 +10640,13 @@ async function _saveJourneyCandidateField(el){
   if(d.jcKind==='pain_point_add')S.journeyPainAdd={...(S.journeyPainAdd||{}),[d.jcStep]:false};
   if(before===value){if(d.jcKind==='candidate_delivery_add'||d.jcKind==='pain_point_add')render();return;}
   try{
-    const r=await fetch('/api/journey-candidate/field',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const r=await decisionFetch('journey','/api/journey-candidate/field',body);
     const res=await r.json();
+    if(!r.ok||res.error)keepUnsavedInput(journeyFieldKey(d),value);
     if(!r.ok||res.error)throw new Error(res.error||'沒有存到');
-    S.journeyChannelMap=res;S.journeyCandidateError=null;
-    await refreshJourneyRuntime();
+    S.journeyChannelMap=res;S.journeyCandidateError=null;dropUnsavedInput(journeyFieldKey(d));
+    // solution-reconfirmation：旅程改了，服務藍圖站的狀態也要重新讀。
+    await loadAsIsBuild();await refreshJourneyRuntime();
   }catch(error){S.journeyCandidateError='沒有存到：'+researcherSafeError(error.message,'請稍後再試。');}
   render();
 }
@@ -9745,23 +10658,22 @@ async function confirmJourneyCandidate(){
   if(!c.journey_digest||S.journeyCandidateError){S.journeyCandidateBusy=false;render();return;}
   render();
   try{
-    const r=await fetch('/api/journey-candidate/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run:S.cur,journey_digest:c.journey_digest})});
+    const r=await scopedPost('/api/journey-candidate/confirm',{run:S.cur,journey_digest:c.journey_digest});
     const res=await r.json();
     if(!r.ok||res.error)throw new Error(res.error||'確認沒有存到');
     S.journeyChannelMap=res;
     await refreshJourneyRuntime();
   }catch(error){const text=researcherSafeError(error.message,'請稍後再試。');S.journeyCandidateError=text.startsWith('沒有確認：')?text:'沒有確認：'+text;S.journeyCandidateBusy=false;render();return;}
   S.journeyCandidateBusy=false;
-  // 確認只保存（2026-10-02 研究者裁定）：前往服務藍圖，不啟動任何 AI 工作。還沒有
-  // 藍圖時，那一站的「建立 SBP」由研究者自己按。
+  // 確認只保存（2026-10-02 研究者裁定），不啟動任何 AI 工作；cjm-builds-sbp：停在顧客旅程，
+  // 主按鈕換成「建立藍圖」，由研究者自己按。
   await loadAsIsBuild();
-  go(stageStepById('review-as-is'));
   render();
 }
 function openJourneyCandidateEvidence(column,invoker){
   const map=S.journeyChannelMap||{},step=(map.steps||[])[column];if(!step)return;
   const records=(map.step_evidence||[])[column]||[];
-  const body=records.length?records.map(record=>`<section class="inspector-section"><p class="pm-detail-who">${esc(record.role||'說話者未記錄')}</p><blockquote>${esc(record.text||'')}</blockquote><p class="inspector-meta">${esc(record.locator||'')}</p></section>`).join(''):'<p class="empty">這一步沒有連到原文。</p>';
+  const body=records.length?journeyEvidenceRecordsHTML(records):'<p class="empty">這一步沒有連到原文。</p>';
   openInspector({kind:'journey-cell-source',id:String(column),title:`「${step.label}」這一步的原文`,relatedNodeIds:[]},body,invoker);
 }
 // confirm-persona-starts-journey：從 Persona 確認直接接著呼叫，屬於「機會性」
@@ -9771,11 +10683,11 @@ async function keepJourneyAgainstPersona(){
   if(!S.cur||S.journeyKeepBusy)return;
   S.journeyKeepBusy=true;S.journeyKeepError=null;render();
   try{
-    const r=await fetch('/api/journey/persona-basis/retain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({run:S.cur})});
+    const r=await decisionFetch('journey','/api/journey/persona-basis/retain',{run:S.cur});
     const d=await r.json();
     if(!r.ok||d.error)throw new Error(d.error||'沒有記下來。');
     S.journeyChannelMapRun=null;await loadJourneyChannelMap();await refreshJourneyRuntime();
-  }catch(error){S.journeyKeepError=researcherSafeError(error.message,'沒有記下來，請再試一次。');}
+  }catch(error){S.journeyKeepError=noSaveText(researcherSafeError(error.message,'沒有記下來，請再試一次。'));}
   S.journeyKeepBusy=false;render();
 }
 async function startJourneyBuild(opts){
@@ -9868,8 +10780,8 @@ async function loadReport(){
   S.report=null;
   // A build state means this run has no Blueprint draft yet; asking for one would
   // only come back as a not-found request on every station load.
-  const d=S.asIsBuild?{error:'not_generated'}:await(await fetch('/api/run?name='+encodeURIComponent(S.cur))).json();
-  S.report=d.error?null:d;
+  const d=S.asIsBuild?{error:'not_generated'}:await scopedJSON('/api/run?name='+encodeURIComponent(S.cur));
+  S.report=d.error?null:d;S.reportRun=S.report?S.cur:null;
   validateSelectionAfterRefresh();
   S.relationMode='bundled';S.relationFocus=null;S.relationBundle=null;
   S.blueprintView={scale:null,tx:24,ty:24,drag:null,scene:null};
@@ -9882,7 +10794,7 @@ async function loadReport(){
 async function loadVersions(){
   if(!S.cur||S.viewingVersion)return;
   try{
-    const d=await(await fetch('/api/versions?run='+encodeURIComponent(S.cur))).json();
+    const d=await scopedJSON('/api/versions?run='+encodeURIComponent(S.cur));
     S.versions=d.versions||[];
     if(S.step===stageStepById('review-as-is')&&S.report)renderReportIntoPage();
   }catch(_){S.versions=[];}
@@ -9901,6 +10813,10 @@ async function openSavedVersion(id){
 function renderReportIntoPage(){
   const rep=$('#rep');
   if(S.workbench)renderReviewGate();
+  // sbp-status-render-consistency：狀態可能在這一站第一次畫面之後才載入；上方狀態區跟藍圖本體一起
+  // 依已載入的狀態整段重畫（與 viewOut() 同條件：還沒有藍圖時為空），不重畫整頁與側欄。
+  const status=$('#as-is-station-status');
+  if(status)status.innerHTML=S.asIsBuild?'':asIsStationStatusHTML();
   // fix-empty-blueprint-reads-unreadable：還沒有藍圖但可以建立時，放與 viewOut() 同一段建立說明，
   // 不要在載入完成後把它換成「讀不到」。
   if(rep)rep.innerHTML=S.report?renderAsIsContent(S.report)

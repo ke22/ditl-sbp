@@ -37,6 +37,7 @@ from pathlib import Path
 from typing import Any, Callable, Literal, Mapping, NamedTuple
 
 import yaml
+from yaml_loader import safe_load as load_safe_yaml
 
 from . import lifecycle
 
@@ -349,7 +350,7 @@ def _artifact_digest(run_dir: Path, artifact_name: str) -> str | None:
     path = run_dir / file_name
     if not path.is_file():
         return None
-    content = yaml.safe_load(path.read_text(encoding="utf-8"))
+    content = load_safe_yaml(path.read_text(encoding="utf-8"))
     return lifecycle.canonical_content_digest(content)
 
 
@@ -357,7 +358,7 @@ def _working_file_digest(run_dir: Path, file_name: str) -> str | None:
     path = run_dir / file_name
     if not path.is_file():
         return None
-    content = yaml.safe_load(path.read_text(encoding="utf-8"))
+    content = load_safe_yaml(path.read_text(encoding="utf-8"))
     return lifecycle.canonical_content_digest(content)
 
 

@@ -254,10 +254,13 @@ class ClaudeRunner:
         text = envelope.get("result")
         if not isinstance(text, str):
             raise RunnerError("runner_empty_reply")
+        actual = _actual_model(envelope)
         return RunnerReply(
             text=text,
             tokens=_usage_tokens(envelope),
-            model=_actual_model(envelope) or model,
+            model=actual or model,
+            model_source="workbench" if model else None,
+            model_confirmed=actual is not None,
         )
 
 

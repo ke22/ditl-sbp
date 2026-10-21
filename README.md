@@ -4,7 +4,7 @@ A research assistant for service designers. It turns qualitative research data i
 Coding → JTBD → HMW → Persona → Customer Journey → Service Blueprint,
 while keeping every researcher decision explicit and traceable to the original evidence.
 
-**Status: Public Preview 0.1.3.** Runs on your own Mac, single user, no account required. macOS on Apple silicon only. See [CHANGELOG.md](CHANGELOG.md).
+**Status: Public Preview 0.2.0.** Runs on your own Mac, single user, no account required. macOS on Apple silicon only. See [CHANGELOG.md](CHANGELOG.md).
 
 ## What it does
 
@@ -51,8 +51,8 @@ Optional: to upload PDF files, install Poppler yourself (`brew install poppler`)
 
 **安裝（只要做一次）**
 
-1. 到 [Releases](https://github.com/ke22/ditl-sbp/releases/latest) 下載 `ditl-sbp-0.1.3.zip`，雙擊解壓縮。
-2. 在 Finder 對解壓後的 `ditl-sbp-0.1.3` 資料夾按右鍵，選「服務」→「新增位於檔案夾位置的終端機視窗」。（找不到這個選項時，打開「終端機」，輸入 `cd ` 加一個空格，把資料夾拖進視窗後按 Enter。）
+1. 到 [Releases](https://github.com/ke22/ditl-sbp/releases/latest) 下載 `ditl-sbp-0.2.0.zip`，雙擊解壓縮。
+2. 在 Finder 對解壓後的 `ditl-sbp-0.2.0` 資料夾按右鍵，選「服務」→「新增位於檔案夾位置的終端機視窗」。（找不到這個選項時，打開「終端機」，輸入 `cd ` 加一個空格，把資料夾拖進視窗後按 Enter。）
 3. 輸入下面這行並按 Enter，等到出現「安裝完成」（第一次約需 1–3 分鐘，要連網；會下載約 200 MB 的瀏覽器元件，用來輸出 PDF）：
 
    ```bash
@@ -71,11 +71,11 @@ ditl-sbp start
 
 **第一次使用**
 
-右上角「設定」選擇 AI 執行方式（Codex、Claude Code 或 OpenAI API），接著在專案首頁選檔案、寫研究目的、建立專案。要上傳 PDF 需另外安裝 Poppler（`brew install poppler`），沒有的話請改用 TXT 或 MD。
+在「建立專案」選檔案、寫研究目的，建立專案；接著在左側「AI 設定」選擇 AI 執行方式（Codex、Claude Code 或 OpenAI API）。要上傳 PDF 需另外安裝 Poppler（`brew install poppler`），沒有的話請改用 TXT 或 MD。
 
 **資料在哪裡**
 
-研究資料只存在你的電腦：`~/Library/Application Support/ditl_sbp/`。重新安裝不會動到它。分析時，資料會送到你在「設定」選的 AI 服務。
+研究資料只存在你的電腦：`~/Library/Application Support/ditl_sbp/`。重新安裝不會動到它。分析時，資料會送到你在「AI 設定」選的 AI 服務。
 
 **更新與移除**
 
@@ -87,7 +87,7 @@ ditl-sbp start
 
 ## Configure AI execution
 
-Open **設定** (the menu button at the top right). Choose one of the two modes; the choice applies to every AI step.
+Open **AI 設定** in the left navigation. Choose Codex, Claude Code or OpenAI API; the choice applies to every AI step. (In the previous interface at `/classic`, the same choice is under **設定**, the menu button at the top right.)
 
 ### Option A — CLI (no API key)
 
@@ -97,20 +97,20 @@ The workbench hands each AI step to a CLI you are already logged in to.
 
 1. Install the Codex CLI by following OpenAI's instructions, so that `codex` is on your `PATH`.
 2. Log in: `codex login`.
-3. In 設定, choose **CLI** and the **Codex** executor. The panel shows whether Codex was found and is logged in.
+3. In AI 設定, choose **Codex**. The page shows whether Codex was found and is logged in.
 
 **Claude Code**
 
 1. Install the Claude Code CLI by following Anthropic's instructions, so that `claude` is on your `PATH`.
 2. Log in: run `claude` and use `/login`.
 3. Start the workbench with `ditl-sbp start`; it configures the Claude Code runner for you. (Running from source instead? See [Development](#development).)
-4. In 設定, choose **CLI** and the **Claude Code** executor.
+4. In AI 設定, choose **Claude Code**.
 
 If the CLI is missing or not logged in, the workbench says so when you start an AI step (for example 「找不到 Codex CLI，請先安裝或改用 API 執行。」) and nothing is run.
 
 ### Option B — API (your own key)
 
-In 設定, choose **API**. The provider is **OpenAI**. You paste the key in the panel; it is used only for the next submission and cleared afterwards. It is not written to disk.
+In AI 設定, choose **OpenAI API**. You paste the key on that page; it is used only for the next submission and cleared afterwards. It is not written to disk.
 
 ### Cost
 
@@ -120,17 +120,17 @@ The workbench supports both modes; end-to-end runs have been exercised during de
 
 ## Your first research project
 
-0. **設定** (top right) — choose how AI runs: Codex, Claude Code or OpenAI API. Nothing is chosen for you, and creating a project or viewing results works without a choice; only AI steps need one. The panel shows what it can observe (已安裝／已登入／已設定); 測試連線 is optional and only sends a request when you press it (Codex and Claude Code use a small amount of quota).
-1. **專案首頁** — choose your files (PDF, DOCX, XLSX, TXT, MD, VTT, SRT) and press 建立專案.
-2. Write a one-line **研究目的** (research purpose) on the same screen. It frames the coding and the synthesis.
-3. Press **開始編碼**. AI organises the evidence and forms open, axial and selective coding, then proposes customer-job (JTBD) candidates and stops.
-4. **資料與編碼** — choose one or more JTBD (or write your own), then continue. HMW candidates are formed next.
-5. **HMW** — choose the HMW to pursue.
-6. **Persona** — confirm the Persona Matrix axes and the target segment, generate the Persona, edit it if needed and confirm. The customer journey is built next.
-7. **顧客旅程** — edit the journey, tick the moments you want solutions for, develop solutions, and confirm.
-8. **服務藍圖** — optionally run 落地研究 (implementation research) first, then build the Service Blueprint, review it, and confirm. Confirming saves it; export it from 輸出.
+The workbench opens on the new interface (0.2.0). The left navigation lists the steps in order; a step you cannot do yet says what it is waiting for. The previous interface is still available at `/classic` and reads the same projects.
 
-The research evaluation station that followed the Service Blueprint is deferred in this Public Preview and will return, redesigned, in a later version.
+1. **建立專案** — choose your files (PDF, DOCX, XLSX, TXT, MD, VTT, SRT), write a one-line **研究目的** (research purpose) and press 建立專案. The research purpose frames the coding and the synthesis.
+2. **AI 設定** — choose how AI runs: Codex, Claude Code or OpenAI API. Nothing is chosen for you; only AI steps need a choice. You can also pick a model for each step here; the choice lasts until you reload the page.
+3. **資料與編碼** — press 開始編碼. AI organises the evidence and forms open, axial and selective coding, then proposes customer-job (JTBD) candidates and stops.
+4. **JTBD** — choose one or more JTBD (or write your own) and confirm. HMW candidates are formed next.
+5. **HMW** — choose the HMW to pursue and confirm.
+6. **Persona** — confirm the Persona Matrix axes and the target segment, generate the Persona, edit it if needed and confirm.
+7. **顧客旅程地圖（CJM）** — build the current journey, edit it, mark the core problems to solve (you can rewrite them) and confirm. Confirming only saves; it does not start AI.
+8. **服務藍圖（SBP）** — develop solutions for the core problems (each split into people, physical environment, digital tools and digital environment), adopt the ones to carry forward, then generate the Service Blueprint. Generating also looks up how other services handle similar problems; these appear as external references and are design inspiration, not evidence from your participants. Review and confirm.
+9. **輸出** — choose the deliverables and export them.
 
 If an AI step fails, the screen says which step stopped, what was kept, and offers a retry (which uses quota again).
 
@@ -143,7 +143,7 @@ If an AI step fails, the screen says which step stopped, what was kept, and offe
 
 ## Outputs
 
-Export from the project's ⋯ menu on Project Home → 輸出研究產物. The five research deliverables (coding, JTBD + HMW, Persona Matrix + Persona, customer journey map, service blueprint) export as PDF; the coding export also includes an XLSX workbook of the same content. The AI collaboration record exports as Markdown.
+Export from **輸出** in the left navigation (in `/classic`: the project's ⋯ menu on Project Home → 輸出研究產物). The five research deliverables (coding, JTBD + HMW, Persona Matrix + Persona, customer journey map, service blueprint) export as PDF; the coding export also includes an XLSX workbook of the same content. The AI collaboration record exports as Markdown.
 
 ## License
 

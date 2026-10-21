@@ -20,7 +20,7 @@ import yaml
 import storage_locations
 
 import validate_sbp as V
-from . import as_is_projection, gates, lifecycle, stages
+from . import as_is_projection, gates, lifecycle, run_files, run_lock, stages
 
 
 class JourneyOperationError(ValueError):
@@ -335,27 +335,15 @@ def _write_yaml_atomic(path: Path, value: Any) -> None:
                 pass
 
 
-def _write_json_atomic(path: Path, value: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temp_name: str | None = None
-    try:
-        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, prefix=path.name + ".", suffix=".tmp", delete=False) as temp:
-            temp_name = temp.name
-            json.dump(value, temp, ensure_ascii=False, indent=2)
-            temp.write("\n")
-            temp.flush()
-            os.fsync(temp.fileno())
-        os.replace(temp_name, path)
-        temp_name = None
-    finally:
-        if temp_name:
-            try:
-                Path(temp_name).unlink()
-            except FileNotFoundError:
-                pass
+def commit_journey_operation(run_dir: str | Path, *args: Any, **kwargs: Any) -> dict[str, Any]:
+    """Commit under the project lock, taken here before anything is read (and
+    re-entered when the caller -- the server route or the `journey-branch`
+    command -- already owns it). The journey-operation lock is the inner one."""
+    with run_lock.hold(run_dir):
+        return _commit_journey_operation(run_dir, *args, **kwargs)
 
 
-def commit_journey_operation(
+def _commit_journey_operation(
     run_dir: str | Path,
     operation: Callable[[Mapping[str, Any]], Mapping[str, Any]],
     *,
@@ -384,7 +372,7 @@ def commit_journey_operation(
         if not journey_path.is_file():
             _fail(f"找不到 canonical Journey：{journey_path}")
         current = yaml.safe_load(journey_path.read_text(encoding="utf-8")) or {}
-        state = json.loads(run_json_path.read_text(encoding="utf-8")) if run_json_path.is_file() else {}
+        state = run_files.read_state(run_json_path)
         case_id = current.get("case_id")
         if not isinstance(case_id, str) or not case_id:
             _fail("Journey 缺少 case_id")
@@ -473,14 +461,11 @@ def commit_journey_operation(
             next_state["confirmed_journey_digest"] = lifecycle.canonical_content_digest(updated)
             next_state["as_is_input_projection_digest"] = projection_digest
             next_state["journey_state"] = "complete"
-            _write_json_atomic(run_json_path, next_state)
+            run_files.write_json_atomic(run_json_path, next_state)
             return {"journey": updated, "state": next_state, "publication": publication}
         except Exception:
             journey_path.write_bytes(before_journey)
-            if before_state is not None:
-                run_json_path.write_bytes(before_state)
-            elif run_json_path.exists():
-                run_json_path.unlink()
+            run_files.restore(run_json_path, before_state)
             registry_file.write_bytes(before_registry)
             _rollback_journey_lineage(run, ledger_path, before_ledger, published_ledger)
             raise

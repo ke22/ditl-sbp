@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 — New interface (2026-10-21)
+
+- New interface: the workbench opens on a step-by-step layout (建立專案 → AI 設定 → 資料與編碼 → JTBD → HMW → Persona → CJM → 服務藍圖 → 輸出). The previous interface stays at `/classic`; both read the same projects, and projects from 0.1.x open in either.
+- Solutions are now developed and adopted at the Service Blueprint step, from the core problems you mark in the customer journey. You can rewrite a core problem in your own words.
+- AI 設定 can set a model for each step. A model chosen here or through `SBP_CLI_MODEL` now actually reaches Codex and Claude Code, and the run record notes which model was requested.
+- Faster recovery when an AI step fails part-way: finished parts of the category-properties step are kept and not redone; open coding fixes only the flagged segments or fields in more cases instead of rewriting the whole document; evidence alignment writes short source codes that the program expands back to the full file names.
+- Persona: when a source file holds several people, the speakers you confirm are used so that one person is not counted as several, or several as one. Confirming speakers is a command-line step in this version.
+- Fixed: the release package left out a module the workbench imports.
+
 ## 0.1.3 — Fix (2026-10-14)
 
 - Fixed: 輸出研究產物 failed for every deliverable in an installed workbench, because the PDF printer's browser component was never installed. `./install.sh` now downloads the matching Chromium component (about 200 MB); if that download fails, the installation stops and the previous one keeps working.

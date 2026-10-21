@@ -46,7 +46,8 @@ def available(run_dir: Path) -> list[dict]:
 def print_url(base_url: str, item_id: str, case_id: str, run_name: str) -> str:
     query = urllib.parse.urlencode({"print": CLIENT_DELIVERABLE_BY_ID[item_id]["print"],
                                     "case": case_id, "run": run_name})
-    return f"{base_url.rstrip('/')}/?{query}"
+    # v3-becomes-root: the print layouts live in the previous interface, now at /classic.
+    return f"{base_url.rstrip('/')}/classic?{query}"
 
 
 BROWSER_MISSING_MESSAGE = "輸出 PDF 需要的瀏覽器元件還沒裝好，請重新執行 ./install.sh 後再輸出。"

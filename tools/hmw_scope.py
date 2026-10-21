@@ -16,6 +16,7 @@ import json
 from pathlib import Path
 
 import yaml
+from yaml_loader import safe_load as load_safe_yaml
 
 SELECTION_FILE = "primary_hmw_selection.yaml"
 HMW_FILE = "hmw.yaml"
@@ -27,7 +28,7 @@ SCOPE_FIELDS = ("statement", "problem_structure", "tension")
 
 def _load(path: Path):
     try:
-        return yaml.safe_load(path.read_text(encoding="utf-8"))
+        return load_safe_yaml(path.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError):
         return None
 

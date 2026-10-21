@@ -169,6 +169,11 @@ class CallResult:
     model: str | None = None
     effort: str | None = None
     usage: dict | None = None
+    # cli-model-override-reaches-runner: where the model came from
+    # (workbench / executor_settings / None) and, only when the executor
+    # reported it, the model that actually ran.
+    model_source: str | None = None
+    model_effective: str | None = None
 
 
 @dataclass

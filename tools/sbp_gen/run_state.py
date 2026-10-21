@@ -5,45 +5,30 @@ record their own state and usage in `run.json`. Writing a whole state dict
 read at the start of a step would drop whatever another step wrote in the
 meantime, so every such write goes through `update`: take the lock, reread
 the file, apply only this writer's keys, and replace the file atomically.
+
+run-state-write-integrity: `update` is a thin wrapper over
+`run_files.transaction` -- the caller must own the project lock, the whole
+read-modify-write runs under the project's transaction lock, and a malformed
+`run.json` raises `run_files.RunStateUnreadable` instead of becoming `{}`.
 """
 from __future__ import annotations
 
-import json
-import os
-import tempfile
-import threading
 from pathlib import Path
 from typing import Callable
 
-_LOCK = threading.RLock()
+from . import run_files
 
 
 def read(path: Path) -> dict:
-    path = Path(path)
-    if not path.is_file():
-        return {}
-    try:
-        state = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-    return state if isinstance(state, dict) else {}
+    """Missing -> {}; present but malformed -> run_files.RunStateUnreadable."""
+    return run_files.read_state(path)
 
 
 def update(path: Path, mutate: Callable[[dict], None]) -> dict:
     """Apply `mutate` to the current on-disk state under the lock and save it."""
-    path = Path(path)
-    with _LOCK:
-        state = read(path)
+    with run_files.transaction(Path(path)) as state:
         mutate(state)
-        descriptor, temporary = tempfile.mkstemp(prefix=".run.", suffix=".json", dir=path.parent)
-        try:
-            with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-                handle.write(json.dumps(state, ensure_ascii=False, indent=2))
-            os.replace(temporary, path)
-        finally:
-            if os.path.exists(temporary):
-                os.unlink(temporary)
-        return state
+    return state
 
 
 def record_stage(path: Path, stage: str, *, state_key: str, failure_key: str,

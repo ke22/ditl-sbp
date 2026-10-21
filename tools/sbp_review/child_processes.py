@@ -60,10 +60,31 @@ def active() -> list[subprocess.Popen]:
         return list(_registry.values())
 
 
-def spawn(cmd: Any, **popen_kwargs: Any) -> subprocess.Popen:
-    """`subprocess.Popen`, always in its own session, and registered."""
+def spawn(cmd: Any, *, run_lock: Any = None, **popen_kwargs: Any) -> subprocess.Popen:
+    """`subprocess.Popen`, always in its own session, and registered.
+
+    `run_lock` (a `sbp_gen.run_lock.Lease`, run-state-write-integrity): the
+    child inherits the same open lock description (`pass_fds` plus the two
+    environment variables), so it keeps the project lock even if this server
+    dies. Until the child has exited, nobody in this process owns the lock."""
     popen_kwargs["start_new_session"] = True
-    proc = subprocess.Popen(cmd, **popen_kwargs)
+    if run_lock is not None:
+        given = run_lock.delegate()
+        popen_kwargs["pass_fds"] = tuple(popen_kwargs.get("pass_fds") or ()) + tuple(given["pass_fds"])
+        env = dict(popen_kwargs["env"] if popen_kwargs.get("env") is not None else os.environ)
+        env.update(given["env"])
+        popen_kwargs["env"] = env
+    try:
+        proc = subprocess.Popen(cmd, **popen_kwargs)
+    except BaseException:
+        if run_lock is not None:
+            run_lock.reclaim()
+        raise
+    if run_lock is not None:
+        if callable(getattr(proc, "poll", None)):
+            run_lock.bind_child(proc)
+        else:  # a test double that never really started
+            run_lock.reclaim()
     _prune()
     pid = getattr(proc, "pid", None)
     # A stand-in object (a test double) has no real pid; there is nothing to track.

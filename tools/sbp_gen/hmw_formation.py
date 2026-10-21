@@ -24,11 +24,12 @@ from pathlib import Path
 from typing import Callable
 
 import yaml
+from yaml_loader import safe_load as load_safe_yaml
 
 import narrative_framing
 import validate_sbp as V
 
-from . import run_state, stages
+from . import run_files, run_lock, run_state, stages
 
 # multi-jtbd-single-job-source (2026-10-03): one JTBD source. The separate
 # jtbd and job_map steps of the v8 implementation are retired; the HMW step
@@ -119,7 +120,7 @@ def _sha(data: bytes) -> str:
 
 def _load(path: Path):
     try:
-        return yaml.safe_load(path.read_text(encoding="utf-8"))
+        return load_safe_yaml(path.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError):
         return None
 
@@ -150,7 +151,8 @@ def update_state(run_dir: Path, **fields) -> dict:
         state["hmw_formation"] = formation
         merged.update(formation)
 
-    run_state.update(Path(run_dir) / "run.json", mutate)
+    with run_lock.hold(run_dir):
+        run_state.update(Path(run_dir) / "run.json", mutate)
     return merged
 
 
@@ -162,7 +164,8 @@ def _record_step(run_dir: Path, step: str, record: dict) -> None:
         formation["steps"] = steps
         state["hmw_formation"] = formation
 
-    run_state.update(Path(run_dir) / "run.json", mutate)
+    with run_lock.hold(run_dir):
+        run_state.update(Path(run_dir) / "run.json", mutate)
 
 
 def dependency_digest(run_dir: Path, name: str) -> str | None:
@@ -286,6 +289,11 @@ def retire_changed_selection(run_dir: Path, before: dict | None) -> bool:
     run_dir = Path(run_dir)
     if not before or before.get("content") is None:
         return False
+    with run_lock.hold(run_dir):
+        return _retire_changed_selection(run_dir, before)
+
+
+def _retire_changed_selection(run_dir: Path, before: dict) -> bool:
     selection_path = run_dir / SELECTION_FILE
     if not selection_path.is_file():
         return False
@@ -295,9 +303,8 @@ def retire_changed_selection(run_dir: Path, before: dict | None) -> bool:
         return False
     stamp = dt.datetime.now().strftime("%Y%m%dT%H%M%S")
     selection_path.rename(selection_path.with_name(f"{SELECTION_FILE}.bak-{stamp}-retired-after-hmw-formation"))
-    state = _read_state(run_dir)
-    state.pop("primary_hmw_selection_state", None)
-    (run_dir / "run.json").write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    with run_files.transaction(run_dir / "run.json") as state:
+        state.pop("primary_hmw_selection_state", None)
     update_state(run_dir, selection_retired=True)
     return True
 
@@ -346,6 +353,13 @@ def _step_dependencies(step: str) -> tuple[str, ...]:
 
 
 def run(run_dir: Path, runners: dict[str, Runner], passthrough: list[str]) -> int:
+    """Form HMW under the worker's project lock (re-entered inside the
+    `form-hmw` command, which already owns it for the whole process)."""
+    with run_lock.command_lock(run_dir):
+        return _run(run_dir, runners, passthrough)
+
+
+def _run(run_dir: Path, runners: dict[str, Runner], passthrough: list[str]) -> int:
     """Form HMW. Returns 0 at the HMW gate, non-zero on failure; a manual-
     transport pause propagates after the state is recorded as waiting.
 

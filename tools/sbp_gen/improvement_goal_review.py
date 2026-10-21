@@ -115,10 +115,17 @@ def confirm(run_dir: Path, operative_goal: object, framing_changed_note: object 
     不通過時不寫檔，把失敗記進 run.json。不呼叫模型、不動 case.yaml。
     回傳 (文件, 錯誤清單)。
     """
-    import json
+    from . import run_lock
+
+    with run_lock.hold(run_dir):
+        return _confirm(run_dir, operative_goal, framing_changed_note)
+
+
+def _confirm(run_dir: Path, operative_goal: str, framing_changed_note) -> tuple[dict, list[str]]:
+    from . import run_files
 
     run_json_path = run_dir / "run.json"
-    run_state = json.loads(run_json_path.read_text(encoding="utf-8")) if run_json_path.exists() else {}
+    run_state = run_files.read_state(run_json_path)
     case_id = run_dir.name
     case_path = run_dir / "case.yaml"
     if case_path.exists():
@@ -145,5 +152,5 @@ def confirm(run_dir: Path, operative_goal: object, framing_changed_note: object 
         tmp.replace(path)
         run_state["improvement_goal_review_state"] = "complete"
         run_state.pop("improvement_goal_review_failure", None)
-    run_json_path.write_text(json.dumps(run_state, ensure_ascii=False, indent=2), encoding="utf-8")
+    run_files.write_json_atomic(run_json_path, run_state, trailing_newline=False)
     return doc, errors
