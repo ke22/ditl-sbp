@@ -634,7 +634,7 @@ def _main_generate(argv: list[str]) -> int:
             # 第二次同樣的輸入照樣跑滿 37 秒、節點數還從 14 變 16。
             raw_text, manifest = _read_raw(args.input)
             _write_yaml(args.out / "source_manifest.yaml", manifest)
-            align_print = _stage_fingerprint("align", {"raw_material": raw_text}, opts)
+            align_print = _stage_fingerprint("align", {"raw_material": ingest.comparable_source_text(raw_text)}, opts)
             evidence = None if args.fresh else _reuse_stage(
                 args.out, previous_state, "align", align_print, "evidence.yaml")
             if evidence is None:
@@ -1053,7 +1053,7 @@ def _main_coding_candidates(argv: list[str]) -> int:
         print("專案缺少有效的 case_id，編碼未開始。", file=sys.stderr)
         return 1
     raw_text, manifest = _read_raw(args.input)
-    source_digest = hashlib.sha256(raw_text.encode("utf-8")).hexdigest()
+    source_digest = hashlib.sha256(ingest.comparable_source_text(raw_text).encode("utf-8")).hexdigest()
     state_path = args.out / "run.json"
     if run_lock.content_entries(args.out) and not state_path.is_file():
         print("輸出位置已存在但不是可續作的編碼 run。", file=sys.stderr)
@@ -1190,7 +1190,7 @@ def _main_semantic_segments(argv: list[str]) -> int:
         return 1
     raw_text, _manifest = _read_raw(raw_dir)
     recorded = run_state.get("source_digest")
-    if recorded and recorded != hashlib.sha256(raw_text.encode("utf-8")).hexdigest():
+    if recorded and recorded != hashlib.sha256(ingest.comparable_source_text(raw_text).encode("utf-8")).hexdigest():
         print("原始逐字稿跟這份 run 編碼時讀的不是同一版，不分段。", file=sys.stderr)
         return 1
     case_path = run_dir / "case.yaml"

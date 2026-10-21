@@ -11106,7 +11106,7 @@ def _fresh_coding_context(payload: object) -> dict:
         raise FreshCodingRequestRejected(unreadable, 422)
     if not source_text.strip():
         raise FreshCodingRequestRejected("原始資料沒有可讀內容；請檢查檔案後重新上傳。", 422)
-    digest = hashlib.sha256(source_text.encode("utf-8")).hexdigest()
+    digest = hashlib.sha256(sbp_ingest.comparable_source_text(source_text).encode("utf-8")).hexdigest()
     run_dir = RUNS_DIR / out
     state_path = run_dir / "run.json"
     if sbp_run_lock.content_entries(run_dir) and not state_path.is_file():

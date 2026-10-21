@@ -109,6 +109,28 @@ def _text(path: Path) -> tuple[list[tuple[str, str]], int, list[str]]:
         return [], 1, [f"text: {type(exc).__name__}: {exc}"]
 
 
+
+# Files are joined into one text with this boundary and split back by it.
+# It used to be a bare markdown rule (`---`), which transcripts use for
+# their own layout; a file containing one was cut apart and its later
+# parts lost their file name.
+SOURCE_BOUNDARY = "\n\n---SBP-SOURCE-BOUNDARY---\n\n"
+LEGACY_SOURCE_BOUNDARY = "\n\n---\n\n"
+
+
+def comparable_source_text(text: str) -> str:
+    """The joined text as runs made before the boundary change recorded it.
+
+    Source digests and stage fingerprints hash this form, so existing
+    projects still match their raw data. When a file itself contains the
+    old rule, the old join was ambiguous (and its evidence attribution
+    unreliable), so the text is hashed as is and those runs read as changed.
+    """
+    if LEGACY_SOURCE_BOUNDARY in text:
+        return text
+    return text.replace(SOURCE_BOUNDARY, LEGACY_SOURCE_BOUNDARY)
+
+
 def unavailable_sources(manifest: dict) -> list[str]:
     """File names whose reader is missing on this machine (status reader_unavailable)."""
     return [str(s.get("filename")) for s in (manifest or {}).get("sources") or []
@@ -140,4 +162,4 @@ def ingest(path: Path) -> tuple[str, dict]:
             "units_extracted": sum(s["units_extracted"] for s in sources),
         },
     }
-    return "\n\n---\n\n".join(blocks), manifest
+    return SOURCE_BOUNDARY.join(blocks), manifest

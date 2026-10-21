@@ -51,6 +51,19 @@ CODEX_SETTING_ENVIRONMENTS = ("SBP_CLI_MODEL", "SBP_CLI_EFFORT")
 KNOWN_EXECUTORS = ("codex", "claude")
 
 
+
+def _clean_api_key(value: object) -> str:
+    """A pasted key often carries invisible characters (zero-width spaces,
+    non-breaking spaces); they would only surface later as an encoding error
+    in the HTTP header, so refuse them here with a readable message."""
+    if not isinstance(value, str) or not value.strip():
+        raise ExecutionConfigError("API 執行需要你提供 API key。")
+    key = value.strip()
+    if not key.isascii() or any(ch.isspace() or not ch.isprintable() for ch in key):
+        raise ExecutionConfigError("API key 裡有看不見的字元或空白，請重新複製貼上一次。")
+    return key
+
+
 @dataclass(frozen=True)
 class ExecutionConfig:
     mode: str
@@ -88,10 +101,7 @@ class ExecutionConfig:
         provider = payload.get("provider")
         if provider not in SUPPORTED_API_PROVIDERS:
             raise ExecutionConfigError("目前 API 執行只支援 OpenAI。")
-        api_key = payload.get("api_key")
-        if not isinstance(api_key, str) or not api_key.strip():
-            raise ExecutionConfigError("API 執行需要你提供 API key。")
-        return cls(mode="api", provider=provider, api_key=api_key)
+        return cls(mode="api", provider=provider, api_key=_clean_api_key(payload.get("api_key")))
 
     @classmethod
     def from_environment(cls) -> "ExecutionConfig":
@@ -106,7 +116,7 @@ class ExecutionConfig:
             key = os.environ.get(key_name or "") if key_name else None
             if not key:
                 raise ExecutionConfigError("API 執行缺少工作所需的 API key。")
-            return cls(mode="api", provider=provider, api_key=key)
+            return cls(mode="api", provider=provider, api_key=_clean_api_key(key))
         return cls(mode="legacy")
 
     def child_environment(self, base: dict[str, str] | None = None) -> dict[str, str]:

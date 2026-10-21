@@ -31,7 +31,7 @@ import validate_sbp as V  # noqa: E402
 from . import performance_trace as perf
 import internal_id_patterns  # noqa: E402
 
-from . import as_is_projection, cli_runner, judgment_criteria, lifecycle, llm, run_files, schema_contract  # noqa: E402
+from . import as_is_projection, cli_runner, ingest, judgment_criteria, lifecycle, llm, run_files, schema_contract  # noqa: E402
 
 PROMPT_DIR = Path(__file__).resolve().parent / "prompts"
 CHANNEL_REASONING_PATH = Path(__file__).resolve().with_name("channel_reasoning.md")
@@ -89,7 +89,7 @@ RETRY_NOTICE = "  [{stage}] 第 {attempt} 次沒有回傳 JSON，重試"
 # evidence count (and so its output) proportionally smaller without touching
 # the runner timeout itself.
 ALIGN_INPUT_TOKEN_BUDGET = 8_000
-_ALIGN_BLOCK_SEPARATOR = "\n\n---\n\n"
+_ALIGN_BLOCK_SEPARATOR = ingest.SOURCE_BOUNDARY
 _ALIGN_USER_PREFIX = "以下是這個案例的原始資料。請依系統指示整理成證據索引。\n\n=== 原始資料開始 ===\n"
 _ALIGN_USER_SUFFIX = "\n=== 原始資料結束 ==="
 MAX_ISSUE_INPUT_CHARS = 120_000
@@ -1340,7 +1340,7 @@ def _is_verbatim_excerpt(text: str, source: str) -> bool:
 # covering its own stretch, and the file name covering only the text before
 # its first declaration (when there is any).
 _SCOPE_LINE_HEADER_RE = re.compile(r"^# (.+?) · [^\n]*\n\n", re.MULTILINE)
-_SCOPE_SEPARATOR = "\n\n---\n\n"
+_SCOPE_SEPARATOR = ingest.SOURCE_BOUNDARY
 
 
 def source_scopes(text: str) -> list[tuple[str, str]]:
@@ -2655,7 +2655,7 @@ def _recheck_source_units(raw_material: str, source_manifest: dict) -> dict:
         if isinstance(source, dict) and source.get("filename")
     }
     units = {}
-    for block in raw_material.split("\n\n---\n\n"):
+    for block in raw_material.split(ingest.SOURCE_BOUNDARY):
         header, _, body = block.partition("\n")
         if not header.startswith("# "):
             continue
@@ -2727,7 +2727,7 @@ def journey_recheck_digests(
         "edited_editable_digest": edited_digest,
         "baseline_as_is_input_projection_digest": baseline_projection_digest,
         "edited_as_is_input_projection_digest": edited_projection_digest,
-        "raw_material_digest": lifecycle.canonical_content_digest(raw_material),
+        "raw_material_digest": lifecycle.canonical_content_digest(ingest.comparable_source_text(raw_material)),
         "evidence_digest": lifecycle.canonical_content_digest(evidence),
     })
     result: dict[str, str | bool] = {

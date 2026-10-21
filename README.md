@@ -4,7 +4,7 @@ A research assistant for service designers. It turns qualitative research data i
 Coding → JTBD → HMW → Persona → Customer Journey → Service Blueprint,
 while keeping every researcher decision explicit and traceable to the original evidence.
 
-**Status: Public Preview 0.2.0.** Runs on your own Mac, single user, no account required. macOS on Apple silicon only. See [CHANGELOG.md](CHANGELOG.md).
+**Status: Public Preview 0.2.1.** Runs on your own Mac, single user, no account required. macOS on Apple silicon only. See [CHANGELOG.md](CHANGELOG.md).
 
 ## What it does
 
@@ -51,8 +51,8 @@ Optional: to upload PDF files, install Poppler yourself (`brew install poppler`)
 
 **安裝（只要做一次）**
 
-1. 到 [Releases](https://github.com/ke22/ditl-sbp/releases/latest) 下載 `ditl-sbp-0.2.0.zip`，雙擊解壓縮。
-2. 在 Finder 對解壓後的 `ditl-sbp-0.2.0` 資料夾按右鍵，選「服務」→「新增位於檔案夾位置的終端機視窗」。（找不到這個選項時，打開「終端機」，輸入 `cd ` 加一個空格，把資料夾拖進視窗後按 Enter。）
+1. 到 [Releases](https://github.com/ke22/ditl-sbp/releases/latest) 下載 `ditl-sbp-0.2.1.zip`，雙擊解壓縮。
+2. 在 Finder 對解壓後的 `ditl-sbp-0.2.1` 資料夾按右鍵，選「服務」→「新增位於檔案夾位置的終端機視窗」。（找不到這個選項時，打開「終端機」，輸入 `cd ` 加一個空格，把資料夾拖進視窗後按 Enter。）
 3. 輸入下面這行並按 Enter，等到出現「安裝完成」（第一次約需 1–3 分鐘，要連網；會下載約 200 MB 的瀏覽器元件，用來輸出 PDF）：
 
    ```bash
@@ -118,7 +118,18 @@ Both modes use model quota or paid API usage. Steps that call a model say so on 
 
 The workbench supports both modes; end-to-end runs have been exercised during development, but this preview has not yet been verified end-to-end from a fresh clone in either mode.
 
-## Your first research project
+## Example project (MUJI)
+
+To see a finished project before running your own, download `ditl-sbp-muji-demo-0.2.1.zip` from the [release page](https://github.com/ke22/ditl-sbp/releases/latest): 15 customer interviews for Café&Meal MUJI, carried from coding through to the service blueprint and confirmed by the researcher at every step. Unzip it and run:
+
+```bash
+ditl-sbp start --data-root ~/Downloads/ditl-sbp-muji-demo
+```
+
+On 建立專案, press 打開 next to MUJI-canonical under 接著做既有專案, then go through the steps on the left. The example stays in its own folder, apart from your research data; `ditl-sbp start` without `--data-root` returns to your own projects.
+
+想先看一份完整做完的專案：到 Release 頁下載 `ditl-sbp-muji-demo-0.2.1.zip`，解壓縮後執行上面那行指令（路徑換成資料夾實際位置），在「建立專案」頁的「接著做既有專案」打開 MUJI-canonical，就能逐站看每一步的產出。範例資料和你自己的研究資料分開存放。
+
 
 The workbench opens on the new interface (0.2.0). The left navigation lists the steps in order; a step you cannot do yet says what it is waiting for. The previous interface is still available at `/classic` and reads the same projects.
 

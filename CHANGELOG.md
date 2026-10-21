@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 — Fixes and MUJI example (2026-10-21)
+
+- Fixed: transcripts that use `---` as a divider (common in Markdown) were cut apart when the files were read, so most evidence lost its file name and was attributed to 「原始資料」; 語意分段 then stopped with 「這些證據的來源不在上傳的逐字稿裡」. Files are now joined with a boundary that transcripts cannot contain. Projects whose files contain no `---` are unaffected and keep their evidence; projects whose files do should start a new coding run, since their earlier evidence attribution was unreliable.
+- Fixed: an OpenAI API key pasted with invisible characters (such as a zero-width space) failed later with a technical `UnicodeEncodeError`. The key is now checked when you submit it, and the workbench asks you to paste it again.
+- New: a finished example project (MUJI, 15 interviews, coding through service blueprint) is available as a separate download on the release page, `ditl-sbp-muji-demo-0.2.1.zip`. Open it with `ditl-sbp start --data-root <folder>`; it stays apart from your own research data.
+
 ## 0.2.0 — New interface (2026-10-21)
 
 - New interface: the workbench opens on a step-by-step layout (建立專案 → AI 設定 → 資料與編碼 → JTBD → HMW → Persona → CJM → 服務藍圖 → 輸出). The previous interface stays at `/classic`; both read the same projects, and projects from 0.1.x open in either.
