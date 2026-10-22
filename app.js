@@ -17,17 +17,11 @@ document.querySelectorAll('[data-copy]').forEach(button => button.addEventListen
 document.querySelector('[data-copy-agent]').addEventListener('click', () => copy(document.querySelector('#agent-prompt').textContent));
 
 
-const imageDialog = document.querySelector('#product-image-dialog');
-const openImage = document.querySelector('#open-product-image');
-openImage.addEventListener('click', () => imageDialog.showModal());
-document.querySelector('#close-product-image').addEventListener('click', () => imageDialog.close());
-imageDialog.addEventListener('click', event => {
-  if (event.target === imageDialog) {
-    const rect = imageDialog.getBoundingClientRect();
-    if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) imageDialog.close();
-  }
-});
-imageDialog.addEventListener('close', () => openImage.focus());
+// Product film: plays muted on its own unless the viewer prefers reduced motion; controls stay available.
+const film = document.querySelector('#product-film');
+if (film && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  film.play().catch(() => {});
+}
 
 const workflowDialog = document.querySelector('#workflow-diagram-dialog');
 const openWorkflow = document.querySelector('#open-workflow-diagram');

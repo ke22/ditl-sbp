@@ -345,3 +345,4 @@ h1{font-size:36px}
 .product-detail-window{height:245px}
 }
 .workflow-diagram{margin-top:44px}.workflow-diagram>button{background:var(--text-primary)}.workflow-scroll img{min-width:1600px}
+.product-film video{display:block;width:100%;height:auto;aspect-ratio:16/9;border:1px solid var(--border-strong);border-radius:12px;background:var(--surface-app);box-shadow:0 24px 70px -45px rgba(31,37,48,.35)}@media(max-width:760px){.product-film video{border-radius:8px}}
