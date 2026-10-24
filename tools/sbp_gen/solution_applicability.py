@@ -55,11 +55,27 @@ def _applicable_reconfirmation(step: dict, run_state: dict) -> dict | None:
     return None
 
 
+def candidates_digest(step: dict) -> str:
+    """Digest of every Solution candidate developed for the step."""
+    return lifecycle.canonical_content_digest([c for c in step.get("solution_candidates") or [] if isinstance(c, dict)])
+
+
 def _formation(step: dict, run_state: dict) -> dict | None:
     """The formation record of the Solution adopted now, or None for a legacy Solution."""
     record = ((run_state or {}).get(FORMATION_KEY) or {}).get(step.get("id"))
-    if isinstance(record, dict) and record.get("solution_ids") == list(step.get("selected_solution_ids") or []) \
-            and record.get("solution_digest") == adopted_solution_digest(step):
+    if not isinstance(record, dict):
+        return None
+    selected = list(step.get("selected_solution_ids") or [])
+    if record.get("solution_ids") == selected and record.get("solution_digest") == adopted_solution_digest(step):
+        return record
+    # solutions-start-unadopted (2026-10-23): Solutions are developed unadopted, so the
+    # formation describes the candidates; adopting one of them later is the same formation.
+    if record.get("candidates_digest"):
+        ids = {c.get("id") for c in step.get("solution_candidates") or [] if isinstance(c, dict)}
+        return record if record["candidates_digest"] == candidates_digest(step) and set(selected) <= ids else None
+    # Records written 2026-10-23..24 before candidates_digest: nothing was adopted at
+    # formation, and the step still carries the Solutions developed for that basis.
+    if record.get("solution_ids") == [] and record.get("step_digest") and record["step_digest"] == step.get("solution_basis"):
         return record
     return None
 
@@ -125,7 +141,8 @@ def journey_applicability(run_dir: Path, journey: dict | None = None) -> dict:
     state = run_state(run_dir)
     hmw_now = current_hmw_digest(run_dir)
     journey_hmw = formation_basis.journey_formation_hmw(run_dir)["state"]
-    return {step["id"]: step_applicability(step, state, hmw_now, journey_hmw)
+    # cjm-core-problem-synthesis: a linked journey-level core problem is part of the step.
+    return {step["id"]: step_applicability(stages.effective_step(journey, step), state, hmw_now, journey_hmw)
             for step in primary_steps(journey) if step.get("id") and has_adopted_solution(step)}
 
 
@@ -137,7 +154,8 @@ def unresolved(run_dir: Path, journey: dict | None = None) -> list[str]:
 def formation_record(step: dict, hmw_digest: str | None, now: str) -> dict:
     return {"hmw_digest": hmw_digest, "step_digest": step.get("solution_basis"),
             "solution_ids": list(step.get("selected_solution_ids") or []),
-            "solution_digest": adopted_solution_digest(step), "at": now}
+            "solution_digest": adopted_solution_digest(step),
+            "candidates_digest": candidates_digest(step), "at": now}
 
 
 def reconfirmation_record(step: dict, hmw_digest: str | None, now: str) -> dict:

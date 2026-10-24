@@ -67,7 +67,8 @@ class RunnerReply:
     # cli-model-override-reaches-runner: where `model` came from -- "workbench"
     # (the researcher chose it), "executor_settings" (inherited from the
     # researcher's own executor settings) or None (the executor's own default)
-    # -- and whether the executor itself reported that this model ran.
+    # -- the protocol reports "policy" when the runner's per-stage table chose
+    # it (cli-model-by-stage) -- and whether the executor itself reported that this model ran.
     model_source: str | None = None
     model_confirmed: bool = False
 
@@ -236,6 +237,18 @@ def _requested_model(request: Mapping[str, Any]) -> str | None:
     return None
 
 
+def _policy_model(runner: Runner, request: Mapping[str, Any]) -> str | None:
+    """cli-model-by-stage: the runner's own per-stage model, asked only when
+    the researcher named none. A runner without `stage_model` (Codex) keeps
+    its existing default."""
+    choose = getattr(runner, "stage_model", None)
+    stage = request.get("stage")
+    if not callable(choose) or not isinstance(stage, str):
+        return None
+    model = choose(stage)
+    return model if isinstance(model, str) and model.strip() else None
+
+
 def handle(request: Mapping[str, Any], runner: Runner) -> dict[str, Any]:
     """Serve one request. Raises RunnerError; never retries."""
     try:
@@ -246,17 +259,21 @@ def handle(request: Mapping[str, Any], runner: Runner) -> dict[str, Any]:
         raise RunnerError("runner_timed_out")
     kind = request.get("kind")
     if kind == "completion":
+        model = _requested_model(request)
+        policy_model = None if model else _policy_model(runner, request)
         reply = runner(
             build_completion_prompt(request),
             output_schema=None,
             web_search=False,
-            model=_requested_model(request),
+            model=model or policy_model,
             timeout=timeout,
         )
         if not reply.text.strip():
             raise RunnerError("runner_empty_reply")
         result = {"status": "ok", "content": reply.text, "tokens": int(reply.tokens), "model": reply.model}
-        if reply.model_source:
+        if policy_model:
+            result["model_source"] = "policy"
+        elif reply.model_source:
             result["model_source"] = reply.model_source
         if reply.model_confirmed and reply.model:
             result["model_effective"] = reply.model

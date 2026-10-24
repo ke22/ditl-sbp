@@ -19,6 +19,7 @@ if __package__ in (None, ""):
 from . import as_is_research, decisions, gates, hmw_formation, improvement_goal_review, ingest, journey_operations, lifecycle, llm, source_attribution, stages, to_be  # noqa: E402
 from . import run_state as run_state_file  # noqa: E402
 from . import run_files, run_lock  # noqa: E402
+from . import journey_core_problems as core_problems  # noqa: E402
 from . import performance_trace as perf  # noqa: E402
 import role_coverage  # noqa: E402
 import validate_sbp as V  # noqa: E402
@@ -1086,18 +1087,19 @@ def _main_coding_candidates(argv: list[str]) -> int:
         ("semantic_segments", "semantic_segments.yaml", "semantic_segments_state", _main_semantic_segments),
         ("open_coding", "open_coding.yaml", "open_coding_state", _main_open_coding),
         ("axial_coding", "axial_coding.yaml", "axial_coding_state", _main_axial_coding),
-        # add-selective-coding-layer: formed only when the run has a research
-        # purpose; otherwise recorded as needs_purpose and coding carries on.
+        # add-selective-coding-layer, purpose-aware-research-calibration: formed
+        # with or without a research purpose.
         ("selective_themes", "selective_themes.yaml", "selective_themes_state", _main_selective_themes),
         ("narrative_jtbd", "narrative_job_candidates.yaml", "narrative_job_candidates_state", _main_narrative_job_candidates),
     )
-    from . import selective_themes as selective_module
+    from . import project_context, selective_themes as selective_module
     selective_module.copy_purpose_into_run(Path(args.case).parent, args.out)
+    # purpose-aware-research-calibration: the researcher context travels with
+    # the purpose; non-evidence uploads are registered as business inputs first.
+    project_context.register_business_inputs(Path(args.case).parent)
+    project_context.copy_into_run(Path(args.case).parent, args.out)
     for stage_name, artifact_name, stage_key, runner in stages_to_run:
         current = json.loads(state_path.read_text(encoding="utf-8"))
-        if stage_name == "selective_themes" and not selective_module.read_purpose(args.out):
-            update_state(selective_themes_state="needs_purpose")
-            continue
         # open-coding-on-semantic-segments: segments only feed open coding, so
         # a run whose open coding is already complete (e.g. an older run being
         # retried) is not segmented after the fact.
@@ -1396,7 +1398,9 @@ def _main_axial_coding(argv: list[str]) -> int:
     opts = {"case_id": case_id, "max_tokens": args.max_tokens,
             "axial_coding_model": args.model, "axial_coding_effort": args.effort}
     try:
-        data, usage = stages.axial_coding(concepts, evidence, opts)
+        from . import semantic_segments as segments_module, source_attribution as attribution_module
+        data, usage = stages.axial_coding(concepts, evidence, opts, attribution=attribution_module.load(run_dir),
+                                          segments=segments_module.segments_by_id(segments_module.load(run_dir)))
         _write_yaml(run_dir / "axial_coding.yaml", data)
         run_state.setdefault("usage", {})["axial_coding"] = usage
         run_state["axial_coding_state"] = "complete"
@@ -1405,7 +1409,9 @@ def _main_axial_coding(argv: list[str]) -> int:
         signals = stages.axial_label_quality_signals(data)
         run_state["axial_coding_quality_signals"] = signals
         _persist(run_json_path, run_state)
-        print(f"完成：{run_dir / 'axial_coding.yaml'} 產生 {len(data.get('categories') or [])} 個類別")
+        counts = stages.paradigm_basis_counts(data)
+        print(f"完成：{run_dir / 'axial_coding.yaml'} 產生 {len(data.get('categories') or [])} 個類別；"
+              f"典範模型 {sum(counts.values())} 格（證據 {counts['evidence']}、綜合 {counts['synthesis']}、推論 {counts['inference']}）")
         for signal in signals:
             print(f"label 品質提醒（不影響完成）：{signal['signal']} {'、'.join(str(c) for c in signal['categories'])}")
         return 0
@@ -1524,13 +1530,27 @@ def _main_persona_matrix(argv: list[str]) -> int:
         case = yaml.safe_load(case_path.read_text(encoding="utf-8")) or {}
         case_id = case.get("case_id") or case_id
 
+    # Rejected attempts are kept for diagnosis beside the runs, never inside
+    # this run's research artifacts (same place as open coding's).
+    diagnostics_dir = (run_dir.parent / "_diagnostics" / run_dir.name
+                       / f"persona-matrix-{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}")
     opts = {"case_id": case_id, "max_tokens": args.max_tokens,
-            "persona_matrix_model": args.model, "persona_matrix_effort": args.effort}
+            "persona_matrix_model": args.model, "persona_matrix_effort": args.effort,
+            "diagnostics_dir": str(diagnostics_dir)}
+    from . import selective_themes as selective_module
+    comparison_path = run_dir / "persona_comparison.yaml"
+    if comparison_path.exists() and not selected_axes:
+        # persona-matrix-comparison-first: method B stage 2 reads only the
+        # checked stage 1 comparison.
+        return _persona_dimension_synthesis(run_dir, evidence, categories_doc_full, opts, run_state, run_json_path,
+                                            yaml.safe_load(comparison_path.read_text(encoding="utf-8")) or {},
+                                            selective_module.read_purpose(run_dir))
     try:
         scope = hmw_scope_module.resolve(run_dir)
         data, usage = stages.persona_matrix(
             evidence, categories_doc_full, opts, selected_axes=selected_axes, core_category=core_category,
             hmw_scope=scope, attribution=source_attribution.load(run_dir),
+            research_purpose=selective_module.read_purpose(run_dir),
         )
         if scope:
             data["framed_by"] = {"primary_hmw_selection": hmw_scope_module.digest(scope)}
@@ -1546,6 +1566,91 @@ def _main_persona_matrix(argv: list[str]) -> int:
         run_state["persona_matrix_failure"] = str(exc)
         _persist(run_json_path, run_state)
         print(f"Persona Matrix 失敗，run 其他狀態不受影響：{exc}", file=sys.stderr)
+        return 1
+
+
+def _persona_dimension_synthesis(run_dir: Path, evidence: list, categories_doc: dict, opts: dict, run_state: dict,
+                                 run_json_path: Path, comparison_doc: dict, research_purpose: str) -> int:
+    """Method B stage 2: write the model's decisions to
+    persona_dimension_synthesis.yaml and, when some concern became an axis,
+    the system-assembled persona_matrix.yaml."""
+    opts = {**opts, "persona_dimension_synthesis_model": opts.get("persona_matrix_model"),
+            "persona_dimension_synthesis_effort": opts.get("persona_matrix_effort")}
+    try:
+        scope = hmw_scope_module.resolve(run_dir)
+        # The researcher's check of stage 1 (persona_comparison_review.yaml):
+        # limits on how the comparison may be read, without rewriting it.
+        review_path = run_dir / "persona_comparison_review.yaml"
+        review = (yaml.safe_load(review_path.read_text(encoding="utf-8")) or {}) if review_path.exists() else {}
+        limits = [str(x).strip() for x in (review.get("limits") or []) if str(x).strip()]
+        from . import project_context
+        synthesis, matrix, usage = stages.persona_dimension_synthesis(
+            evidence, comparison_doc, categories_doc, opts, source_attribution.load(run_dir),
+            research_purpose=research_purpose, hmw_scope=scope, researcher_limits=limits,
+            context_block=project_context.framing_block(run_dir, include_research_purpose=False),
+            purposes=project_context.purposes(run_dir))
+        _write_yaml(run_dir / "persona_dimension_synthesis.yaml", {"schema_version": 1, **synthesis})
+        if matrix is not None:
+            if scope:
+                matrix["framed_by"] = {"primary_hmw_selection": hmw_scope_module.digest(scope)}
+            _write_yaml(run_dir / "persona_matrix.yaml", matrix)
+        run_state.setdefault("usage", {})["persona_matrix"] = usage
+        run_state["persona_matrix_state"] = "complete"
+        _persist(run_json_path, run_state)
+        print(f"完成：{len(synthesis.get('decisions') or [])} 個共同關切做了決定，"
+              f"{len(synthesis.get('axes') or [])} 條軸"
+              + ("" if matrix is not None else "；沒有關切形成維度，persona_matrix.yaml 未更新"))
+        return 0
+    except Exception as exc:
+        run_state["persona_matrix_state"] = "failed"
+        run_state["persona_matrix_failure"] = str(exc)
+        _persist(run_json_path, run_state)
+        print(f"Persona Matrix 第二階段失敗，run 其他狀態不受影響：{exc}", file=sys.stderr)
+        return 1
+
+
+def _main_persona_comparison(argv: list[str]) -> int:
+    """`sbp-gen persona-comparison --run <dir>` -- persona-matrix-comparison-
+    first, method B stage 1: compare the confirmed participants and stop.
+    Writes persona_comparison.yaml for the researcher to check before
+    `sbp-gen persona-matrix` forms dimensions from it."""
+    p = argparse.ArgumentParser(prog="sbp-gen persona-comparison", description="逐人比較已確認的受訪者（不產生維度）")
+    p.add_argument("--run", required=True, type=Path, dest="run_dir")
+    p.add_argument("--max-tokens", type=int, default=32000)
+    p.add_argument("--model", default=None)
+    p.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"], default=None)
+    args = p.parse_args(argv)
+    run_dir = args.run_dir
+    for name in ("evidence.yaml", "axial_coding.yaml"):
+        if not (run_dir / name).exists():
+            print(f"{run_dir / name} 不存在，無法比較受訪者。", file=sys.stderr)
+            return 1
+    evidence = yaml.safe_load((run_dir / "evidence.yaml").read_text(encoding="utf-8")) or []
+    categories_doc = yaml.safe_load((run_dir / "axial_coding.yaml").read_text(encoding="utf-8")) or {}
+    case_id = run_dir.name
+    if (run_dir / "case.yaml").exists():
+        case_id = (yaml.safe_load((run_dir / "case.yaml").read_text(encoding="utf-8")) or {}).get("case_id") or case_id
+    run_json_path = run_dir / "run.json"
+    run_state = json.loads(run_json_path.read_text(encoding="utf-8")) if run_json_path.exists() else {}
+    diagnostics_dir = (run_dir.parent / "_diagnostics" / run_dir.name
+                       / f"persona-comparison-{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}")
+    opts = {"case_id": case_id, "max_tokens": args.max_tokens,
+            "persona_comparison_model": args.model, "persona_comparison_effort": args.effort,
+            "diagnostics_dir": str(diagnostics_dir)}
+    try:
+        data, usage = stages.persona_comparison(evidence, categories_doc, opts, source_attribution.load(run_dir))
+        _write_yaml(run_dir / "persona_comparison.yaml", data)
+        run_state.setdefault("usage", {})["persona_comparison"] = usage
+        run_state["persona_comparison_state"] = "complete"
+        _persist(run_json_path, run_state)
+        print(f"完成：{run_dir / 'persona_comparison.yaml'}，{len(data.get('concerns') or [])} 個共同關切。"
+              "請先檢查逐人比較，再跑 `sbp-gen persona-matrix` 形成維度。")
+        return 0
+    except Exception as exc:
+        run_state["persona_comparison_state"] = "failed"
+        run_state["persona_comparison_failure"] = str(exc)
+        _persist(run_json_path, run_state)
+        print(f"逐人比較失敗，run 其他狀態不受影響：{exc}", file=sys.stderr)
         return 1
 
 
@@ -1725,6 +1830,13 @@ def _main_persona_content(argv: list[str]) -> int:
             "persona_content_model": args.model, "persona_content_effort": args.effort}
     try:
         data, usage = stages.persona_content(evidence, quadrant, axes, persona_matrix_doc, categories_by_id, opts)
+        # 2026-10-22 researcher ruling: the Persona is called by its matrix cell's name.
+        from . import persona_quadrant_names as Q
+        cell_name = Q.cell_name(run_dir, axis_ids, {axis_ids[0]: quadrant["axis_1_pole"], axis_ids[1]: quadrant["axis_2_pole"]})
+        if cell_name:
+            for persona in data.get("personas") or []:
+                if isinstance(persona, dict):
+                    persona["label"] = cell_name
         _write_yaml(run_dir / "persona_content.yaml", data)
         run_state.setdefault("usage", {})["persona_content"] = usage
         run_state["persona_content_state"] = "complete"
@@ -1860,7 +1972,7 @@ def _main_selective_themes(argv: list[str]) -> int:
         view = ST.structure_input(run_dir)
     except ST.SelectiveError as exc:
         print(str(exc), file=sys.stderr)
-        run_state["selective_themes_state"] = "needs_purpose" if "研究目的" in str(exc) else "failed"
+        run_state["selective_themes_state"] = "failed"  # needs_purpose retired (purpose-aware-research-calibration)
         run_state["selective_themes_failure"] = str(exc)
         _persist(run_json_path, run_state)
         return 1
@@ -1926,6 +2038,45 @@ def _main_chart_guides(argv: list[str]) -> int:
     return 0
 
 
+def _main_persona_quadrant_names(argv: list[str]) -> int:
+    """`sbp-gen persona-quadrant-names --run <dir> [--axes AXIS-1,AXIS-2]`:
+    persona-matrix-comparison-first -- the AI drafts, in one call, a name and
+    one line for each cell of every axis pair (or only the given pair) and
+    merges them into persona_quadrant_names.yaml; a cell the researcher named
+    keeps the researcher's words. Only that file is written."""
+    from . import persona_quadrant_names as Q
+    p = argparse.ArgumentParser(prog="sbp-gen persona-quadrant-names", description="AI 起草 Persona Matrix 四格名稱")
+    p.add_argument("--run", required=True, type=Path, dest="run_dir")
+    p.add_argument("--axes", default=None, help="只起草這一組兩條軸；省略時起草所有組合")
+    p.add_argument("--max-tokens", type=int, default=16000)
+    p.add_argument("--model", default=None)
+    p.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"], default=None)
+    args = p.parse_args(argv)
+    pairs = ([[a.strip() for a in args.axes.split(",") if a.strip()]] if args.axes else Q.all_pairs(args.run_dir))
+    if not pairs:
+        print("還沒有兩條以上的軸，無法替四格命名。", file=sys.stderr)
+        return 1
+    diagnostics_dir = (args.run_dir.parent / "_diagnostics" / args.run_dir.name
+                       / f"persona-quadrant-names-{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}")
+    opts = {"max_tokens": args.max_tokens, "persona_quadrant_names_model": args.model,
+            "persona_quadrant_names_effort": args.effort, "diagnostics_dir": str(diagnostics_dir)}
+    try:
+        draft, usage, projections = stages.draft_persona_quadrant_names(args.run_dir, pairs, opts)
+    except (llm.LLMError, ValueError) as exc:
+        print(f"起草四格名稱失敗：{exc}", file=sys.stderr)
+        return 1
+    now = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+    by_key = {Q.pair_key(e["axis_ids"]): e for e in draft["pairs"]}
+    document = Q.load_document(args.run_dir)
+    for projection in projections:
+        document = Q.merge_draft(document, projection["axis_ids"], by_key[Q.pair_key(projection["axis_ids"])],
+                                 Q.projection_digest(projection), now)
+    path = Q.write_document(args.run_dir, document)
+    print(f"已起草 {len(projections)} 組兩條軸的四格名稱：{path}；{usage.get('attempts')} 次、"
+          f"{usage.get('wall_seconds')} 秒、{usage.get('tokens')} tokens")
+    return 0
+
+
 def _main_journey(argv: list[str]) -> int:
     """`sbp-gen journey --run <dir>`——add-standalone-compare-structure-and-
     journey-commands：獨立、選填的歷程發現與確認指令，不進多階段管線（手動傳輸
@@ -1985,30 +2136,19 @@ def _main_journey(argv: list[str]) -> int:
         opts = {"max_tokens": args.max_tokens, "journey_model": args.model, "journey_effort": args.effort}
         axial_path = run_dir / "axial_coding.yaml"
         axial_doc = (yaml.safe_load(axial_path.read_text(encoding="utf-8")) or {}) if axial_path.exists() else {}
-        persona_path = run_dir / "persona_confirmed.yaml"
-        persona_snapshot = (yaml.safe_load(persona_path.read_text(encoding="utf-8")) or {}) if persona_path.exists() else {}
-        persona_doc = persona_snapshot.get("persona_content") if isinstance(persona_snapshot, dict) else None
-        confirmed_persona = {
-            "target": (persona_doc.get("personas") or [None])[0],
-        } if isinstance(persona_doc, dict) and persona_doc.get("personas") else None
-        hmw_scope = hmw_scope_module.resolve(run_dir)
         try:
+            # cjm-as-is-first-core-problems (2026-10-21 researcher ruling): the as-is
+            # journey reads neither the Persona nor the HMW, so neither can make it
+            # stale. They reach the CJM through `journey-core-problems`.
+            # source-attribution-integrity: a session code and confirmed identities only, never a file name.
+            identity_block, evidence_view = source_attribution.cjm_evidence_view(evidence, source_attribution.load(run_dir))
             data, usage = stages.journey(evidence, case, opts, coding_categories=axial_doc.get("categories"),
-                                         confirmed_persona=confirmed_persona, hmw_scope=hmw_scope)
+                                         evidence_view=evidence_view, identity_block=identity_block)
+            data["generation_basis"] = stages.JOURNEY_GENERATION_BASIS
             _write_yaml(run_dir / "journey_proposal.yaml", data)
             run_state.setdefault("usage", {})["journey"] = usage
             run_state["journey_state"] = "awaiting_confirmation"
-            # Persona is the CJM's analytical lens: record which confirmed Persona
-            # this CJM was built through, so a later Persona change makes it
-            # non-current instead of silently still counting as current.
-            if isinstance(persona_snapshot, dict) and persona_snapshot.get("persona_digest"):
-                run_state["journey_persona_lens"] = {"persona_digest": persona_snapshot["persona_digest"]}
-                # The selected HMW is the CJM's design focus: a later HMW change
-                # makes this CJM non-current the same way a Persona change does.
-                if hmw_scope:
-                    run_state["journey_persona_lens"]["hmw_digest"] = hmw_scope_module.digest(hmw_scope)
-            else:
-                run_state.pop("journey_persona_lens", None)
+            run_state.pop("journey_persona_lens", None)
             run_state.pop("journey_failure", None)
             _persist(run_json_path, run_state)
             print(f"完成：{run_dir / 'journey_proposal.yaml'} 待研究者複核確認")
@@ -2089,8 +2229,13 @@ def _main_journey_solutions(argv: list[str]) -> int:
             "journey_solutions_effort": args.effort}
     try:
         formation_scope = hmw_scope_module.resolve(run_dir)
+        identity_block, evidence_view = source_attribution.cjm_evidence_view(evidence, source_attribution.load(run_dir))
+        from . import project_context
         output, usage = stages.journey_solutions(journey_data, evidence, opts, confirmed_persona=confirmed_persona,
-                                                 hmw_scope=formation_scope)
+                                                 hmw_scope=formation_scope, evidence_view=evidence_view,
+                                                 identity_block=identity_block,
+                                                 context_block=project_context.framing_block(run_dir),
+                                                 business_input_ids=project_context.business_input_ids(run_dir))
         updated = stages.apply_journey_solutions(journey_data, output)
         evidence_ids = {e.get("id") for e in evidence if isinstance(e, dict) and e.get("id")}
         errors = stages._journey_errors(updated, evidence_ids, allow_split_stages=True)
@@ -2109,6 +2254,59 @@ def _main_journey_solutions(argv: list[str]) -> int:
         run_state["journey_solutions_failure"] = str(exc)
         _persist(run_json_path, run_state)
         print(f"發展解方沒有完成，旅程沒有變動：{exc}", file=sys.stderr)
+        return 1
+
+
+def _main_journey_core_problems(argv: list[str]) -> int:
+    """`sbp-gen journey-core-problems --run <dir>` (cjm-as-is-first-core-problems):
+    mark each as-is step's relevance to the target Persona and draft core
+    problem candidates, compared against the selected HMW, into
+    journey_core_problems.yaml. The journey itself is never written."""
+    p = argparse.ArgumentParser(prog="sbp-gen journey-core-problems", description="依目標族群標出相關性並起草核心問題候選")
+    p.add_argument("--run", required=True, type=Path, dest="run_dir")
+    p.add_argument("--max-tokens", type=int, default=32000)
+    p.add_argument("--model", default=None)
+    p.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"], default=None)
+    args = p.parse_args(argv)
+    run_dir = args.run_dir
+    proposal_path = run_dir / "journey_proposal.yaml"
+    evidence_path = run_dir / "evidence.yaml"
+    if not proposal_path.exists() or not evidence_path.exists():
+        print("這份產出還沒有顧客旅程或證據，無法起草核心問題。", file=sys.stderr)
+        return 1
+    journey_data = yaml.safe_load(proposal_path.read_text(encoding="utf-8")) or {}
+    if not core_problems.is_as_is_journey(journey_data):
+        print("這份顧客旅程是舊方法建立的（依 Persona 收窄），要先依新方法重新建立顧客旅程，才能起草核心問題。",
+              file=sys.stderr)
+        return 1
+    evidence = yaml.safe_load(evidence_path.read_text(encoding="utf-8")) or []
+    persona, persona_digest = core_problems.confirmed_persona(run_dir)
+    group_ids, limited = core_problems.group_evidence(run_dir, persona, evidence)
+    identity_block, evidence_view = source_attribution.cjm_evidence_view(evidence, source_attribution.load(run_dir))
+    run_json_path = run_dir / "run.json"
+    run_state = json.loads(run_json_path.read_text(encoding="utf-8")) if run_json_path.exists() else {}
+    opts = {"max_tokens": args.max_tokens, "journey_core_problems_model": args.model,
+            "journey_core_problems_effort": args.effort}
+    try:
+        draft, usage = stages.journey_core_problems(
+            journey_data, evidence, opts, group_ids=group_ids, group_evidence_limited=limited,
+            persona=core_problems.persona_view(persona), jtbd=narrative_framing.load_selection(run_dir) or None,
+            hmw_scope=hmw_scope_module.resolve(run_dir), evidence_view=evidence_view, identity_block=identity_block)
+        doc = core_problems.build_document(journey_data, draft, group_ids, limited,
+                                           core_problems.current_basis(run_dir, persona_digest))
+        core_problems.save(run_dir, doc)
+        run_state.setdefault("usage", {})["journey_core_problems"] = usage
+        run_state["journey_core_problems_state"] = "complete"
+        run_state.pop("journey_core_problems_failure", None)
+        _persist(run_json_path, run_state)
+        drafted = sum(1 for entry in doc["steps"] if entry.get("candidate"))
+        print(f"完成：{run_dir / core_problems.FILENAME} 起草 {drafted} 個核心問題候選，待研究者決定")
+        return 0
+    except Exception as exc:
+        run_state["journey_core_problems_state"] = "failed"
+        run_state["journey_core_problems_failure"] = str(exc)
+        _persist(run_json_path, run_state)
+        print(f"起草核心問題沒有完成，旅程與既有候選都沒有變動：{exc}", file=sys.stderr)
         return 1
 
 
@@ -2416,8 +2614,11 @@ def _main_how_might_we(argv: list[str]) -> int:
     opts = {"case_id": case_id, "max_tokens": args.max_tokens,
             "how_might_we_model": args.model, "how_might_we_effort": args.effort}
     try:
+        from . import project_context
         data, usage = stages.how_might_we(categories_doc, category_properties_doc, evidence, opts,
-                                           selections, selective_doc)
+                                           selections, selective_doc,
+                                           context_block=project_context.framing_block(run_dir),
+                                           purposes=project_context.purposes(run_dir))
         _record_narrative_framing(data, selection_doc)
         _write_yaml(run_dir / "hmw.yaml", data)
 
@@ -2522,7 +2723,8 @@ def _main_selective_coding(argv: list[str]) -> int:
             case_id = case.get("case_id") or case_id
         opts = {"case_id": case_id}
         try:
-            data, usage = stages.propose_core_category_candidates(axial_data, evidence, opts)
+            data, usage = stages.propose_core_category_candidates(axial_data, evidence, opts,
+                                                                  attribution=source_attribution.load(run_dir))
             _write_yaml(run_dir / "core_category_candidates.yaml", data)
             run_state.setdefault("usage", {})["core_category_candidates"] = usage
             run_state["core_category_candidates_state"] = "complete"
@@ -2538,7 +2740,7 @@ def _main_selective_coding(argv: list[str]) -> int:
             return 1
 
     if args.selection_file is None:
-        findings = V.axial_coding_warnings(axial_data, evidence)
+        findings = V.axial_coding_warnings(axial_data, evidence, attribution=source_attribution.load(run_dir))
         for category in categories:
             label = category.get("label")
             print(f"{category.get('id')}\t{label}")
@@ -2811,7 +3013,8 @@ def _main_persona_dimensions(argv: list[str]) -> int:
         )
         try:
             data, usage = stages.propose_persona_dimension_candidates(
-                axial_data, evidence, opts, properties_doc=properties_doc)
+                axial_data, evidence, opts, properties_doc=properties_doc,
+                attribution=source_attribution.load(run_dir))
             _write_yaml(run_dir / "persona_dimension_candidates.yaml", data)
             run_state.setdefault("usage", {})["persona_dimension_candidates"] = usage
             run_state["persona_dimension_candidates_state"] = "complete"
@@ -3168,7 +3371,10 @@ def _main_segmentation_axes(argv: list[str]) -> int:
         opts = {"case_id": case_id}
         try:
             scope = hmw_scope_module.resolve(run_dir)
-            data, usage = stages.propose_segmentation_axis_candidates(persona_matrix_data, opts, hmw_scope=scope)
+            from . import project_context
+            data, usage = stages.propose_segmentation_axis_candidates(
+                persona_matrix_data, opts, hmw_scope=scope,
+                context_block=project_context.framing_block(run_dir), purposes=project_context.purposes(run_dir))
             if scope:
                 data["framed_by"] = {"primary_hmw_selection": hmw_scope_module.digest(scope)}
             _write_yaml(run_dir / "segmentation_axis_candidates.yaml", data)
@@ -3682,9 +3888,11 @@ SUBCOMMANDS = {
     "decisions": "_main_decisions",
     "journey": "_main_journey",
     "journey-solutions": "_main_journey_solutions",
+    "journey-core-problems": "_main_journey_core_problems",
     "journey-branch": "_main_journey_branch",
     "journey-annotations": "_main_journey_annotations",
     "chart-guides": "_main_chart_guides",
+    "persona-quadrant-names": "_main_persona_quadrant_names",
     "selective-themes": "_main_selective_themes",
     "compare": "_main_compare",
     "structure": "_main_structure",
@@ -3703,6 +3911,7 @@ SUBCOMMANDS = {
     "category-properties": "_main_category_properties",
     "axial-coding": "_main_axial_coding",
     "persona-matrix": "_main_persona_matrix",
+    "persona-comparison": "_main_persona_comparison",
     "source-attribution": "_main_source_attribution",
     "persona-content": "_main_persona_content",
     "jtbd": "_main_jtbd",

@@ -56,7 +56,9 @@ FRAMING = "confirmed_jtbd"
 # backbone; the selected JTBD set is framing and reaches only the two HMW steps.
 DEPENDENCIES = {
     "category_properties": ("axial_coding", "evidence"),
-    "how_might_we": ("axial_coding", "category_properties", "selective_themes", "evidence", FRAMING),
+    # purpose-aware-research-calibration: the researcher context frames the HMW
+    # scope (v13); its digest falls back to the legacy research purpose.
+    "how_might_we": ("axial_coding", "category_properties", "selective_themes", "evidence", FRAMING, "project_context"),
     "primary_hmw_candidates": ("how_might_we", "axial_coding", FRAMING),
 }
 # Raise a step's version when its prompt, schema or validator changes so that
@@ -90,7 +92,13 @@ METHOD_VERSIONS = {step: 1 for step in STEPS}
 # never force integration, one main action per framing (no chaining), and
 # record supporting_jtbd_refs. (11 is left to the parked
 # hmw-design-scope-synthesis change; this is not that design.)
-METHOD_VERSIONS["how_might_we"] = 12
+# 13: purpose-aware-research-calibration (2026-10-22) -- only a new input: the
+# researcher context (project purpose, research purpose, business inputs) as
+# framing, with one assessment per concern named in the purposes (2026-10-23:
+# quoted from the purposes instead of a separate issues list; still v13, which
+# never shipped). The statement rules frozen at v8 (afc314a) are unchanged. An HMW formed under 12 is regenerated
+# only when the researcher next activates Form HMW.
+METHOD_VERSIONS["how_might_we"] = 13
 # primary_hmw_candidates history -- 2: present all three framings, unranked;
 # 3: hmw-candidate-rationale-boundary stops the rationale at evidence and scope;
 # 4: the same change also forbids raw internal ids in the rationale;
@@ -172,6 +180,9 @@ def dependency_digest(run_dir: Path, name: str) -> str | None:
     run_dir = Path(run_dir)
     if name == FRAMING:
         return narrative_framing.current_digest(run_dir)
+    if name == "project_context":
+        from . import project_context
+        return project_context.digest(run_dir)
     file_name = {"axial_coding": "axial_coding.yaml", "evidence": "evidence.yaml",
                  "selective_themes": "selective_themes.yaml"}.get(name) or STEP_FILES.get(name)
     path = run_dir / file_name

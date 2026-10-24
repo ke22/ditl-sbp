@@ -4,7 +4,7 @@ A research assistant for service designers. It turns qualitative research data i
 Coding → JTBD → HMW → Persona → Customer Journey → Service Blueprint,
 while keeping every researcher decision explicit and traceable to the original evidence.
 
-**Status: Public Preview 0.2.1.** Runs on your own Mac, single user, no account required. macOS on Apple silicon only. See [CHANGELOG.md](CHANGELOG.md).
+**Status: Public Preview 0.3.0.** Runs on your own Mac, single user, no account required. macOS on Apple silicon only. See [CHANGELOG.md](CHANGELOG.md).
 
 ## What it does
 
@@ -51,8 +51,8 @@ Optional: to upload PDF files, install Poppler yourself (`brew install poppler`)
 
 **安裝（只要做一次）**
 
-1. 到 [Releases](https://github.com/ke22/ditl-sbp/releases/latest) 下載 `ditl-sbp-0.2.1.zip`，雙擊解壓縮。
-2. 在 Finder 對解壓後的 `ditl-sbp-0.2.1` 資料夾按右鍵，選「服務」→「新增位於檔案夾位置的終端機視窗」。（找不到這個選項時，打開「終端機」，輸入 `cd ` 加一個空格，把資料夾拖進視窗後按 Enter。）
+1. 到 [Releases](https://github.com/ke22/ditl-sbp/releases/latest) 下載 `ditl-sbp-0.3.0.zip`，雙擊解壓縮。
+2. 在 Finder 對解壓後的 `ditl-sbp-0.3.0` 資料夾按右鍵，選「服務」→「新增位於檔案夾位置的終端機視窗」。（找不到這個選項時，打開「終端機」，輸入 `cd ` 加一個空格，把資料夾拖進視窗後按 Enter。）
 3. 輸入下面這行並按 Enter，等到出現「安裝完成」（第一次約需 1–3 分鐘，要連網；會下載約 200 MB 的瀏覽器元件，用來輸出 PDF）：
 
    ```bash
@@ -118,28 +118,33 @@ Both modes use model quota or paid API usage. Steps that call a model say so on 
 
 The workbench supports both modes; end-to-end runs have been exercised during development, but this preview has not yet been verified end-to-end from a fresh clone in either mode.
 
-## Example project (MUJI)
+## Example projects
 
-To see a finished project before running your own, download `ditl-sbp-muji-demo-0.2.1.zip` from the [release page](https://github.com/ke22/ditl-sbp/releases/latest): 15 customer interviews for Café&Meal MUJI, carried from coding through to the service blueprint and confirmed by the researcher at every step. Unzip it and run:
+To see finished projects before running your own, download one of these from the [release page](https://github.com/ke22/ditl-sbp/releases/latest):
+
+- `ditl-sbp-muji-demo-0.3.0.zip` — Café&Meal MUJI, 15 customer interviews.
+- `ditl-sbp-henglong-demo-0.3.0.zip` — 恆隆行 filter recycling, a focus group.
+
+Both were run with this version from a blank project through to the service blueprint and export. The choices at each step follow a fixed demo rule (for example, the first three JTBD candidates and the first HMW), not a researcher's judgement; you can change any of them in the workbench. Unzip one and run:
 
 ```bash
 ditl-sbp start --data-root ~/Downloads/ditl-sbp-muji-demo
 ```
 
-On 建立專案, press 打開 next to MUJI-canonical under 接著做既有專案, then go through the steps on the left. The example stays in its own folder, apart from your research data; `ditl-sbp start` without `--data-root` returns to your own projects.
+On 建立專案, press 打開 next to the project under 接著做既有專案, then go through the steps on the left. The example stays in its own folder, apart from your research data; `ditl-sbp start` without `--data-root` returns to your own projects.
 
-想先看一份完整做完的專案：到 Release 頁下載 `ditl-sbp-muji-demo-0.2.1.zip`，解壓縮後執行上面那行指令（路徑換成資料夾實際位置），在「建立專案」頁的「接著做既有專案」打開 MUJI-canonical，就能逐站看每一步的產出。範例資料和你自己的研究資料分開存放。
+想先看完整做完的專案：到 Release 頁下載 `ditl-sbp-muji-demo-0.3.0.zip`（Café&Meal MUJI，15 份訪談）或 `ditl-sbp-henglong-demo-0.3.0.zip`（恆隆行濾網回收，焦點團體）。兩份都是用這一版從空白專案跑到服務藍圖與輸出；每一站的選擇照固定的示範規則（例如 JTBD 選前三則、HMW 選第一則），不是研究者的判斷，你可以在工作台裡改。解壓縮後執行上面那行指令（路徑換成資料夾實際位置），在「建立專案」頁的「接著做既有專案」打開它，就能逐站看每一步的產出。範例資料和你自己的研究資料分開存放。
 
 
 The workbench opens on the new interface (0.2.0). The left navigation lists the steps in order; a step you cannot do yet says what it is waiting for. The previous interface is still available at `/classic` and reads the same projects.
 
-1. **建立專案** — choose your files (PDF, DOCX, XLSX, TXT, MD, VTT, SRT), write a one-line **研究目的** (research purpose) and press 建立專案. The research purpose frames the coding and the synthesis.
+1. **建立專案** — choose your interview transcripts (PDF, DOCX, XLSX, TXT, MD, VTT, SRT), optionally write a **專案目的** (project purpose) and a **研究目的** (research purpose), and press 建立專案. When written, the purposes frame the synthesis; left blank, each step uses the service-design default.
 2. **AI 設定** — choose how AI runs: Codex, Claude Code or OpenAI API. Nothing is chosen for you; only AI steps need a choice. You can also pick a model for each step here; the choice lasts until you reload the page.
 3. **資料與編碼** — press 開始編碼. AI organises the evidence and forms open, axial and selective coding, then proposes customer-job (JTBD) candidates and stops.
 4. **JTBD** — choose one or more JTBD (or write your own) and confirm. HMW candidates are formed next.
 5. **HMW** — choose the HMW to pursue and confirm.
 6. **Persona** — confirm the Persona Matrix axes and the target segment, generate the Persona, edit it if needed and confirm.
-7. **顧客旅程地圖（CJM）** — build the current journey, edit it, mark the core problems to solve (you can rewrite them) and confirm. Confirming only saves; it does not start AI.
+7. **顧客旅程地圖（CJM）** — build the current journey from every participant's evidence, adjust the pre-judged emotions if needed, draft the core problems for your Persona and click the bands of the ones to solve (you can rewrite them), then confirm. Confirming only saves; it does not start AI.
 8. **服務藍圖（SBP）** — develop solutions for the core problems (each split into people, physical environment, digital tools and digital environment), adopt the ones to carry forward, then generate the Service Blueprint. Generating also looks up how other services handle similar problems; these appear as external references and are design inspiration, not evidence from your participants. Review and confirm.
 9. **輸出** — choose the deliverables and export them.
 

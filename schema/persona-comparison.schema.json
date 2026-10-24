@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/persona-comparison.schema.json",
+  "title": "Persona Matrix Stage 1 — evidence-based comparison of confirmed participants",
+  "description": "persona-matrix-comparison-first（2026-10-22 研究者裁定，方法 B 第一階段）：只整理共同關切與每位確認受訪者的判斷方式、參照點、情境條件、原文依據與限制；不產生軸、兩極或落點。受訪者編號與證據歸屬由系統固定。",
+  "type": "object",
+  "required": ["schema_version", "case_id", "concerns", "set_aside_categories", "uncompared_participants"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "case_id": {"type": "string", "minLength": 1},
+    "concerns": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/concern"}},
+    "set_aside_categories": {
+      "type": "array",
+      "description": "沒有放進任何共同關切的主軸類別，各寫一句原因（例如只有歸屬不明的群體資料、只有一個人談到、和其他關切重複）。沒有就寫空陣列。",
+      "items": {
+        "type": "object",
+        "required": ["category_id", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "category_id": {"type": "string", "pattern": "^CAT-[0-9]+$"},
+          "reason": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "uncompared_participants": {
+      "type": "array",
+      "description": "沒有出現在任何比較裡的已確認受訪者，各寫一句原因（例如只有附和或程序性回答、談的事不在任何共同關切裡）。沒有就寫空陣列。",
+      "items": {
+        "type": "object",
+        "required": ["subject_id", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "subject_id": {"type": "string", "pattern": "^P-[0-9]+$"},
+          "reason": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  },
+  "definitions": {
+    "concern": {
+      "type": "object",
+      "required": ["id", "question", "grounded_in", "comparisons"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^CONCERN-[0-9]+$"},
+        "question": {"type": "string", "minLength": 1, "description": "共同關切，寫成一個問題。"},
+        "grounded_in": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^CAT-[0-9]+$"}},
+        "comparisons": {"type": "array", "items": {"$ref": "#/definitions/comparison"}, "description": "每位談到這個關切的確認受訪者最多一筆；沒談到的人不寫。"},
+        "unattributed_findings": {
+          "type": "array",
+          "description": "歸屬不明的群體證據裡看到的判斷方式：只用來發現，不能用來定位任何人。",
+          "items": {
+            "type": "object",
+            "required": ["judgment", "evidence_refs"],
+            "additionalProperties": false,
+            "properties": {
+              "judgment": {"type": "string", "minLength": 1},
+              "evidence_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^E-[0-9]+$"}}
+            }
+          }
+        },
+        "observed_differences": {"type": "string", "minLength": 1, "description": "選填：比較之後看到哪些不同、哪些看不出來；只描述，不提出兩極。"}
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "required": ["subject_id", "judgment", "scope", "statements"],
+      "additionalProperties": false,
+      "properties": {
+        "subject_id": {"type": "string", "pattern": "^P-[0-9]+$"},
+        "judgment": {"type": "string", "minLength": 1, "description": "這個人怎麼判斷的摘要，只摘要 statements 已有依據的內容。"},
+        "reference_point": {"type": "string", "minLength": 1, "description": "選填：他拿什麼當參照。"},
+        "condition": {"type": "string", "minLength": 1, "description": "選填：這個判斷成立的情境。"},
+        "scope": {"type": "string", "enum": ["across_situations", "in_situation", "unclear"]},
+        "statements": {
+          "type": "array",
+          "minItems": 1,
+          "description": "逐句寫出這個人的判斷，每一句各自附上撐住它的證據。",
+          "items": {
+            "type": "object",
+            "required": ["text", "evidence_refs"],
+            "additionalProperties": false,
+            "properties": {
+              "text": {"type": "string", "minLength": 1},
+              "evidence_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^E-[0-9]+$"}}
+            }
+          }
+        },
+        "limits": {"type": "string", "minLength": 1, "description": "選填：這個人的資料看不出什麼。"}
+      }
+    }
+  }
+}

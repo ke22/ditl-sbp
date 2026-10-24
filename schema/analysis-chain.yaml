@@ -294,6 +294,10 @@ support_stages:
     note: 支援 Persona、顧客旅程、服務藍圖三張圖的導讀草稿——AI 只讀那一站已有的內容、只引用那裡出現過的證據，研究者可改，研究者寫過的段落不被覆蓋；本身不是獨立操作（CLAUDE.md「圖表導讀」例外；add-chart-guides）
   - file: journey_annotations.md
     note: 支援顧客旅程圖的註記草稿——AI 依已確認步驟的證據起草情緒、滿意度與解決方式，研究者可改，研究者寫過的格子不被覆蓋；本身不是獨立操作（CLAUDE.md「CJM 的情緒、Solutions、Satisfaction」例外；draft-journey-annotations-with-ai）
+  - file: journey_core_problems.md
+    note: 支援顧客旅程的核心問題——現況旅程依全部受訪者建立之後，AI 依目標族群的成員證據標出每一步的相關性，
+      並起草附證據的核心問題候選；顧客任務是分析框架，HMW 只拿來對照、不是問題存在的證據；採用、改寫或不採用由研究者決定，
+      上游 Persona／JTBD／HMW 改了只標需重新檢查、不自動重跑；本身不是獨立操作（cjm-as-is-first-core-problems，2026-10-21）
   - file: journey_recheck.md
     note: 儲存的旅程對照後續證據的重查，屬於裁定軸而非鏈上一段
   - file: journey_solutions.md
@@ -315,6 +319,15 @@ support_stages:
     note: 原型假設（見 openspec/LANGUAGE.md「調研」三義），只准問問題，不看本案證據，在鏈外
   - file: research_support.md
     note: 外部調研（見 openspec/LANGUAGE.md「調研」三義），只能在定調現況之後執行，只能進提案
+  - file: persona_comparison.md
+    note: Persona Matrix 方法 B 第一階段——只比較已確認的受訪者（共同關切、逐人判斷方式、逐句證據），不產生軸、兩極或落點；
+      受訪者與證據歸屬由系統固定，產出 persona_comparison.yaml 等研究者檢查（persona-matrix-comparison-first，2026-10-22 裁定）
+  - file: persona_dimension_synthesis.md
+    note: Persona Matrix 方法 B 第二階段——只讀第一階段的比較，逐一決定共同關切能否形成維度（同一構念、能否並存、情境、反例），
+      寫出軸與有依據的落點；名冊由系統維護，系統再組成 persona_matrix.yaml（persona-matrix-comparison-first）
+  - file: persona_quadrant_names.md
+    note: Persona Matrix 四格命名——研究者選定兩條軸後，AI 依各格成員的落點與原文起草名稱與一句描述，沒有成員的格子只依兩端推想並標明；
+      研究者可以改寫，只寫 persona_quadrant_names.yaml（persona-matrix-comparison-first，2026-10-22 裁定）
   - file: segmentation_axis_candidates.md
     note: 支援目標族群軸選擇的簡報產生——AI 讀完 persona_matrix.yaml 對每一條軸寫一份不排序的簡報，並以選定
       HMW 為設計相關性範圍提出一組預設兩軸（default analytical projection，不是最佳分群；

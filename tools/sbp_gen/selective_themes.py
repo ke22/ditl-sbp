@@ -96,14 +96,19 @@ def _digest(value) -> str:
 
 
 def framing(run_dir: str | Path) -> dict | None:
-    """The two upstream digests a selective document is framed by, from what
-    the run holds now; None when either input is missing."""
+    """The upstream digests a selective document is framed by, from what the
+    run holds now; None without axial coding. purpose-aware-research-calibration:
+    the research purpose may be empty, and a run with a researcher context file
+    is framed by it too -- a run without one keeps the two digests it had."""
+    from . import project_context
     run = Path(run_dir)
     axial = _load(run / "axial_coding.yaml")
-    purpose = read_purpose(run)
-    if not isinstance(axial, dict) or not purpose:
+    if not isinstance(axial, dict):
         return None
-    return {"axial_coding": _digest(axial), "research_purpose": _digest(purpose)}
+    frame = {"axial_coding": _digest(axial), "research_purpose": _digest(read_purpose(run))}
+    if project_context.exists(run):
+        frame["project_context"] = project_context.digest(run)
+    return frame
 
 
 def structure_input(run_dir: str | Path) -> dict:
@@ -111,9 +116,9 @@ def structure_input(run_dir: str | Path) -> dict:
     (with definition, open codes and representative quotes), the open codes
     they cite, and the theme-formation note. Refuses legacy axial coding."""
     run = Path(run_dir)
+    # purpose-aware-research-calibration: the research purpose is optional; an
+    # empty one selects the integrative-power criterion in the instruction.
     purpose = read_purpose(run)
-    if not purpose:
-        raise SelectiveError("請先寫研究目的，才能形成選擇編碼。")
     axial = _load(run / "axial_coding.yaml") or {}
     categories = [c for c in axial.get("categories") or [] if isinstance(c, dict)]
     if not categories:
@@ -126,7 +131,14 @@ def structure_input(run_dir: str | Path) -> dict:
     cited = sorted({ref for c in categories for ref in c.get("concept_refs") or []})
     return {
         "quoted": bool(cited) and all((concepts.get(cid) or {}).get("quote") for cid in cited if cid in concepts),
+        # representative-quotes-standalone: for validation only, never sent to the model.
+        "evidence_by_id": {ref: evidence[ref] for cid in cited for ref in (concepts.get(cid) or {}).get("evidence_refs") or []
+                           if ref in evidence},
         "research_purpose": purpose,
+        # purpose-aware-research-calibration: framing, never evidence; empty without a context file.
+        "context_block": _context_block(run),
+        # 2026-10-23: what a reported focus must quote verbatim.
+        "purposes": _context_purposes(run),
         "axial_themes": [{
             "id": c.get("id"), "name": c.get("category_name") or c.get("label"), "summary": c.get("label"),
             "definition": c.get("definition"), "discriminating_basis": c.get("discriminating_basis"),
@@ -135,21 +147,40 @@ def structure_input(run_dir: str | Path) -> dict:
         } for c in categories],
         "open_codes": [{"id": cid, "name": concepts[cid].get("name"), "description": concepts[cid].get("description"),
                         "evidence_refs": list(concepts[cid].get("evidence_refs") or []),
-                        **({"quote": dict(concepts[cid]["quote"])} if concepts[cid].get("quote") else {})}
+                        **({"quote": dict(concepts[cid]["quote"])} if concepts[cid].get("quote") else {}),
+                        **({"standalone_quote": False}
+                           if concepts[cid].get("quote") and _quote_problem(concepts[cid], evidence) else {})}
                        for cid in cited if cid in concepts],
         "formation_note": axial.get("formation_note") or "",
     }
+
+
+def _context_block(run: Path) -> str:
+    from . import project_context
+    return project_context.framing_block(run, include_research_purpose=False)
+
+
+def _context_purposes(run: Path) -> list[str]:
+    from . import project_context
+    return project_context.purposes(run)
 
 
 def _representative_quotes(item: dict, concepts: dict, evidence: dict) -> list[dict]:
     """converge-coding-contracts: a theme's representative quotes as the model
     reads them -- the chosen open codes' readable quotes unchanged, or, for an
     older theme, the chosen evidence texts."""
-    if item.get("representative_quote_refs"):
-        return [{"id": ref, **{k: v for k, v in (concepts.get(ref) or {}).get("quote", {}).items() if k in ("question", "answer")}}
-                for ref in item["representative_quote_refs"] if (concepts.get(ref) or {}).get("quote")]
+    if item.get("concept_refs") and not item.get("representative_evidence_refs"):
+        # representative-quotes-standalone: only quotes that read on their own.
+        return [{"id": ref, "answer": concepts[ref]["quote"]["answer"]}
+                for ref in item.get("representative_quote_refs") or []
+                if (concepts.get(ref) or {}).get("quote") and not _quote_problem(concepts[ref], evidence)]
     return [{"id": ref, "role": (evidence.get(ref) or {}).get("role"), "text": (evidence.get(ref) or {}).get("text")}
             for ref in item.get("representative_evidence_refs") or [] if ref in evidence]
+
+
+def _quote_problem(code: dict, evidence: dict) -> str | None:
+    from .semantic_segments import standalone_quote_problem  # local: semantic_segments imports stages
+    return standalone_quote_problem(code, evidence)
 
 
 def candidates_input(run_dir: str | Path) -> dict:
@@ -172,7 +203,9 @@ def candidates_input(run_dir: str | Path) -> dict:
     # the Selective synthesis and its quotes -- no Axial list, no Axial ids --
     # so Axial themes cannot become the candidate template. Provenance stays
     # derivable: candidate -> selective_refs -> axial_refs -> codes -> evidence.
-    if themes and all(t.get("representative_quote_refs") for t in themes):
+    # representative-quotes-standalone: a theme may legitimately name zero
+    # quotes, so "new method" means no theme carries the older evidence picks.
+    if themes and all(t.get("concept_refs") and not t.get("representative_evidence_refs") for t in themes):
         return {
             "new_method": True,
             "research_purpose": doc.get("research_purpose") or read_purpose(run),
@@ -239,8 +272,8 @@ def theme_errors(draft: object, view: dict) -> list[str]:
             members = set(theme.get("concept_refs") or [])
             if theme.get("representative_evidence_refs"):
                 errors.append(f"[selective_themes] {tid} 用 representative_quote_refs 挑代表語句，不寫 representative_evidence_refs")
-            if not theme.get("representative_quote_refs"):
-                errors.append(f"[selective_themes] {tid} 缺少代表語句（representative_quote_refs）")
+            # representative-quotes-standalone: zero picks are legal only when no
+            # member quote reads on its own -- checked after the loop.
             for ref in theme.get("representative_quote_refs") or []:
                 if ref not in members:
                     errors.append(f"[selective_themes] {tid} 的代表語句 {ref} 不是這個主題包含的開放編碼")
@@ -260,6 +293,30 @@ def theme_errors(draft: object, view: dict) -> list[str]:
         insights = theme.get("key_insights") or []
         if not KEY_INSIGHTS[0] <= len(insights) <= KEY_INSIGHTS[1]:
             errors.append(f"[selective_themes] {tid} 關鍵洞察要 {KEY_INSIGHTS[0]}–{KEY_INSIGHTS[1]} 條")
+    errors += purpose_report_errors(draft, view)
+    if view.get("quoted"):
+        import validate_sbp as V  # local: validate_sbp loads sbp_gen modules lazily
+        errors += [f"[selective_themes] {detail}" for detail in V.representative_quote_not_standalone(
+            draft, evidence_by_id=view.get("evidence_by_id") or {},
+            concepts_by_id={c["id"]: c for c in view["open_codes"]}, kind="selective")]
+    return errors
+
+
+def purpose_report_errors(draft: dict, view: dict) -> list[str]:
+    """purpose-aware-research-calibration: each reported concern quotes a
+    purpose verbatim, once, and cites real axial themes; with both purposes
+    empty, no report."""
+    import validate_sbp as V  # local: validate_sbp loads sbp_gen modules lazily
+    report = [r for r in draft.get("purpose_report") or [] if isinstance(r, dict)]
+    focuses = [r.get("focus") for r in report]
+    errors = V.purpose_focus_errors(focuses, view.get("purposes"), "[selective_themes] purpose_report")
+    for focus in {f for f in focuses if focuses.count(f) > 1}:
+        errors.append(f"[selective_themes] purpose_report 對關注點「{focus}」寫了不只一筆")
+    axial = {t["id"] for t in view.get("axial_themes") or []}
+    for r in report:
+        for ref in r.get("related_axial_refs") or []:
+            if ref not in axial:
+                errors.append(f"[selective_themes] 關注點「{r.get('focus')}」引用不存在的主軸主題 {ref}")
     return errors
 
 
@@ -272,9 +329,12 @@ def load_document(run_dir: str | Path) -> dict | None:
 
 def compose_document(draft: dict, case_id: str, purpose: str, frame: dict, now: str | None = None) -> dict:
     """A newly formed analysis, not yet written: empty researcher edits."""
-    return {"schema_version": 1, "case_id": case_id, "research_purpose": purpose,
-            "themes": copy.deepcopy(draft["themes"]), "framed_by": dict(frame), "formed_at": now or _now(),
-            "researcher_edits": []}
+    doc = {"schema_version": 1, "case_id": case_id, "research_purpose": purpose,
+           "themes": copy.deepcopy(draft["themes"]), "framed_by": dict(frame), "formed_at": now or _now(),
+           "researcher_edits": []}
+    if draft.get("purpose_report"):
+        doc["purpose_report"] = copy.deepcopy(draft["purpose_report"])
+    return doc
 
 
 def new_document(run_dir: str | Path, doc: dict) -> dict:
@@ -326,7 +386,9 @@ def write_document(run_dir: str | Path, document: dict) -> None:
 
 
 def freshness(run_dir: str | Path) -> dict:
-    """none | needs_purpose | legacy | ready | stale, for the first station."""
+    """none | legacy | ready | stale, for the first station. The needs_purpose
+    state is retired (purpose-aware-research-calibration): forming no longer
+    waits for a research purpose."""
     run = Path(run_dir)
     doc = load_document(run)
     axial = _load(run / "axial_coding.yaml")
@@ -336,8 +398,6 @@ def freshness(run_dir: str | Path) -> dict:
             return {"state": "none"}
         if not all(c.get("concept_refs") for c in categories):
             return {"state": "legacy", "message": LEGACY_MESSAGE}
-        if not read_purpose(run):
-            return {"state": "needs_purpose"}
         return {"state": "none"}
     frame = framing(run)
     if frame is None or frame != doc.get("framed_by"):

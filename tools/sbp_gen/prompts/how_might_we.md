@@ -40,6 +40,10 @@
 
 **不要發明任何東西。** 證據裡沒有的當事人、需求、限制、原因、卡點或解法，都不能拿來補。屬性與面向是空的，不是寫不出的理由；受訪者只有一位也不是。
 
+## 目的裡的關注點
+
+目的點名在意的事（如永續）時，每件在 `purpose_assessment` 寫一筆，`focus` 照抄目的原文：證據裡有相關張力，至少一則框法回應（`addressed_by`）；沒有就寫 `insufficient_evidence_reason`，不硬框。關注點不是證據。
+
 ## 證據不足時
 
 如果不發明東西就找不到任何跟這組顧客任務有關、可以設計的問題結構：讓 `entries` 是空的，並寫 `insufficient_evidence: {reason: ...}`，用一兩句話講清楚缺的是什麼。有 entries 就不要同時寫 `insufficient_evidence`。

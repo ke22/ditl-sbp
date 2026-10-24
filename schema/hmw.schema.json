@@ -43,6 +43,7 @@
       "description": "COMPATIBILITY_ONLY（form-hmw-tension-first，2026-10-01 起新生成不再產出，只供讀舊檔）：hmw-priority-and-convergence：100 字內，為什麼選這三則收斂成最終 HMW——跟 final_questions 成對出現。"
     },
     "framed_by": {
+      "x-not-generated": true,
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -53,6 +54,20 @@
         "narrative_job_selection": {
           "type": "string",
           "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "purpose_assessment": {
+      "type": "array",
+      "description": "目的裡點名的事各一筆：focus 照抄目的原文；回應它的框法，或證據不足的原因。",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["focus"],
+        "properties": {
+          "focus": {"type": "string", "maxLength": 20},
+          "addressed_by": {"type": "array", "items": {"type": "string"}},
+          "insufficient_evidence_reason": {"type": "string", "minLength": 1}
         }
       }
     },

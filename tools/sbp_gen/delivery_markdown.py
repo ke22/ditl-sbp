@@ -66,6 +66,21 @@ def _refs(values: Any) -> str:
     return "、".join(_inline(value) for value in values)
 
 
+
+_PARADIGM_BASIS_LABEL = {"evidence": "證據", "synthesis": "綜合", "inference": "推論"}
+_PARADIGM_KIND_LABEL = {"situational": "情境條件", "user": "使用者條件"}
+
+
+def _paradigm_item_text(value) -> str:
+    """purpose-aware-research-calibration: a paradigm item with its basis (and,
+    for an inference, its reasoning); older string items print as they are."""
+    if not isinstance(value, dict):
+        return str(value)
+    marks = "・".join(x for x in (_PARADIGM_KIND_LABEL.get(value.get("kind"), ""),
+                                  _PARADIGM_BASIS_LABEL.get(value.get("basis"), "")) if x)
+    text = f"{value.get('text') or ''}（{marks}）" if marks else str(value.get("text") or "")
+    return f"{text}；推論依據：{value['reasoning']}" if value.get("basis") == "inference" and value.get("reasoning") else text
+
 def _limited_note(shown: int, total: int, subject: str) -> str | None:
     if total <= shown:
         return None
@@ -482,7 +497,7 @@ def render_coding_synthesis_markdown(view_model: DeliveryViewModel) -> str:
                 values = category.get(field)
                 if isinstance(values, list) and values:
                     lines.append(f"- {field_label}：")
-                    lines.extend(f"  - {value}" for value in values[:AXIAL_DETAIL_VALUE_LIMIT])
+                    lines.extend(f"  - {_paradigm_item_text(value)}" for value in values[:AXIAL_DETAIL_VALUE_LIMIT])
                     note = _limited_note(
                         min(len(values), AXIAL_DETAIL_VALUE_LIMIT), len(values), f"{field_label}項目"
                     )

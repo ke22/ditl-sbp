@@ -39,6 +39,7 @@ SCHEMA_DIR = Path(__file__).resolve().parent.parent / "schema"
 SCHEMA_FILES = {
     "chart-guide-draft": "chart-guide-draft.schema.json",
     "research-purpose": "research-purpose.schema.json",
+    "project-context": "project-context.schema.json",
     "narrative-job-candidates-draft": "narrative-job-candidates-draft.schema.json",
     "selective-themes": "selective-themes.schema.json",
     "selective-themes-draft": "selective-themes-draft.schema.json",
@@ -61,6 +62,7 @@ SCHEMA_FILES = {
     "reference-hypotheses": "reference-hypotheses.schema.json",
     "journey": "journey.schema.json",
     "journey-solutions": "journey-solutions.schema.json",
+    "journey-core-problems": "journey-core-problems.schema.json",
     "journey-recheck": "journey-recheck.schema.json",
     "experience-annotations": "experience-annotations.schema.json",
     "event-dispositions": "event-dispositions.schema.json",
@@ -76,6 +78,9 @@ SCHEMA_FILES = {
     "selective-coding": "selective-coding.schema.json",
     "core-category-candidates": "core-category-candidates.schema.json",
     "persona-matrix": "persona-matrix.schema.json",
+    "persona-comparison": "persona-comparison.schema.json",
+    "persona-dimension-synthesis": "persona-dimension-synthesis.schema.json",
+    "persona-quadrant-names-draft": "persona-quadrant-names-draft.schema.json",
     "persona-content": "persona-content.schema.json",
     "persona-dimension-candidates": "persona-dimension-candidates.schema.json",
     "persona-dimensions-selection": "persona-dimensions-selection.schema.json",
@@ -959,11 +964,20 @@ def step_axis_errors(graph, journey):
                 usage.setdefault(ref, set()).add((n.get("step"), n.get("label", "")))
 
     # evidence_ref -> journey 指派給它的所有步驟（可能不只一個）。
+    # sbp-build-failure-visible：一步的顧客行動自己引用的證據也算指派給這一步——
+    # 旅程把那則行動放在這一步，顧客層又照旅程原樣建立；不算進來時，已確認的
+    # CJM 本身就讓藍圖驗證必然失敗（2026-10-23 恆隆行 E-586）。
     assigned: dict[str, set] = {}
     for step_no, step in enumerate(primary.get("steps") or [], 1):
         if not isinstance(step, dict):
             continue
-        for ref in step.get("evidence_refs") or []:
+        if not step.get("evidence_refs"):
+            continue  # 照舊：沒有 evidence_refs 的步驟整步跳過
+        refs = list(step.get("evidence_refs") or [])
+        for action in step.get("customer_actions") or []:
+            if isinstance(action, dict):
+                refs.extend(action.get("evidence_refs") or [])
+        for ref in refs:
             assigned.setdefault(ref, set()).add(step_no)
 
     errors = []
@@ -1610,17 +1624,64 @@ def dimension_independence(categories_doc, **_):
     ]
 
 
-def distribution_required(categories_doc, evidence=None, **_):
+def _person_of_evidence(evidence, attribution=None) -> dict:
+    """purpose-aware-research-calibration: who each evidence unit belongs to --
+    the confirmed participant when speaker attribution says so, otherwise its
+    source file (S1..Sn). A role (「顧客」) is never a person."""
+    from sbp_gen import source_attribution
+    items = [e for e in (evidence or []) if isinstance(e, dict) and e.get("id")]
+    codes = source_attribution.session_codes(items)
+    people = {}
+    for item in items:
+        key = source_attribution.person_key(item, attribution) if attribution else None
+        if key is None and item.get("source"):
+            key = codes.get(str(item.get("source")))
+        if key:
+            people[item["id"]] = key
+    return people
+
+
+def _readable_person(key: str, codes: dict) -> str:
+    """A person key as the researcher reads it: the source code, with the
+    confirmed speaker label when the source holds several people -- never a
+    file name."""
+    source, _, label = str(key).partition("::")
+    code = codes.get(source, source)
+    return f"{code}・{label}" if label else code
+
+
+def distribution_required(categories_doc, evidence=None, attribution=None, **_):
     """聚：這個類別是不是只靠一個人撐起來的，不代表這樣不行，是要讓研究者
-    分得出「一個人的強烈說法」跟「好幾個人都這樣講」。"""
+    分得出「一個人的強烈說法」跟「好幾個人都這樣講」。purpose-aware-research-calibration：
+    數確認過的受訪者；沒有確認時數來源檔；不拿 role 當人。"""
     if not isinstance(categories_doc, dict):
         return []
-    cats = [c for c in categories_doc.get("categories") or [] if isinstance(c, dict)]
-    return [
-        f"類別「{item.get('label')}」的證據全部來自「{role}」一人，"
-        f"這是單一強烈說法，還是好幾個人都這樣講？"
-        for item, role in _single_role_items(cats, evidence)
-    ]
+    person = _person_of_evidence(evidence, attribution)
+    from sbp_gen import source_attribution
+    codes = source_attribution.session_codes([e for e in evidence or [] if isinstance(e, dict)])
+    findings = []
+    for item in categories_doc.get("categories") or []:
+        if not isinstance(item, dict):
+            continue
+        people = {person[r] for r in item.get("evidence_refs") or [] if r in person}
+        if len(people) == 1:
+            findings.append(f"類別「{item.get('label')}」這一類只由一位受訪者（或一份來源）撐起：{_readable_person(next(iter(people)), codes)}；"
+                            f"這是單一強烈說法，還是好幾個人都這樣講？")
+    return findings
+
+
+def inference_needs_reasoning(categories_doc, **_):
+    """purpose-aware-research-calibration: a paradigm item marked as an
+    inference names what the participants did and what is inferred from it."""
+    if not isinstance(categories_doc, dict):
+        return []
+    findings = []
+    for category in categories_doc.get("categories") or []:
+        for field in ("conditions", "actions", "consequences"):
+            for item in (category or {}).get(field) or []:
+                if isinstance(item, dict) and item.get("basis") == "inference" and not str(item.get("reasoning") or "").strip():
+                    findings.append(f"類別「{category.get('label')}」的{field}「{item.get('text')}」是推論，沒有寫推論依據")
+    return findings
 
 
 def _category_over_generalized_scope(category, evidence_texts):
@@ -1641,7 +1702,7 @@ def _category_over_generalized_scope(category, evidence_texts):
     )
 
 
-def axial_coding_warnings(categories_doc: dict, evidence: list) -> list:
+def axial_coding_warnings(categories_doc: dict, evidence: list, attribution: dict | None = None) -> list:
     """聚的三條判準的入口：dimension-independence、distribution-required、
     以及重新綁定到這個 stage 的 over-generalized-scope。"""
     warnings: list = []
@@ -1649,8 +1710,10 @@ def axial_coding_warnings(categories_doc: dict, evidence: list) -> list:
         return warnings
     for detail in dimension_independence(categories_doc):
         _emit_judgment(warnings, "dimension_independence", detail)
-    for detail in distribution_required(categories_doc, evidence=evidence):
+    for detail in distribution_required(categories_doc, evidence=evidence, attribution=attribution):
         _emit_judgment(warnings, "distribution_required", detail)
+    for detail in inference_needs_reasoning(categories_doc):
+        _emit_judgment(warnings, "inference_needs_reasoning", detail)
     evidence_texts = {e.get("id"): e.get("text", "") for e in (evidence or []) if isinstance(e, dict)}
     for category in categories_doc.get("categories") or []:
         if not isinstance(category, dict):
@@ -2302,6 +2365,111 @@ def persona_content_warnings(persona_content_doc: dict, subject_ids: set,
     return warnings
 
 
+# ── 代表語句能不能單獨讀懂（representative-quotes-standalone）──────────────
+# 主軸、選擇編碼、Persona 內容共用的判準。合格與否由 semantic_segments 的同一個
+# 函式決定，畫面、交付物、模型輸入與這裡讀的是同一個判斷。生成驗證把每筆明細
+# 當成退回錯誤，不是提醒。
+
+# purpose-aware-research-calibration: the researcher context (issues ISS-n,
+# business inputs BI-n) frames priority and scope; it is never evidence.
+CONTEXT_ID_PATTERN = re.compile(r"^(ISS|BI)-[1-9][0-9]*$")
+EVIDENCE_CITATION_KEYS = ("grounded_in", "relevance_refs")
+
+
+def _cites_evidence(key: str) -> bool:
+    """`evidence_refs`, `evidence_ref` and every variant (representative_evidence_refs...)."""
+    return key.endswith("evidence_refs") or key.endswith("evidence_ref") or key in EVIDENCE_CITATION_KEYS
+
+
+def context_ids_never_in_evidence_refs(doc, stage: str = "") -> list[str]:
+    """Every place in a generated document where a business input id (or a
+    legacy issue id) is cited as evidence. Business inputs may appear only where a field says so
+    (e.g. a constraint's `refs` with basis business_context)."""
+    errors: list[str] = []
+    prefix = f"[{stage}] " if stage else ""
+
+    def walk(node, path):
+        if isinstance(node, dict):
+            for key, value in node.items():
+                where = f"{path}.{key}" if path else str(key)
+                if _cites_evidence(str(key)):
+                    values = value if isinstance(value, list) else [value]
+                    for item in values:
+                        if isinstance(item, str) and CONTEXT_ID_PATTERN.match(item):
+                            errors.append(f"{prefix}{where} 把研究者脈絡 {item} 當成證據引用；研究者的目的與業務輸入只能框定優先順序，不是證據")
+                walk(value, where)
+        elif isinstance(node, list):
+            for index, item in enumerate(node):
+                walk(item, f"{path}[{index}]")
+
+    walk(doc, "")
+    return errors
+
+
+PURPOSE_FOCUS_MAX_CHARS = 20
+
+
+def purpose_focus_errors(focuses, purposes, where: str) -> list[str]:
+    """purpose-aware-research-calibration (2026-10-23 researcher ruling): a
+    concern a stage reports on is the researcher's own words -- each `focus`
+    is a phrase found verbatim in the project or research purpose, so a stage
+    cannot report a concern nobody wrote. With both purposes empty, nothing
+    may be reported."""
+    texts = [str(t) for t in purposes or [] if str(t or "").strip()]
+    focuses = list(focuses or [])
+    if not texts:
+        return [f"{where} 研究者沒有寫目的，不要回報目的裡的關注點"] if focuses else []
+    errors = []
+    for focus in focuses:
+        text = str(focus or "").strip()
+        if not text:
+            errors.append(f"{where} 有一筆關注點是空的")
+        elif len(text) > PURPOSE_FOCUS_MAX_CHARS:
+            errors.append(f"{where} 關注點「{text[:12]}⋯」超過 {PURPOSE_FOCUS_MAX_CHARS} 字；請照抄目的裡的關鍵字句")
+        elif not any(text in purpose for purpose in texts):
+            errors.append(f"{where} 關注點「{text}」不在研究者寫的目的裡；只能照抄目的原文的字句")
+    return errors
+
+
+def representative_quote_not_standalone(doc, *, evidence_by_id, concepts_by_id=None, kind, **_):
+    """`kind` 是 axial、selective 或 persona。主軸與選擇編碼：挑到不合格的
+    代表語句、或主題底下有合格引言卻一則都沒挑，各回報一筆；舊方法主題（沒有
+    concept_refs）不檢查。Persona：代表句所引證據不是實質陳述或太短。"""
+    from sbp_gen import semantic_segments
+
+    if not isinstance(doc, dict):
+        return []
+    out = []
+    if kind == "persona":
+        for persona in doc.get("personas") or []:
+            quote = persona.get("representative_quote") if isinstance(persona, dict) else None
+            if not isinstance(quote, dict) or not quote.get("evidence_ref"):
+                continue
+            problem = semantic_segments.standalone_evidence_quote_problem(
+                quote.get("text"), (evidence_by_id or {}).get(quote["evidence_ref"]))
+            if problem:
+                out.append(f"Persona「{persona.get('id')}」的代表句（{quote['evidence_ref']}）不能當代表語句：{problem}。")
+        return out
+    owner = {"axial": ("categories", "主軸主題"), "selective": ("themes", "選擇主題")}[kind]
+    concepts_by_id = concepts_by_id or {}
+    for item in doc.get(owner[0]) or []:
+        if not isinstance(item, dict) or not item.get("concept_refs") or item.get("representative_evidence_refs"):
+            continue
+        tid = item.get("id")
+        picked = item.get("representative_quote_refs") or []
+        for ref in picked:
+            problem = semantic_segments.standalone_quote_problem(concepts_by_id.get(ref) or {}, evidence_by_id)
+            if problem:
+                out.append(f"{owner[1]} {tid} 的代表語句 {ref} 不能當代表語句：{problem}。")
+        if not picked:
+            usable = [ref for ref in item["concept_refs"]
+                      if semantic_segments.standalone_quote_problem(concepts_by_id.get(ref) or {}, evidence_by_id) is None]
+            if usable:
+                out.append(f"{owner[1]} {tid} 沒有挑代表語句，但它包含的開放編碼裡有 {len(usable)} 則能單獨讀懂的引言"
+                           f"（{'、'.join(usable[:5])}），要從中挑選。")
+    return out
+
+
 # ── 聚：JTBD 輸出的判準（add-jtbd）───────────────────────────────────────
 # 吃的是 jtbd.yaml 文件，不是 graph、不是 categories 文件，所以也另外用
 # jtbd_warnings() 收攏，不進 PRINCIPLE_CHECKS 迴圈。只有一條——situation／
@@ -2534,6 +2702,8 @@ JUDGMENT_CHECKS = (
     # PRINCIPLE_CHECKS——那組假設輸入是 graph，這兩個吃的是 categories 文件。
     "dimension_independence",
     "distribution_required",
+    # purpose-aware-research-calibration: the paradigm model's inferences carry reasoning.
+    "inference_needs_reasoning",
     # 聚：Persona Matrix 輸出的判準（add-persona-matrix）。吃的是
     # persona_matrix.yaml 文件，不是 graph 也不是 categories 文件。
     "axis_not_grounded",
@@ -2559,6 +2729,8 @@ JUDGMENT_CHECKS = (
     # 聚：Persona 欄位來源政策（evidence-aware-persona-provenance）。表本身寫在
     # 判準檔裡，這裡只宣告這個檢查存在——表與檢查共用同一筆來源。
     "persona_field_provenance_policy",
+    # representative-quotes-standalone：主軸、選擇編碼、Persona 內容的代表語句。
+    "representative_quote_not_standalone",
     # 聚：JTBD 輸出的判準（add-jtbd）。吃的是 jtbd.yaml 文件。
     "job_not_grounded",
     # 聚：Job Map 輸出的判準（add-job-map）。吃的是 job_map.yaml 文件。

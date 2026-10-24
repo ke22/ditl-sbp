@@ -3153,6 +3153,16 @@ function segAxesDisclosureHTML(brief){
     +`<p class="rationale">${esc(brief.evidence_summary)}</p>`
     +quotes+`</details>`;
 }
+// axis-brief-pole-consistency (2026-10-22, P0): the brief text is AI output kept as it
+// was; when it puts someone at the opposite pole from the Matrix, say so plainly and
+// let the placements govern.
+function segAxesConflictHTML(brief){
+  const c=brief.pole_conflicts||[];
+  if(!c.length)return '';
+  return `<p class="warn" role="alert" data-pole-conflict><b>這段說明和 Matrix 落點不一致，以落點為準。</b>`
+    +c.map(x=>`${esc(x.subject)}：說明寫「${esc(x.brief_says)}」，實際落在「${esc(x.matrix_says)}」`).join('；')
+    +`。下方原始說明保留未改，請不要依它判斷這幾位的位置。</p>`;
+}
 function segAxesCardHTML(brief){
   const idx=S.axialSegAxesSelected.indexOf(brief.axis_id);
   const selected=idx!==-1;
@@ -3166,6 +3176,7 @@ function segAxesCardHTML(brief){
   return `<li class="candidate-card toggle-card${selected?' selected':''}" data-axis-id="${esc(brief.axis_id)}">
     <p class="label">${esc(brief.label)}${mark}</p>
     ${poleLine}
+    ${segAxesConflictHTML(brief)}
     ${consequence?`<p class="axis-consequence">${esc(consequence)}</p>`:''}
     ${segAxesDisclosureHTML(brief)}
   </li>`;
@@ -6570,6 +6581,8 @@ function asIsMarkerBadgesHTML(node){
   const codes=cardMarkerTypes(node).map(type=>[MARKER_CODE[type],type]).filter(([code])=>code);
   return codes.length?`<span class="as-is-markers">${codes.map(([code,type])=>`<i title="${esc(type)}" aria-label="${esc(type)}">${code}</i>`).join('')}</span>`:'';
 }
+// 顧客這一層是已確認旅程的原句；產生時標題被截在 16 字，卡片與輸出的 PDF 改放完整的那一句（同 ui-v3.html 的 nodeText）。
+function asIsCardText(node){const label=node.label||'',full=node.description||'';return node.layer==='顧客行動'&&label&&full!==label&&full.startsWith(label)?full:label}
 function asIsGridHTML(steps,nodes,pendingCardIds,gridId){
   const cellCards=(no,layer)=>nodes.filter(node=>node.step===no&&node.layer===layer);
   const toBe=isToBeReport();
@@ -6579,7 +6592,7 @@ function asIsGridHTML(steps,nodes,pendingCardIds,gridId){
     const sourceClass=toBe?(toBeFormation(node)===TO_BE_FORMATION.inference?' is-to-be-inference':''):` is-${source.kind}`;
     const face=toBe?toBeCardFaceHTML(node):(source.kind==='evidence'?'':`<span>${esc(source.label)}</span>`);
     return `<button type="button" class="as-is-card ${LAYER_COLOR_CLASS[node.layer]||''}${sourceClass}${S.asIsJumpCard===node.id?' is-jump-target':''}" data-node="${esc(node.id)}" data-cell="${node.step}|${esc(node.layer)}" aria-label="${esc(node.label||'未命名服務動作')}，${toBe?'查看依據':'查看證據'}">
-      ${asIsMarkerBadgesHTML(node)}<b>${pendingCardIds.has(node.id)?'⚑ ':''}${esc(node.label||'')}</b>${face}</button>`;
+      ${asIsMarkerBadgesHTML(node)}<b>${pendingCardIds.has(node.id)?'⚑ ':''}${esc(asIsCardText(node))}</b>${face}</button>`;
   };
   return `<div class="as-is-grid-wrap"><div class="as-is-grid" id="${gridId}" style="grid-template-columns:110px repeat(${steps.length},118px)">
     <div class="as-is-grid-corner"></div>${steps.map(step=>`<div class="as-is-grid-step">${esc(step.name)}</div>`).join('')}
@@ -6593,13 +6606,18 @@ function drawAsIsGridLines(){
     const svg=grid.querySelector('.as-is-grid-lines');if(!svg)return;
     const box=grid.getBoundingClientRect();
     svg.setAttribute('width',grid.scrollWidth);svg.setAttribute('height',grid.scrollHeight);
-    const rect=id=>{const el=grid.querySelector(`[data-node="${CSS.escape(id)}"]`);if(!el)return null;const r=el.getBoundingClientRect();return {l:r.left-box.left,r:r.right-box.left,t:r.top-box.top,b:r.bottom-box.top};};
+    const toBox=el=>{const r=el.getBoundingClientRect();return {l:r.left-box.left,r:r.right-box.left,t:r.top-box.top,b:r.bottom-box.top};};
+    const boxes={};grid.querySelectorAll('[data-node]').forEach(el=>{boxes[el.getAttribute('data-node')]=toBox(el)});
+    const all=Object.values(boxes),rect=id=>boxes[id]||null;
     const paths=(d.relations||[]).map(rel=>{
       const a=rect(rel.from),b=rect(rel.to);if(!a||!b)return '';
       let path;
       if(Math.abs((a.l+a.r)/2-(b.l+b.r)/2)<4){
-        const down=b.t>a.b;const x=(a.l+a.r)/2;
-        path=`M${x},${down?a.b:a.t} V${down?b.t:b.b}`;
+        const down=b.t>a.b;const x=(a.l+a.r)/2,top=down?a.b:b.b,bottom=down?b.t:a.t;
+        // A straight line would run through the cards stacked between the two ends; go round them on the right.
+        const between=all.some(r=>r!==a&&r!==b&&r.l<x&&r.r>x&&r.b>top&&r.t<bottom);
+        if(between){const gx=Math.max(a.r,b.r)+5;path=`M${a.r},${(a.t+a.b)/2} H${gx} V${(b.t+b.b)/2} H${b.r}`;}
+        else path=`M${x},${down?a.b:a.t} V${down?b.t:b.b}`;
       }else{
         const right=b.l>a.r;const sx=right?a.r:a.l,tx=right?b.l:b.r,sy=(a.t+a.b)/2,ty=(b.t+b.b)/2,mx=(sx+tx)/2;
         path=`M${sx},${sy} H${mx} V${ty} H${tx}`;
@@ -6922,7 +6940,7 @@ function withoutEvidenceIds(text,lookup){
   // 內部（不當模組層常數）：這個檔案的測試套件慣例是逐一抽出單一
   // `function X(){...}` 區塊丟進獨立的 Node 執行環境驗證，放在外面會讓
   // 這個常數在那些抽出來的區塊裡變成未定義。
-  const EVIDENCE_ID_SHAPE='(?:E|AXIS|CAT|HMW|JOB|JTBD|PERSONA|PROP|QUADRANT|SEG|SRC|STEP)-\\d+';
+  const EVIDENCE_ID_SHAPE='(?:E|AXIS|CAT|CONCERN|HMW|ISS|JOB|JTBD|PERSONA|PROP|QUADRANT|SEG|SRC|STEP)-\\d+';
   // 2026-10-16 P0：模型常把幾個編號並列後才接一個括號（「E-034、E-037（受訪者甲）」），
   // 括號講的是整串的說話者；也常寫「沛欣在 E-343、E-344 說」，那裡的編號是
   // 「哪一段話」的定位，不是主詞。以前逐個換成「某位受訪者」，句子變成

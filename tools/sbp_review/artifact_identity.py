@@ -57,6 +57,8 @@ ARTIFACTS: dict[str, tuple[str, ...]] = {
     "improvement-goal": (_goal_review.REVIEW_FILENAME,),
     # Case-level research input: computed on the case folder (its name is the identity's "run").
     "research-purpose": (_selective_themes.PURPOSE_FILE,),
+    # purpose-aware-research-calibration: the researcher context, which mirrors the purpose.
+    "project-context": (_selective_themes.PURPOSE_FILE, "project_context.yaml"),
     # Implementation research before 建立 SBP: the questions come from the journey's
     # adopted Solutions; ticking, skipping and the claim review are its decisions. The
     # current operation's record and catalog are added by a resolver (see RESOLVERS).

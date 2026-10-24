@@ -257,7 +257,10 @@ def attribution_report(persona_doc: dict | None, evidence: list, doc: dict | Non
     for item in evidence_by_id.values():
         if person_key(item, doc) is None:
             unattributed[str(item.get("source"))] = unattributed.get(str(item.get("source")), 0) + 1
-    placed, suspect = set(), []
+    # v0.2.1: three exclusive counts over the fixed denominator of confirmed persons --
+    # at least one axis at an end, only "mid", and no position at all. `placed_persons`
+    # (any position, "mid" included) stays for older readers.
+    placed, ends, middle, suspect = set(), set(), set(), []
     for subject in (persona_doc or {}).get("subjects") or []:
         if not isinstance(subject, dict):
             continue
@@ -266,17 +269,91 @@ def attribution_report(persona_doc: dict | None, evidence: list, doc: dict | Non
             suspect.append({"subject": subject.get("id"), "unattributed_evidence": len(bad),
                             "sources": sorted({str(evidence_by_id.get(r, {}).get("source")) for r in bad} | {k.split("::")[0] for k in keys})})
             continue
-        if any(p.get("position") not in ("no_data", None) for p in subject.get("placements") or [] if isinstance(p, dict)):
+        positions = {p.get("position") for p in subject.get("placements") or [] if isinstance(p, dict)}
+        if positions - {"no_data", None}:
             placed |= keys
+        if positions & {"near_low", "near_high"}:
+            ends |= keys
+        elif "mid" in positions:
+            middle |= keys
     return {
         "state": "confirmed" if not unconfirmed else "partly_confirmed",
         "confirmed_persons": len(persons),
         "placed_persons": len(placed & set(persons)),
+        "end_placed_persons": len(ends & set(persons)),
+        "middle_only_persons": len((middle - ends) & set(persons)),
+        "unplaced_persons": len(set(persons) - placed),
         "unattributed_evidence": sum(unattributed.values()),
         "unattributed_by_source": dict(sorted(unattributed.items())),
         "suspect_subjects": suspect,
         "unconfirmed_sources": unconfirmed,
     }
+
+
+# source-attribution-integrity (2026-10-22 researcher ruling, P0): a file name
+# identifies a source, never a person. The CJM stages get evidence keyed by an
+# opaque session code and only confirmed identities, so no name can be read off
+# a file name and a multi-person session is never taken for one person.
+CJM_SESSION_PATTERN = r"\bS\d+\b"
+
+
+def session_codes(evidence: list) -> dict[str, str]:
+    """Source file name -> S1..Sn, by sorted file name (stable for one evidence set)."""
+    sources = sorted({str(item.get("source")) for item in evidence or [] if isinstance(item, dict) and item.get("source")})
+    return {source: f"S{index}" for index, source in enumerate(sources, 1)}
+
+
+def cjm_evidence_view(evidence: list, doc: dict | None) -> tuple[str, list[dict]]:
+    """(sessions block, evidence view) for the CJM generation stages. Each item
+    keeps its id, role, locator, text and type; `source` becomes `session`, and
+    `participant` appears only for a confirmed person."""
+    codes = session_codes(evidence)
+    entries = {e.get("source"): e for e in (doc or {}).get("sources") or [] if isinstance(e, dict)}
+    view = []
+    for item in evidence or []:
+        if not isinstance(item, dict):
+            continue
+        out = {k: v for k, v in item.items() if k not in ("source", "note")}
+        session = codes.get(str(item.get("source")))
+        if session:
+            out["session"] = session
+        key = person_key(item, doc) if doc else None
+        if key is None:
+            out["participant_confirmed"] = False
+        elif "::" in key:
+            out["participant"] = f"{session}・{key.split('::', 1)[1]}"
+        else:
+            out["participant"] = f"{session} 的受訪者"
+        view.append(out)
+    sessions = []
+    for source, session in codes.items():
+        entry = entries.get(source) or {}
+        confirmed = entry.get("status") == "confirmed"
+        state = entry.get("participants") if confirmed and entry.get("participants") in ("single", "multiple") else "unknown"
+        line = {"session": session, "participants": state}
+        if state == "multiple":
+            line["count"] = len(entry.get("individual_labels") or []) or entry.get("count")
+        sessions.append(line)
+    block = ("## 場次（session 只用來分辨哪些證據來自同一場，不是人，也不要寫進文字；"
+             "participants 為 unknown 的場次，不知道是一人還是多人）\n```yaml\n" + stages._yaml_dump(sessions) + "```\n\n")
+    return block, view
+
+
+def fixed_participants(evidence: list, doc: dict | None) -> list[dict]:
+    """persona-matrix-comparison-first: the confirmed persons as fixed Persona
+    Matrix respondents, `P-1`, `P-2`, ... in order of first appearance in the
+    evidence, each with every evidence id attributed to that person. Empty
+    when nothing is confirmed (the model then groups evidence as before)."""
+    if doc is None:
+        return []
+    refs: dict[str, list[str]] = {}
+    for item in evidence or []:
+        if isinstance(item, dict) and item.get("id"):
+            key = person_key(item, doc)
+            if key is not None:
+                refs.setdefault(key, []).append(item["id"])
+    return [{"id": f"P-{n}", "person": key, "evidence_refs": ids}
+            for n, (key, ids) in enumerate(refs.items(), start=1)]
 
 
 def generation_block(evidence: list, doc: dict | None) -> tuple[str, dict[str, dict]]:
@@ -301,4 +378,16 @@ def generation_block(evidence: list, doc: dict | None) -> tuple[str, dict[str, d
             extra[item["id"]] = {"speaker": key.split("::", 1)[1]}
     block = ("## 來源受訪者資訊（研究者確認；participants 為 unknown 的來源視為無法確認是誰）\n```yaml\n"
              + stages._yaml_dump(lines) + "```\n\n")
+    participants = fixed_participants(evidence, doc)
+    if participants:
+        # The system says who said what; the model never regroups people.
+        for participant in participants:
+            for ref in participant["evidence_refs"]:
+                extra[ref] = {"participant": participant["id"]}
+        listing = [{"id": p["id"], "source": p["person"].split("::", 1)[0],
+                    **({"speaker": p["person"].split("::", 1)[1]} if "::" in p["person"] else {}),
+                    "evidence_refs": p["evidence_refs"]} for p in participants]
+        block += ("## 已確認的受訪者（系統固定：subjects 恰好是這些人、用這些編號與證據，"
+                  "不要新增、合併或拆分；證據單元的 participant 標出是誰說的）\n```yaml\n"
+                  + stages._yaml_dump(listing) + "```\n\n")
     return block, extra

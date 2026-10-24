@@ -1035,6 +1035,19 @@ def resolve_run_response(mechanism: str, run_dir: Path) -> dict:
                 for ref in subject.get("evidence_refs") or []:
                     if ref not in bucket:
                         bucket.append(ref)
+        # axis-brief-pole-consistency (2026-10-22, P0): flag, never rewrite, a brief that
+        # puts a subject at the pole opposite to where the Matrix places them.
+        from sbp_gen import stages as sbp_stages
+        matrix_axes = {a.get("id"): a for a in matrix.get("axes") or [] if isinstance(a, dict)}
+        positions = sbp_stages.placements_by_axis(matrix)
+
+        def _pole_conflicts(brief: dict) -> list[dict]:
+            axis = matrix_axes.get(brief.get("axis_id")) or {}
+            text = {"near_low": axis.get("pole_low", ""), "near_high": axis.get("pole_high", "")}
+            return [{"subject": sid, "brief_says": text[stated], "matrix_says": text[sits]}
+                    for sid, stated, sits in sbp_stages.axis_brief_pole_conflicts(
+                        brief.get("evidence_summary") or "", axis, positions.get(brief.get("axis_id"), {}))]
+
         briefs = [
             _with_evidence(
                 {
@@ -1042,6 +1055,7 @@ def resolve_run_response(mechanism: str, run_dir: Path) -> dict:
                     "label": axis_labels.get(b.get("axis_id"), b.get("axis_id")),
                     "pole_low": axis_poles.get(b.get("axis_id"), {}).get("pole_low", ""),
                     "pole_high": axis_poles.get(b.get("axis_id"), {}).get("pole_high", ""),
+                    "pole_conflicts": _pole_conflicts(b),
                 },
                 refs_by_axis.get(b.get("axis_id")), records)
             for b in (data.get("briefs") or [])

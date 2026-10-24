@@ -38,6 +38,36 @@
           "items": {
             "$ref": "#/definitions/scenario"
           }
+        },
+        "generation_basis": {
+          "description": "cjm-as-is-first-core-problems（2026-10-21 研究者裁定）：這張旅程只依證據、主軸編碼與案例邊界還原服務現況，沒有讀 Persona、JTBD、HMW。由生成成功後的呼叫端寫入；沒有這個欄位的是舊方法建立的旅程。",
+          "x-not-generated": true,
+          "enum": ["as_is_all_evidence"]
+        },
+        "core_problems": {
+          "description": "cjm-core-problem-synthesis（2026-10-22 研究者裁定）：研究者採用或寫下的旅程層級核心問題。每一筆只存一次，用 step_ids 連到相關步驟；步驟不複製，痛點與證據不變。",
+          "x-not-generated": true,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "problem", "step_ids", "evidence_refs", "source"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "problem": {"type": "string", "minLength": 1},
+              "title": {"type": "string", "minLength": 1, "maxLength": 14},
+              "step_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+              "evidence_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+              "basis": {"type": "array", "uniqueItems": true, "items": {"enum": ["recurs_across_steps", "recurs_across_sessions", "blocks_jtbd", "severe_single_moment"]}},
+              "why_core": {"type": "string"},
+              "jtbd_note": {"type": "string"},
+              "inferred": {"type": "boolean"},
+              "research_prompted": {"type": "boolean"},
+              "evidence_elicitation": {"type": "object", "additionalProperties": {"enum": ["research_prompted", "unprompted_observed", "unconfirmed"]}},
+              "candidate_id": {"type": "string", "minLength": 1},
+              "source": {"enum": ["adopted", "researcher"]}
+            }
+          }
         }
       }
     },
@@ -137,6 +167,10 @@
         "emotion": {
           "$ref": "#/definitions/experience_level"
         },
+        "emotion_divergent": {
+          "description": "同一時刻不同受訪者的感受不同；誰、什麼感受寫在 experience.reaction。分歧但看不出主要傾向時不給 emotion。",
+          "type": "boolean"
+        },
         "satisfaction": {
           "$ref": "#/definitions/step_satisfaction"
         },
@@ -153,6 +187,17 @@
           "description": "研究者寫下這一刻要解決的核心問題（sbp-solution-adoption-and-core-problem，2026-10-19 研究者裁定可改寫）。有寫時，發展解方以它為問題。",
           "x-not-generated": true,
           "type": "string"
+        },
+        "core_problem_origin": {
+          "description": "core_problem 是研究者從這一步的 AI 核心問題候選採用的（cjm-as-is-first-core-problems）；candidate_id 指到 journey_core_problems.yaml 裡的候選。研究者之後改寫就移除。",
+          "x-not-generated": true,
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["candidate_id"],
+          "properties": {
+            "candidate_id": {"type": "string", "minLength": 1},
+            "evidence_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+          }
         },
         "solution_basis": {
           "description": "產出解方當下這一步內容的 digest；與目前內容不同即為過期。",
@@ -559,7 +604,14 @@
       "properties": {
         "problem": {"type": "string", "minLength": 1},
         "why_it_matters": {"type": "string", "minLength": 1},
-        "constraints": {"type": "array", "items": {"type": "string", "minLength": 1}}
+        "constraints": {"type": "array", "items": {"oneOf": [
+          {"type": "string", "minLength": 1},
+          {"type": "object", "additionalProperties": false, "required": ["text", "basis", "refs"],
+           "description": "purpose-aware-research-calibration：限制與它的依據。evidence 引用證據 id；business_context 引用業務輸入 BI-n；inference 不引用。舊檔的字串照常可讀。",
+           "properties": {"text": {"type": "string", "minLength": 1},
+                          "basis": {"enum": ["evidence", "business_context", "inference"]},
+                          "refs": {"type": "array", "items": {"type": "string", "minLength": 1}}}}
+        ]}}
       }
     },
     "solution_candidate": {

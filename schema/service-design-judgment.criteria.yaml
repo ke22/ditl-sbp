@@ -166,7 +166,7 @@ knowledge:
 
   distribution-required:
     label: 這個類別是不是只靠一個人撐起來的
-    rule: 一個類別引用的證據若全部來自同一個 `role`，代表這是單一強烈說法，不是跨參與者的共通模式——不代表這樣不行，只是要讓研究者知道這個差異，不要把單一說法誤讀成模式。
+    rule: 一個類別引用的證據若全部來自同一位受訪者（有說話者歸屬時看確認的受訪者；沒有時看來源檔，不拿「顧客」這類角色當人），代表這是單一強烈說法，不是跨參與者的共通模式——不代表這樣不行，只是要讓研究者知道這個差異，不要把單一說法誤讀成模式。
     arbiter: machine
     source_status: corpus_verified
     citation: 'add-axial-selective-coding change, 2026-09-03。同一原則已在 CLAUDE.md 對 Persona Matrix
@@ -358,6 +358,20 @@ knowledge:
     source_status: literature_general
     citation: IDEO 設計思考三透鏡（Desirability／Feasibility／Viability）。通用文獻，未在本專案語料裡逐字出現，因此只能作為問研究者的問題，不能自行下結論，也不會成為研究者無法忽略的檢查。
 
+  inference-needs-reasoning:
+    label: 典範模型的推論有沒有寫依據
+    rule: '主軸編碼典範模型裡標為推論（basis 為 inference）的每一格，都要寫 reasoning：誰做了什麼、所以推出什麼。沒有寫依據的推論，讀的人分不出它和證據直接講的事有什麼不同。'
+    arbiter: machine
+    source_status: corpus_verified
+    citation: 'purpose-aware-research-calibration（2026-10-22）。prompt 架構稽核 F2：編碼鏈沒有推論標記，Persona 與 CJM 已有（evidence_inference＋reasoning_summary、inferred_parts）；主軸典範模型比照。'
+
+  representative-quote-standalone:
+    label: 代表語句能不能單獨讀懂
+    rule: 代表語句要像研究報告裡引用的一句訪談原話：不必對照訪員的問題就讀得懂。只能挑符合全部條件的引言——沒有附訪員問題；回答不只是「對」「可以」「不會」這類回答詞；去掉標點後至少 6 個字；引用的證據至少一則是受訪者自己的實質陳述，不是簡短附和或簡短回答。不符合的引言可以留在主題裡當支持，但不能當代表語句。主題底下真的沒有符合的引言時，代表語句留空，不要硬挑。
+    arbiter: machine
+    source_status: corpus_verified
+    citation: 'representative-quotes-standalone，2026-10-22 研究者裁定（以陳心瑩論文第四章引句為標竿：15–54 字、受訪者第一人稱、單獨讀就懂、不附問題）。在兩份真實產出上量過：MUJI v3benchmark 主軸挑的 52 則中有 22 則不符合、選擇編碼 19 則中有 9 則；恆隆行 v3E2E2 主軸 100 則中 7 則、選擇編碼 28 則中 2 則。6 字下限依同兩份產出校準：5 字以下多為單詞或需要問題才懂（「人少。」「捐贈」），6 字起是完整判斷（「幾乎沒有等待」）。'
+
 # ══ bindings ══ this project's wiring; stage names and check names ══════
 
 bindings:
@@ -458,6 +472,16 @@ bindings:
     binds_to:
     - persona_content
     check: persona_field_provenance_policy
+  inference-needs-reasoning:
+    binds_to:
+    - axial_coding
+    check: inference_needs_reasoning
+  representative-quote-standalone:
+    binds_to:
+    - axial_coding
+    - selective_themes
+    - persona_content
+    check: representative_quote_not_standalone
   job-grounded-in-category:
     binds_to:
     - jtbd

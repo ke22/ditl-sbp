@@ -89,12 +89,13 @@ SOURCE_ITEM_SCHEMA: dict[str, Any] = {
 # fix-research-applicability-context-contract: the research catalog requires a
 # non-empty applicability context, so the contract asks for it; when the source
 # states none, this fixed sentence says so instead of an inferred context.
-APPLICABILITY_NOT_STATED = "The source does not state specific applicability conditions."
+APPLICABILITY_NOT_STATED = "來源沒有說明特定的適用條件。"
 CLAIM_ITEM_SCHEMA: dict[str, Any] = {
     "type": "object",
     "required": ["text", "applicability_context", "source_links"],
     "properties": {
         "text": {"type": "string"},
+        "summary": {"type": "string"},
         "applicability_context": {"type": "string"},
         "question_refs": {"type": "array", "items": {"type": "string"}},
         "source_links": {
@@ -789,6 +790,8 @@ each of those is rejected outright.
 CLAIM_CONTRACT = """Every object in `claims` must carry:
 
 - `text`: the bounded hypothesis itself.
+- `summary` (optional): one sentence of at most 30 characters that tells the
+  researcher what the claim says, adding no fact the claim does not hold.
 - `applicability_context`: where the source says this holds -- the kind of
   service and the conditions it was observed under, as the source itself
   states them. Do not infer a context the source does not support. When the
@@ -805,6 +808,11 @@ CLAIM_CONTRACT = """Every object in `claims` must carry:
 fetched. Quote only from the `excerpts` returned by the fetch tool — those are
 verbatim spans of the source. A rewritten, translated, tidied, or joined
 passage resolves against nothing and the claim is dropped.
+
+Write `text`, `summary` and `applicability_context` in Traditional Chinese as used in
+Taiwan, even when the source is in English or another language; the researcher
+reads them as written. Keep `passage`, source titles and publisher names exactly
+as the source has them.
 """
 
 

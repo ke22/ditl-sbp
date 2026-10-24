@@ -76,26 +76,32 @@
         "conditions": {
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1
+            "oneOf": [
+              {"type": "string", "minLength": 1},
+              {"$ref": "#/definitions/paradigm_item"}
+            ]
           },
-          "description": "典範模型：促成這個現象的條件。選填——沒有證據支持就留空陣列，不要為了填滿而編。"
+          "description": "典範模型：促成這個現象的條件。選填——沒有證據支持就留空陣列，不要為了填滿而編。 purpose-aware-research-calibration：新產出每一項是 paradigm_item，標出依據；舊檔的字串照常可讀。"
         },
         "actions": {
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1
+            "oneOf": [
+              {"type": "string", "minLength": 1},
+              {"$ref": "#/definitions/paradigm_item"}
+            ]
           },
-          "description": "典範模型：這個現象底下的行動／互動。選填。"
+          "description": "典範模型：這個現象底下的行動／互動。選填。 purpose-aware-research-calibration：新產出每一項是 paradigm_item，標出依據；舊檔的字串照常可讀。"
         },
         "consequences": {
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1
+            "oneOf": [
+              {"type": "string", "minLength": 1},
+              {"$ref": "#/definitions/paradigm_item"}
+            ]
           },
-          "description": "典範模型：這些行動帶來的結果。選填。"
+          "description": "典範模型：這些行動帶來的結果。選填。 purpose-aware-research-calibration：新產出每一項是 paradigm_item，標出依據；舊檔的字串照常可讀。"
         },
         "definition": {
           "type": "string",
@@ -125,7 +131,7 @@
         },
         "representative_quote_refs": {
           "type": "array",
-          "minItems": 1,
+          "minItems": 0,
           "maxItems": 5,
           "uniqueItems": true,
           "items": {
@@ -139,7 +145,44 @@
           "minLength": 1,
           "maxLength": 150,
           "description": "coding-support-summary（2026-10-05）：支持摘要——1–3 句、150 字以內，整理多筆資料共同呈現的具體情況；不新增資料沒有支持的心理、原因或因果。新產出必填；舊檔沒有照樣有效。"
+        },
+        "paradigm_gap": {
+          "type": "string",
+          "minLength": 1,
+          "description": "purpose-aware-research-calibration：證據撐不起任何一組典範模型時，一句話說明為什麼。"
+        },
+        "supported_by": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "description": "purpose-aware-research-calibration：這個類別的證據來自哪些受訪者（確認的受訪者編號，沒有確認時是來源代號）。"
+        },
+        "exceptions": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/exception"},
+          "description": "purpose-aware-research-calibration：不符合這個類別機制的人或說法。"
         }
+      }
+    },
+    "paradigm_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "basis", "evidence_refs"],
+      "properties": {
+        "text": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["situational", "user"], "description": "只用在 conditions：情境條件或使用者條件。"},
+        "basis": {"enum": ["evidence", "synthesis", "inference"]},
+        "evidence_refs": {"type": "array", "items": {"type": "string", "pattern": "^E-[0-9]+$"}},
+        "reasoning": {"type": "string", "minLength": 1, "maxLength": 120}
+      }
+    },
+    "exception": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["participant", "evidence_ref", "note"],
+      "properties": {
+        "participant": {"type": "string", "minLength": 1},
+        "evidence_ref": {"type": "string", "pattern": "^E-[0-9]+$"},
+        "note": {"type": "string", "minLength": 1}
       }
     }
   }

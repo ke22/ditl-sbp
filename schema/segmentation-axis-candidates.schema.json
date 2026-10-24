@@ -51,6 +51,11 @@
       "required": ["axis_id", "evidence_summary", "downstream_consequence"],
       "additionalProperties": false,
       "properties": {
+        "purpose_focus": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1, "maxLength": 20},
+          "description": "purpose-aware-research-calibration：這條軸關係到研究者在目的裡點名的哪幾件事，每件照抄目的原文；目的有文字時每份簡報都要寫，無關就寫空陣列。舊檔沒有這一欄。"
+        },
         "axis_id": {
           "type": "string",
           "pattern": "^AXIS-[0-9]+$",

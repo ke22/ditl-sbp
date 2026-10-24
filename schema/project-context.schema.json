@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "project-context.schema.json",
+  "title": "Researcher context",
+  "description": "purpose-aware-research-calibration (2026-10-22): what the researcher carries into the study -- project purpose, research purpose (a concern the researcher cares about is written inside a purpose) and non-evidence business inputs (survey, word of mouth, desk research, stakeholder brief). Written by the researcher only; read downstream as framing and priority, never as evidence. The research purpose is mirrored to research_purpose.yaml for earlier readers.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "project_purpose", "research_purpose", "business_inputs", "source", "updated_at"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "project_purpose": {"type": "string", "maxLength": 200},
+    "research_purpose": {"type": "string", "maxLength": 120},
+    "issues": {
+      "x-compatibility-only": true,
+      "description": "Written before 2026-10-23, when concerns were a separate list. Read for compatibility only: no stage receives it and the next save drops it.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "text"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^ISS-[1-9][0-9]*$"},
+          "text": {"type": "string", "minLength": 1, "maxLength": 60}
+        }
+      }
+    },
+    "business_inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "summary", "source_file", "added_at"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^BI-[1-9][0-9]*$"},
+          "kind": {"enum": ["survey", "word_of_mouth", "desk_research", "stakeholder_brief", "other"]},
+          "summary": {"type": "string", "maxLength": 300},
+          "source_file": {"type": "string"},
+          "added_at": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "source": {"const": "researcher"},
+    "updated_at": {"type": "string", "minLength": 1}
+  }
+}

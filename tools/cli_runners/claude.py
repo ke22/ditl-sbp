@@ -11,7 +11,8 @@ Code CLI install (`add-claude-code-cli-runner` design.md, "task 1.1/1.2 查證
 deliberately not used: it forces `ANTHROPIC_API_KEY`/`apiKeyHelper` auth and
 never reads the OAuth/keychain login state this wrapper depends on. Isolation
 instead comes from `--setting-sources`, `--strict-mcp-config`,
-`--disable-slash-commands`, and `--tools`.
+`--disable-slash-commands`, and `--tools` (no tools, or only WebSearch for a
+research request that declares search).
 """
 from __future__ import annotations
 
@@ -41,6 +42,28 @@ CLAUDE_KEY_ENVIRONMENTS = ("ANTHROPIC_API_KEY",)
 EFFORT_CHOICES = ("low", "medium", "high", "xhigh", "max")
 
 _VERSION_PROBE_TIMEOUT = 10.0
+
+# cli-model-by-stage: when the researcher named no model, a stage on the
+# approved list runs on its policy model instead of Claude Code's own default.
+# These tables mirror `agent-pack/MODEL-POLICY.yaml` (the pipeline stage names
+# in `stage_recommendations`, `provider_mappings.anthropic`,
+# `approved_for_claude_cli`); the policy file is not in the release, so the
+# runner carries its own copy and a test keeps the two equal. A stage joins
+# APPROVED_STAGES only after a like-for-like comparison; every other stage
+# runs exactly as before.
+STAGE_PROFILES = {
+    "open_coding": "balanced",
+    "selective_themes": "deep",
+    "narrative_job_candidates": "deep",
+    "how_might_we": "balanced",
+    "persona_matrix": "deep",
+    "journey": "deep",
+    "journey_core_problems": "deep",
+    "structure": "deep",
+    "structure_to_be": "deep",
+}
+PROFILE_MODELS = {"fast": "claude-haiku-5-5", "balanced": "claude-sonnet-5-5", "deep": "claude-opus-5-5"}
+APPROVED_STAGES: frozenset[str] = frozenset()
 
 
 def _probe(executable: str) -> bool:
@@ -174,6 +197,7 @@ def _usage_tokens(envelope: Mapping[str, Any]) -> int:
 
 def build_command(
     executable: str, *, output_schema: dict[str, Any] | None, model: str | None, effort: str | None,
+    web_search: bool = False,
 ) -> list[str]:
     command = [
         executable, "-p",
@@ -181,7 +205,10 @@ def build_command(
         "--setting-sources", "",
         "--strict-mcp-config",
         "--disable-slash-commands",
-        "--tools", "",
+        # claude-runner-web-search: a research request that declares search gets the
+        # built-in WebSearch tool only, pre-allowed (no one answers a prompt in -p mode);
+        # the server fetches source content itself. Every other request has no tools.
+        *(["--tools", "WebSearch", "--allowedTools", "WebSearch"] if web_search else ["--tools", ""]),
     ]
     if output_schema is not None:
         command += ["--json-schema", json.dumps(output_schema)]
@@ -200,11 +227,17 @@ def runner_environment(base: Mapping[str, str] | None = None) -> dict[str, str]:
 
 
 class ClaudeRunner:
-    # Not verified for this CLI (task 1.2 scope did not confirm a web-search
-    # tool name/flag equivalent to Codex's `web_search="live"`); a `responses`
-    # request that declares web search gets `search: "unavailable"` rather
-    # than a guessed flag.
-    supports_web_search = False
+    # claude-runner-web-search (verified 2026-10-23 on Claude Code 2.1.309):
+    # `-p --tools WebSearch --allowedTools WebSearch` runs the built-in WebSearch
+    # tool non-interactively, also with --json-schema.
+    supports_web_search = True
+
+    @staticmethod
+    def stage_model(stage: str | None) -> str | None:
+        """The policy model for an approved stage, else None (executor default)."""
+        if stage not in APPROVED_STAGES:
+            return None
+        return PROFILE_MODELS.get(STAGE_PROFILES.get(stage, ""))
 
     def __call__(
         self, prompt: str, *, output_schema: dict[str, Any] | None,
@@ -218,7 +251,8 @@ class ClaudeRunner:
         effort = os.environ.get("SBP_CLI_EFFORT")
         if effort is not None and effort not in EFFORT_CHOICES:
             effort = None
-        command = build_command(executable, output_schema=output_schema, model=model, effort=effort)
+        command = build_command(executable, output_schema=output_schema, model=model, effort=effort,
+                                web_search=web_search)
         try:
             process = subprocess.Popen(
                 command,

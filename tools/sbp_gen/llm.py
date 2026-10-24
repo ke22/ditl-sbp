@@ -37,6 +37,9 @@ DEFAULT_MODELS = {
     "open_coding": "claude-sonnet-5",
     "category_properties": "claude-sonnet-5",
     "persona_matrix": "claude-sonnet-5",
+    "persona_comparison": "claude-sonnet-5",
+    "persona_dimension_synthesis": "claude-sonnet-5",
+    "persona_quadrant_names": "claude-sonnet-5",
     "persona_content": "claude-sonnet-5",
     "persona_dimension_candidates": "claude-sonnet-5",
     "jtbd": "claude-sonnet-5",
@@ -89,6 +92,9 @@ DEFAULT_EFFORT = {
     # 覆寫時對這個 stage KeyError。
     "selective_coding_narrative": "medium",
     "persona_matrix": "medium",
+    "persona_comparison": "medium",
+    "persona_dimension_synthesis": "medium",
+    "persona_quadrant_names": "medium",
     "persona_content": "medium",
     "persona_dimension_candidates": "medium",
     "jtbd": "medium",
@@ -170,7 +176,7 @@ class CallResult:
     effort: str | None = None
     usage: dict | None = None
     # cli-model-override-reaches-runner: where the model came from
-    # (workbench / executor_settings / None) and, only when the executor
+    # (workbench / executor_settings / policy / None) and, only when the executor
     # reported it, the model that actually ran.
     model_source: str | None = None
     model_effective: str | None = None

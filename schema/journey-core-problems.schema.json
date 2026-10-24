@@ -1,0 +1,521 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/journey-core-problems.schema.json",
+  "title": "CJM core problem candidates: target-group relevance and evidence-cited core problems per as-is step",
+  "description": "根是存檔形狀：v1（逐步候選，只為舊資料保留）或 v2（旅程層級綜整）。模型輸出的草稿是 definitions.draft（v2）。",
+  "definitions": {
+    "basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "persona_digest",
+        "jtbd_digest",
+        "hmw_digest"
+      ],
+      "properties": {
+        "persona_digest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "jtbd_digest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "hmw_digest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "journey_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "draft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "steps",
+        "core_problems"
+      ],
+      "properties": {
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/relevance_step"
+          },
+          "description": "主要歷程每一步一則，只寫目標族群相關性。"
+        },
+        "core_problems": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/draft_core_problem"
+          },
+          "description": "跨整份旅程綜整出的核心問題候選，0 到多個，不必每一步都有。"
+        },
+        "hmw_scope_note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "有選定 HMW、且有候選與它不同時必填：一句話說明可能的範圍差異。"
+        }
+      }
+    },
+    "stored_step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "step_id",
+        "persona_relevance",
+        "relevance_note"
+      ],
+      "properties": {
+        "step_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "persona_relevance": {
+          "enum": [
+            "relevant",
+            "not_evident",
+            "no_group_evidence",
+            "not_assessed"
+          ]
+        },
+        "relevance_note": {
+          "type": "string",
+          "minLength": 1
+        },
+        "relevance_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "candidate": {
+          "$ref": "#/definitions/stored_candidate"
+        }
+      }
+    },
+    "stored_candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "problem",
+        "evidence_refs",
+        "inferred",
+        "hmw_relation",
+        "hmw_note"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^CP-.+-[0-9a-f]{8}$"
+        },
+        "problem": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "group_evidence": {
+          "type": "boolean"
+        },
+        "inferred": {
+          "type": "boolean"
+        },
+        "hmw_relation": {
+          "enum": [
+            "consistent",
+            "differs",
+            "no_hmw"
+          ]
+        },
+        "hmw_note": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 14,
+          "description": "cjm-core-problem-bands：14 字內的短標題，讓研究者一眼認得這個問題；不寫解方。"
+        }
+      }
+    },
+    "stored_v1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "journey_digest",
+        "basis",
+        "steps",
+        "generated_at"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "journey_digest": {
+          "type": "string",
+          "minLength": 1
+        },
+        "basis": {
+          "$ref": "#/definitions/basis"
+        },
+        "retained_basis": {
+          "$ref": "#/definitions/basis"
+        },
+        "group_evidence_limited": {
+          "type": "boolean"
+        },
+        "generated_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/stored_step"
+          }
+        }
+      },
+      "description": "v1（cjm-as-is-first-core-problems）：逐步候選；只為舊資料保留，照樣可讀。",
+      "x-compatibility-only": true
+    },
+    "stored_v2": {
+      "description": "v2（cjm-core-problem-synthesis，2026-10-22）：逐步只有相關性；核心問題是旅程層級 0..N 的綜整。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "journey_digest",
+        "basis",
+        "steps",
+        "core_problems",
+        "generated_at"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 2
+        },
+        "journey_digest": {
+          "type": "string",
+          "minLength": 1
+        },
+        "basis": {
+          "$ref": "#/definitions/basis"
+        },
+        "retained_basis": {
+          "$ref": "#/definitions/basis"
+        },
+        "group_evidence_limited": {
+          "type": "boolean"
+        },
+        "generated_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hmw_scope_note": {
+          "type": "string",
+          "minLength": 1
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/relevance_step"
+          }
+        },
+        "core_problems": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/stored_core_problem"
+          }
+        }
+      }
+    },
+    "relevance_step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "step_id",
+        "persona_relevance",
+        "relevance_note"
+      ],
+      "properties": {
+        "step_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "主要歷程裡這一步的 id。"
+        },
+        "persona_relevance": {
+          "enum": [
+            "relevant",
+            "not_evident",
+            "no_group_evidence",
+            "not_assessed"
+          ],
+          "description": "這一步跟目標族群的關係：relevant 有目標族群的證據顯示這一步對他們重要；not_evident 目標族群有在這一步的證據，但看不出特別重要；no_group_evidence 目標族群在這一步沒有證據（資料缺口）；not_assessed 沒有已確認的 Persona。"
+        },
+        "relevance_note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "一句話說明為什麼是這個相關性。"
+        },
+        "relevance_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "relevant 時引用的目標族群證據 id；只能是輸入裡列出的目標族群證據。"
+        }
+      }
+    },
+    "draft_core_problem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "problem",
+        "title",
+        "step_ids",
+        "basis",
+        "why_core",
+        "evidence_refs",
+        "inferred",
+        "hmw_relation",
+        "hmw_note",
+        "evidence_elicitation"
+      ],
+      "properties": {
+        "problem": {
+          "type": "string",
+          "minLength": 1,
+          "description": "綜整出的核心問題：什麼讓使用者卡住、卡在哪個判斷或行動上。不是把某一步的痛點換個名字，也不寫解方。"
+        },
+        "step_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "這個問題涉及的主要歷程步驟。"
+        },
+        "basis": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "recurs_across_steps",
+              "recurs_across_sessions",
+              "blocks_jtbd",
+              "severe_single_moment"
+            ]
+          },
+          "description": "為什麼值得優先處理的依據類別（說明理由，不是門檻）：跨步驟重複、跨場次出現、阻礙選定的顧客任務、單次但後果重大。"
+        },
+        "why_core": {
+          "type": "string",
+          "minLength": 1,
+          "description": "一兩句說明為什麼重要，要對應 basis 與證據。"
+        },
+        "jtbd_note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "basis 有 blocks_jtbd 時必填：擋住哪一個選定的顧客任務、怎麼擋住。"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "支撐這個問題的證據 id。"
+        },
+        "inferred": {
+          "type": "boolean",
+          "description": "這個問題對目標族群成立是推論（沒有引用任何目標族群證據）時為 true。"
+        },
+        "hmw_relation": {
+          "enum": [
+            "consistent",
+            "differs",
+            "no_hmw"
+          ],
+          "description": "跟目前選定的 HMW 的關係；沒有選定 HMW 時是 no_hmw。"
+        },
+        "hmw_note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "一句話說明為什麼一致或不同。"
+        },
+        "evidence_elicitation": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/evidence_elicitation_item"
+          },
+          "description": "每一筆引用證據各一項，一筆不多、一筆不少。"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 14,
+          "description": "cjm-core-problem-bands：14 字內的短標題，讓研究者一眼認得這個問題；不寫解方。"
+        }
+      }
+    },
+    "stored_core_problem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "problem",
+        "step_ids",
+        "basis",
+        "why_core",
+        "research_prompted",
+        "evidence_refs",
+        "inferred",
+        "hmw_relation",
+        "hmw_note"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^CP-[0-9a-f]{8}$"
+        },
+        "problem": {
+          "type": "string",
+          "minLength": 1
+        },
+        "step_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "basis": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "recurs_across_steps",
+              "recurs_across_sessions",
+              "blocks_jtbd",
+              "severe_single_moment"
+            ]
+          }
+        },
+        "why_core": {
+          "type": "string",
+          "minLength": 1
+        },
+        "jtbd_note": {
+          "type": "string",
+          "minLength": 1
+        },
+        "research_prompted": {
+          "type": "boolean"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "inferred": {
+          "type": "boolean"
+        },
+        "hmw_relation": {
+          "enum": [
+            "consistent",
+            "differs",
+            "no_hmw"
+          ]
+        },
+        "hmw_note": {
+          "type": "string",
+          "minLength": 1
+        },
+        "group_evidence": {
+          "type": "boolean"
+        },
+        "evidence_elicitation": {
+          "type": "object",
+          "additionalProperties": {
+            "enum": [
+              "research_prompted",
+              "unprompted_observed",
+              "unconfirmed"
+            ]
+          }
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 14,
+          "description": "cjm-core-problem-bands：14 字內的短標題，讓研究者一眼認得這個問題；不寫解方。"
+        }
+      }
+    },
+    "evidence_elicitation_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_ref",
+        "elicitation"
+      ],
+      "properties": {
+        "evidence_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "elicitation": {
+          "enum": [
+            "research_prompted",
+            "unprompted_observed",
+            "unconfirmed"
+          ],
+          "description": "research_prompted：原文顯示是研究者指派的任務；unprompted_observed：在研究中觀察到、沒有指派任務；unconfirmed：無法判斷。沒有「自然發生」這個值。"
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/definitions/stored_v1"
+    },
+    {
+      "$ref": "#/definitions/stored_v2"
+    }
+  ]
+}

@@ -29,7 +29,8 @@ DEFAULT_MODELS = {
         # 詮釋層＋to_be：2026-09-08 補齊——這批 stage 加進 llm.py 的時間晚於
         # 這份 map，之前落在 default_model() 的 align 後備值。一個 provider
         # 一個模型，補齊不需要分量級。
-        "axial_coding", "open_coding", "category_properties", "persona_matrix", "persona_content",
+        "axial_coding", "open_coding", "category_properties", "persona_matrix", "persona_comparison",
+        "persona_dimension_synthesis", "persona_quadrant_names", "persona_content",
         "persona_dimension_candidates", "jtbd", "primary_job_candidates",
         "job_map", "how_might_we", "primary_hmw_candidates", "journey_annotations", "chart_guides", "selective_themes", "semantic_segments",
         "segmentation_axis_candidates",

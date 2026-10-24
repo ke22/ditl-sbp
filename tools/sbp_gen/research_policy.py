@@ -404,6 +404,10 @@ def _validated_verdicts(
     return resolved
 
 
+def _has_chinese(value: str) -> bool:
+    return any("\u4e00" <= ch <= "\u9fff" for ch in value)
+
+
 def build_research_catalog(
     *,
     case_id: str,
@@ -433,6 +437,7 @@ def build_research_catalog(
         if verdict:
             record["verdict"] = verdict
     canonical_claims: list[dict[str, Any]] = []
+    not_chinese = 0
     for claim_index, claim in enumerate(claims):
         source_links = []
         for key, relationship in resolved.items():
@@ -442,6 +447,11 @@ def build_research_catalog(
             source_links.append({**link, "relationship": relationship})
         if not any(link["relationship"] == "supports" for link in source_links):
             continue
+        # research-claims-in-traditional-chinese: the contract asks for Chinese; a verified
+        # claim that is not is kept (frozen replay corpora are English) and counted.
+        if any(_text(claim.get(field)) and not _has_chinese(_text(claim.get(field)))
+               for field in ("text", "applicability_context")):
+            not_chinese += 1
         uncertainty = claim.get("uncertainty")
         if not isinstance(uncertainty, dict) or uncertainty.get("state") not in {"bounded", "uncertain", "disputed"}:
             uncertainty = {"state": "uncertain", "explanation": "Transferability to this service context has not been tested."}
@@ -455,6 +465,9 @@ def build_research_catalog(
             "uncertainty": uncertainty,
             "source_links": source_links,
         }
+        # external-reference-summary: a one-sentence summary, kept when the claim has one.
+        if _text(claim.get("summary")):
+            canonical["summary"] = _text(claim.get("summary"))
         # bind-external-reference-provenance: which questions the session said this answers.
         question_refs = [_text(ref) for ref in claim.get("question_refs") or [] if isinstance(ref, str) and _text(ref)]
         if question_refs:
@@ -505,6 +518,8 @@ def build_research_catalog(
         # record-research-failure-trace: the errors travel with the failure.
         raise ResearchPolicyError("content_validation_failed", decisions=admission.decisions,
                                   diagnostics={**diagnostics, "validation_errors": errors[:50]})
+    if not_chinese:
+        diagnostics["claims_not_in_chinese"] = not_chinese
     trace = {
         "policy_version": POLICY_VERSION,
         "verifier_prompt_version": PROMPT_VERSION,

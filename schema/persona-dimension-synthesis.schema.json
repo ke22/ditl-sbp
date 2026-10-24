@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ditl_sbp/schema/persona-dimension-synthesis.schema.json",
+  "title": "Persona Matrix Stage 2 — dimension synthesis from the checked comparison (model output)",
+  "description": "persona-matrix-comparison-first（2026-10-22 研究者裁定，方法 B 第二階段）：只根據第一階段的比較，決定每個共同關切能不能形成維度，寫出軸與有依據的落點。受訪者名冊由系統維護，這份輸出只列有比較的人的落點；系統再組成 persona_matrix.yaml。",
+  "type": "object",
+  "required": ["decisions", "axes", "placements"],
+  "additionalProperties": false,
+  "properties": {
+    "decisions": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/decision"}},
+    "axes": {"type": "array", "items": {"$ref": "#/definitions/axis"}},
+    "placements": {"type": "array", "items": {"$ref": "#/definitions/placement"}},
+    "purpose_assessment": {
+      "description": "purpose-aware-research-calibration：研究者在目的裡點名的每一件事（focus 照抄目的原文）在比較裡有沒有可比較的差異；有的話至少一條候選軸的 purpose_relevance 要提到它，沒有的話 note 寫原因。兩個目的都空時不寫。",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["focus", "has_comparable_difference", "note"],
+        "additionalProperties": false,
+        "properties": {
+          "focus": {"type": "string", "minLength": 1, "maxLength": 20},
+          "has_comparable_difference": {"type": "boolean"},
+          "note": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  },
+  "definitions": {
+    "decision": {
+      "type": "object",
+      "required": ["concern_id", "outcome", "outcome_note", "checks"],
+      "additionalProperties": false,
+      "properties": {
+        "concern_id": {"type": "string", "pattern": "^CONCERN-[0-9]+$"},
+        "outcome": {"type": "string", "enum": ["axis", "coexisting_factors", "situational_only", "service_evaluation", "no_difference", "insufficient"]},
+        "outcome_note": {"type": "string", "minLength": 1},
+        "checks": {"$ref": "#/definitions/checks"}
+      }
+    },
+    "checks": {
+      "type": "object",
+      "required": ["measures", "same_construct", "coexistence", "situation", "counterexamples"],
+      "additionalProperties": false,
+      "description": "形成或不形成維度之前的四項檢查，各用一兩句寫出判斷與依據。",
+      "properties": {
+        "measures": {"type": "string", "minLength": 1, "description": "這些差異衡量的是使用者帶進情境的判斷方式、行為傾向、需求或經驗條件，還是對這家服務的評價結果。"},
+        "same_construct": {"type": "string", "minLength": 1, "description": "受訪者的差異是不是同一個可比較構念的不同位置。"},
+        "coexistence": {"type": "string", "minLength": 1, "description": "兩端（或不同參照方式）能不能在同一個人身上同時成立。"},
+        "situation": {"type": "string", "minLength": 1, "description": "差異是不是只反映情境變化。"},
+        "counterexamples": {"type": "string", "minLength": 1, "description": "有沒有反例或放不進去的人。"}
+      }
+    },
+    "axis": {
+      "type": "object",
+      "required": ["id", "label", "pole_low", "pole_high", "representation", "discriminating_basis", "concern_refs", "difference_kind", "axis_type", "measures_note", "design_implication", "purpose_relevance", "gaps", "overlap_note"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^AXIS-[0-9]+$"},
+        "label": {"type": "string", "minLength": 1, "maxLength": 16},
+        "pole_low": {"type": "string", "minLength": 1},
+        "pole_high": {"type": "string", "minLength": 1},
+        "representation": {"type": "string", "enum": ["continuum", "contrast"]},
+        "discriminating_basis": {"type": "string", "minLength": 1},
+        "concern_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^CONCERN-[0-9]+$"}, "description": "這條軸綜合了哪些共同關切的差異；可以不只一個。"},
+        "difference_kind": {"type": "string", "enum": ["across_situations", "in_situation"]},
+        "axis_type": {"type": "string", "enum": ["judgment_or_behavior", "need", "experience_condition", "situational_mode", "dominant_orientation"], "description": "使用者特徵（判斷方式或行為傾向／需求／經驗條件）、這次的情境性決策方式，或主導取向。對服務的評價結果不是軸。"},
+        "measures_note": {"type": "string", "minLength": 1, "description": "為什麼這條軸描述的是使用者，而不是這家服務的表現。"},
+        "design_implication": {"type": "string", "minLength": 1, "description": "站在兩端的人需要什麼不同的資訊、引導或服務支持。"},
+        "purpose_relevance": {"type": "string", "minLength": 1, "description": "和研究目的、業務價值、選定 HMW 的關係。"},
+        "gaps": {"type": "string", "minLength": 1, "description": "反例、混合的人與證據缺口。"},
+        "overlap_note": {"type": "string", "minLength": 1, "description": "和其他候選軸有沒有在講同一件事。"}
+      }
+    },
+    "placement": {
+      "type": "object",
+      "required": ["axis_id", "subject_id", "position", "rationale"],
+      "additionalProperties": false,
+      "properties": {
+        "axis_id": {"type": "string", "pattern": "^AXIS-[0-9]+$"},
+        "subject_id": {"type": "string", "pattern": "^P-[0-9]+$"},
+        "position": {"type": "string", "enum": ["near_low", "mid", "near_high", "no_data"]},
+        "unplaced_reason": {"type": "string", "enum": ["poles_do_not_fit", "mixed", "situation_dependent"]},
+        "evidence_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^E-[0-9]+$"}},
+        "rationale": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

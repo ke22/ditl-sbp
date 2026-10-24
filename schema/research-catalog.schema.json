@@ -60,6 +60,7 @@
         "id": {"$ref": "content-provenance.schema.json#/definitions/research_claim_id"},
         "claim_state": {"$ref": "content-provenance.schema.json#/definitions/hypothesis_claim_state"},
         "text": {"type": "string", "minLength": 1},
+        "summary": {"type": "string"},
         "applicability_context": {"type": "string", "minLength": 1},
         "question_refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
         "uncertainty": {"$ref": "content-provenance.schema.json#/definitions/uncertainty"},

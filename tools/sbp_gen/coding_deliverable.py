@@ -19,10 +19,12 @@ from pathlib import Path
 
 import yaml
 
-from . import selective_themes, semantic_segments
+from . import selective_themes, semantic_segments, source_attribution
 
 LEGACY_NOTICE = "這份分析使用舊方法，沒有選擇編碼；重新編碼後才會有。"
 NOT_FORMED_NOTICE = "還沒有形成選擇編碼。"
+# representative-quotes-standalone: the cell when no recorded quote reads on its own.
+NO_STANDALONE_QUOTE = "這個主題沒有能單獨讀懂的原話。"
 UNKNOWN_SPEAKER = "說話者未記錄"
 
 SHEET_OPEN = "01_開放編碼"
@@ -69,27 +71,50 @@ def _quotes(refs, evidence_by_id: dict) -> list[str]:
     return [quote_text(evidence_by_id[ref]) for ref in refs or [] if ref in evidence_by_id]
 
 
-def _representative(item: dict, concepts_by_id: dict, segments: dict, evidence_by_id: dict) -> list[str]:
+def _representative(item: dict, concepts_by_id: dict, segments: dict, evidence_by_id: dict,
+                    sessions: dict | None = None) -> list[str]:
     """converge-coding-contracts: the chosen open codes' readable quotes,
     unchanged, in their recorded order and at most REPRESENTATIVE_QUOTES_SHOWN
-    of them; an older theme falls back to its chosen evidence texts."""
-    if item.get("representative_quote_refs"):
-        views = [semantic_segments.quote_view(concepts_by_id.get(ref) or {}, segments, evidence_by_id)
-                 for ref in item["representative_quote_refs"]]
-        quotes = [semantic_segments.quote_text(view) for view in views if view]
-    else:
-        quotes = _quotes(item.get("representative_evidence_refs"), evidence_by_id)
-    return quotes[:REPRESENTATIVE_QUOTES_SHOWN]
+    of them; an older theme falls back to its chosen evidence texts.
+
+    representative-quotes-standalone: a quote that does not read on its own is
+    skipped, never replaced, and each is printed 「⋯」（角色，S 編號）; the
+    locator stays in the open-coding layer."""
+    if not item.get("representative_evidence_refs") and (
+            "representative_quote_refs" in item or item.get("concept_refs")):
+        quotes = []
+        for ref in item.get("representative_quote_refs") or []:
+            code = concepts_by_id.get(ref) or {}
+            if semantic_segments.standalone_quote_problem(code, evidence_by_id):
+                continue
+            view = semantic_segments.quote_view(code, segments, evidence_by_id, sessions)
+            if view:
+                quotes.append(representative_quote_text(view))
+        return quotes[:REPRESENTATIVE_QUOTES_SHOWN] or [NO_STANDALONE_QUOTE]
+    return _quotes(item.get("representative_evidence_refs"), evidence_by_id)[:REPRESENTATIVE_QUOTES_SHOWN]
 
 
-def _source_evidence(code: dict, segments: dict, evidence_by_id: dict) -> tuple[str, str]:
+def representative_quote_text(view: dict) -> str:
+    """「⋯」（角色，S 編號）; without a resolvable source, the speaker and locator
+    line it had before -- no code is invented."""
+    if not view.get("session"):
+        return semantic_segments.quote_text(view)
+    return f"「{view['answer']}」（{view.get('role') or UNKNOWN_SPEAKER}，{view['session']}）"
+
+
+def _source_evidence(code: dict, segments: dict, evidence_by_id: dict,
+                     sessions: dict | None = None) -> tuple[str, str]:
     """(原始證據, 角色・出處) for an open code: its readable quote, or for an
-    older code without one, the first evidence it cites."""
-    view = semantic_segments.quote_view(code, segments, evidence_by_id)
+    older code without one, the first evidence it cites. The source column
+    carries the source code (representative-quotes-standalone), so a
+    representative quote printed as （角色，S 編號） is found here with its
+    locator."""
+    view = semantic_segments.quote_view(code, segments, evidence_by_id, sessions)
     if view:
         answer = f"「{view['answer']}」"
         text = f"問：{view['question']}　答：{answer}" if view.get("question") else answer
         speaker, locator = view.get("role") or UNKNOWN_SPEAKER, view.get("locator") or ""
+        speaker = f"{speaker}・{view['session']}" if view.get("session") else speaker
     else:
         first = next((evidence_by_id[ref] for ref in code.get("evidence_refs") or [] if ref in evidence_by_id), None)
         if first is None:
@@ -112,6 +137,7 @@ def build(run_dir: str | Path) -> dict:
     axial_doc = _load(run / "axial_coding.yaml") or {}
     evidence = _load(run / "evidence.yaml") or []
     evidence_by_id = {e["id"]: e for e in evidence if isinstance(e, dict) and e.get("id")}
+    sessions = source_attribution.session_codes(list(evidence_by_id.values()))
 
     concepts = [c for c in open_doc.get("concepts") or [] if isinstance(c, dict) and c.get("id")]
     concepts_by_id = {c["id"]: c for c in concepts}
@@ -124,7 +150,7 @@ def build(run_dir: str | Path) -> dict:
 
     open_rows = []
     for c in concepts:
-        evidence_text, source = _source_evidence(c, segments, evidence_by_id)
+        evidence_text, source = _source_evidence(c, segments, evidence_by_id, sessions)
         open_rows.append({"no": open_numbers[c["id"]], "name": open_names[c["id"]],
                           "description": str(c.get("description") or ""), "evidence": evidence_text, "source": source})
     # An old-method category has no definition or explicit membership: those
@@ -133,7 +159,7 @@ def build(run_dir: str | Path) -> dict:
                    "definition": str(c.get("definition") or ""),
                    "relation": str(c.get("label") or ""),
                    "support": str(c.get("support_summary") or ""),
-                   "quotes": _representative(c, concepts_by_id, segments, evidence_by_id),
+                   "quotes": _representative(c, concepts_by_id, segments, evidence_by_id, sessions),
                    "codes": _labelled(c.get("concept_refs"), open_numbers, open_names),
                    # The PDF prints numbers only; the workbook keeps number and name.
                    "code_numbers": [open_numbers[ref] for ref in c.get("concept_refs") or [] if ref in open_numbers],
@@ -157,7 +183,7 @@ def build(run_dir: str | Path) -> dict:
             "support": str(t.get("support_summary") or ""),
             "axial": _labelled(t.get("axial_refs"), axial_numbers, axial_names),
             "codes": _labelled(t.get("concept_refs"), open_numbers, open_names),
-            "quotes": _representative(t, concepts_by_id, segments, evidence_by_id),
+            "quotes": _representative(t, concepts_by_id, segments, evidence_by_id, sessions),
             "key_insights": [str(item) for item in t.get("key_insights") or []],
         } for t in ordered]
 

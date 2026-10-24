@@ -12,6 +12,37 @@ from xml.etree import ElementTree
 TEXT_SUFFIXES = {".txt", ".md", ".vtt", ".srt"}
 SUPPORTED_SUFFIXES = TEXT_SUFFIXES | {".pdf", ".docx", ".xlsx"}
 
+# purpose-aware-research-calibration: every source carries a kind the
+# researcher chose at upload. Only evidence kinds reach evidence extraction;
+# the rest are business inputs the researcher summarises -- framing, not
+# participant evidence. The kinds live beside case.yaml, never inside raw/.
+KINDS_FILE = "source_kinds.yaml"
+DEFAULT_KIND = "interview_transcript"
+EVIDENCE_KINDS = ("interview_transcript", "walkthrough_record", "document")
+BUSINESS_KINDS = {"survey": "survey", "word_of_mouth": "word_of_mouth", "desk_research": "desk_research",
+                  "stakeholder_brief": "stakeholder_brief"}
+SOURCE_KINDS = EVIDENCE_KINDS + tuple(BUSINESS_KINDS)
+
+
+def load_source_kinds(folder: Path) -> dict[str, str]:
+    """{file name: kind} from the case folder; unknown kinds are ignored."""
+    import yaml
+    path = Path(folder) / KINDS_FILE
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) if path.is_file() else None
+    return {str(k): str(v) for k, v in (data or {}).items() if str(v) in SOURCE_KINDS} if isinstance(data, dict) else {}
+
+
+def write_source_kinds(folder: Path, kinds: dict[str, str]) -> None:
+    import yaml
+    clean = {str(k): str(v) for k, v in kinds.items() if str(v) in SOURCE_KINDS}
+    (Path(folder) / KINDS_FILE).write_text(yaml.safe_dump(clean, allow_unicode=True, sort_keys=True), encoding="utf-8")
+
+
+def source_kind(manifest_source: dict) -> str:
+    """A manifest source's kind; manifests written before kinds existed read as transcripts."""
+    kind = str((manifest_source or {}).get("source_kind") or DEFAULT_KIND)
+    return kind if kind in SOURCE_KINDS else DEFAULT_KIND
+
 
 def _files(path: Path) -> list[Path]:
     if path.is_file():
@@ -137,11 +168,21 @@ def unavailable_sources(manifest: dict) -> list[str]:
             if isinstance(s, dict) and s.get("status") == "reader_unavailable"]
 
 
-def ingest(path: Path) -> tuple[str, dict]:
+def ingest(path: Path, kinds: dict[str, str] | None = None) -> tuple[str, dict]:
+    """Read every file under `path`. `kinds` maps file names to source kinds;
+    without it, a directory's kinds are read from its parent (the case folder)."""
+    path = Path(path)
+    if kinds is None:
+        kinds = load_source_kinds(path.parent) if path.is_dir() else {}
     sources, blocks = [], []
     for index, file in enumerate(_files(path), 1):
         suffix = file.suffix.lower()
         media = mimetypes.guess_type(file.name)[0] or "application/octet-stream"
+        kind = kinds.get(file.name, DEFAULT_KIND)
+        if kind not in EVIDENCE_KINDS:
+            sources.append({"id": f"SRC-{index:03d}", "filename": file.name, "media_type": media, "status": "business_input",
+                            "units_total": 0, "units_extracted": 0, "errors": [], "source_kind": kind})
+            continue
         if suffix not in SUPPORTED_SUFFIXES:
             units, total, errors, status = [], 0, [f"unsupported file type: {suffix or '(none)'}"], "unsupported"
         else:
@@ -149,7 +190,7 @@ def ingest(path: Path) -> tuple[str, dict]:
             status = "extracted" if units and not errors else "partial" if units else "empty" if errors and all("empty" in e or "OCR" in e or "no extractable" in e for e in errors) else "error"
             if any(e.startswith(PDF_READER_UNAVAILABLE) for e in errors):
                 status = "reader_unavailable"
-        sources.append({"id": f"SRC-{index:03d}", "filename": file.name, "media_type": media, "status": status, "units_total": total, "units_extracted": len(units), "errors": errors})
+        sources.append({"id": f"SRC-{index:03d}", "filename": file.name, "media_type": media, "status": status, "units_total": total, "units_extracted": len(units), "errors": errors, "source_kind": kind})
         for locator, content in units:
             blocks.append(f"# {file.name} · {locator}\n\n{content}")
     manifest = {

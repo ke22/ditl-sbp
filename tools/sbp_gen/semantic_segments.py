@@ -23,7 +23,7 @@ from pathlib import Path
 
 import yaml
 
-from . import stages
+from . import answer_kind, source_attribution, stages
 
 SEGMENTS_FILE = "semantic_segments.yaml"
 SUMMARY_MAX_CHARS = 100
@@ -285,11 +285,16 @@ def quote_speaker(code: dict, segment_role: str, evidence_by_id: dict | None) ->
     return segment_role
 
 
-def quote_view(code: dict, segments: dict[str, dict], evidence_by_id: dict | None = None) -> dict | None:
+def quote_view(code: dict, segments: dict[str, dict], evidence_by_id: dict | None = None,
+               sessions: dict[str, str] | None = None) -> dict | None:
     """converge-coding-contracts: an open code's readable quote as shown --
     answer, optional interviewer question, the speaker (the cited evidence's
     shared label when more specific, else the segment's role) and the
-    segment's location. The quote object itself is never rewritten."""
+    segment's location. The quote object itself is never rewritten.
+
+    representative-quotes-standalone: plus `session`, the source code(s) of the
+    cited evidence (S1..Sn, as the CJM stages number sources), when any cited
+    evidence records a source. `sessions` may be passed precomputed."""
     quote = code.get("quote") if isinstance(code, dict) else None
     if not isinstance(quote, dict) or not quote.get("answer"):
         return None
@@ -298,7 +303,76 @@ def quote_view(code: dict, segments: dict[str, dict], evidence_by_id: dict | Non
             "locator": segment.get("locator") or ""}
     if quote.get("question"):
         view["question"] = quote["question"]
+    session = quote_session(code, evidence_by_id, sessions)
+    if session:
+        view["session"] = session
     return view
+
+
+def quote_session(code: dict, evidence_by_id: dict | None, sessions: dict[str, str] | None = None) -> str:
+    """The cited evidence's source codes, each once, in code order; '' when no
+    cited evidence records a source. Never invented."""
+    if not evidence_by_id:
+        return ""
+    if sessions is None:
+        sessions = source_attribution.session_codes(list(evidence_by_id.values()))
+    codes = {sessions[str(evidence_by_id[ref].get("source"))]
+             for ref in code.get("evidence_refs") or []
+             if isinstance(evidence_by_id.get(ref), dict) and str(evidence_by_id[ref].get("source")) in sessions
+             and evidence_by_id[ref].get("source")}
+    return "、".join(sorted(codes, key=lambda c: int(c[1:])))
+
+
+# ── representative quotes (representative-quotes-standalone) ──────────
+# Researcher ruling 2026-10-22: a representative quote reads on its own, like a
+# cited interview quotation. One decision, shared by display, export,
+# generation input and validation.
+
+# Calibrated on the MUJI v3benchmark and Henglong v3E2E2 runs (2026-10-22):
+# under six characters the answers were single words or needed the question
+# (「人少。」「捐贈」); from six they were whole judgements (「幾乎沒有等待」).
+REPRESENTATIVE_QUOTE_MIN_CHARS = 6
+_QUOTE_PUNCTUATION_RE = re.compile(r"[\s　，。、．,.!！?？~～…:：;；「」『』\"'（）()\-—]")
+
+
+def _answer_problem(text: str) -> str | None:
+    if answer_kind.classify({"text": text}) != answer_kind.SUBSTANTIVE:
+        return "只有回答詞，單獨讀不出在回答什麼"
+    if len(_QUOTE_PUNCTUATION_RE.sub("", text)) < REPRESENTATIVE_QUOTE_MIN_CHARS:
+        return f"不到 {REPRESENTATIVE_QUOTE_MIN_CHARS} 個字，單獨讀不出在說什麼"
+    return None
+
+
+def standalone_quote_problem(code: dict, evidence_by_id: dict | None) -> str | None:
+    """Why an open code's readable quote cannot be a representative quote, or
+    None when it can."""
+    quote = code.get("quote") if isinstance(code, dict) else None
+    answer = str((quote or {}).get("answer") or "").strip() if isinstance(quote, dict) else ""
+    if not answer:
+        return "沒有整理後引言"
+    if quote.get("question"):
+        return "附了訪員問題，要對照問題才讀得懂"
+    problem = _answer_problem(answer)
+    if problem:
+        return problem
+    if not any(answer_kind.classify(evidence_by_id[ref]) == answer_kind.SUBSTANTIVE
+               for ref in code.get("evidence_refs") or [] if isinstance((evidence_by_id or {}).get(ref), dict)):
+        return "引用的證據沒有一則是受訪者自己的實質陳述"
+    return None
+
+
+def standalone_evidence_quote_problem(text: str, evidence: dict | None) -> str | None:
+    """The same rule for a quotation that cites one evidence unit directly (a
+    Persona's representative quotation)."""
+    answer = str(text or "").strip()
+    if not answer:
+        return "沒有引言"
+    problem = _answer_problem(answer)
+    if problem:
+        return problem
+    if not isinstance(evidence, dict) or answer_kind.classify(evidence) != answer_kind.SUBSTANTIVE:
+        return "引用的證據不是受訪者自己的實質陳述"
+    return None
 
 
 def quote_text(view: dict) -> str:

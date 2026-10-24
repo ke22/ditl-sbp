@@ -31,7 +31,7 @@ import validate_sbp as V  # noqa: E402
 from . import performance_trace as perf
 import internal_id_patterns  # noqa: E402
 
-from . import as_is_projection, cli_runner, ingest, judgment_criteria, lifecycle, llm, run_files, schema_contract  # noqa: E402
+from . import answer_kind, as_is_projection, cli_runner, ingest, judgment_criteria, lifecycle, llm, run_files, schema_contract  # noqa: E402
 
 PROMPT_DIR = Path(__file__).resolve().parent / "prompts"
 CHANNEL_REASONING_PATH = Path(__file__).resolve().with_name("channel_reasoning.md")
@@ -199,13 +199,16 @@ def _align_chunks(raw_material: str) -> list[str]:
 # 記得回頭改散文，那份散文以前只擬合到「已經撞過的錯」。
 # A stage whose schema root is a `oneOf` of versions renders its contract from
 # the version it generates; journey generation writes schema_version 2.
-STAGE_SCHEMA_DEFINITIONS = {"journey": "journey_v2"}
+# cjm-as-is-first-core-problems: the core-problem schema roots at its stored
+# shape; the model writes the draft definition.
+STAGE_SCHEMA_DEFINITIONS = {"journey": "journey_v2", "journey_core_problems": "draft"}
 
 STAGE_SCHEMA_KINDS = {
     # to-be-blueprint-generation: same output schema, its own prose and criteria.
     "structure_to_be": "service-graph",
     "journey": "journey",
     "journey_solutions": "journey-solutions",
+    "journey_core_problems": "journey-core-problems",
     "journey_annotations": "journey-annotation-draft",
     "chart_guides": "chart-guide-draft",
     "selective_themes": "selective-themes-draft",
@@ -213,6 +216,10 @@ STAGE_SCHEMA_KINDS = {
     "structure": "service-graph",
     "axial_coding": "axial-coding",
     "persona_matrix": "persona-matrix",
+    # persona-matrix-comparison-first: method B's two stages.
+    "persona_comparison": "persona-comparison",
+    "persona_dimension_synthesis": "persona-dimension-synthesis",
+    "persona_quadrant_names": "persona-quadrant-names-draft",
     "persona_content": "persona-content",
     "persona_dimension_candidates": "persona-dimension-candidates",
     "jtbd": "jtbd",
@@ -1206,10 +1213,12 @@ def _generate(stage: str, system: str, user: str, validate, opts, max_retries: i
                 pending_partial = (baseline.complete[0], targets)
                 print(f"  [{stage}] 第 {attempt + 1} 次驗證失敗（{len(errors)} 筆），只修補沒過的 {len(targets)} 處",
                       file=sys.stderr)
-                convo = _generation_retry_message(
-                    user, json.dumps(baseline.complete[0], indent=2, ensure_ascii=False), baseline.complete[1],
-                    closing=partial_repair.closing(targets, baseline.complete[1]),
-                )
+                request = getattr(partial_repair, "request", None)
+                convo = request(baseline.complete[0], baseline.complete[1], targets) if request else \
+                    _generation_retry_message(
+                        user, json.dumps(baseline.complete[0], indent=2, ensure_ascii=False), baseline.complete[1],
+                        closing=partial_repair.closing(targets, baseline.complete[1]),
+                    )
                 continue
         print(
             f"  [{stage}] 第 {attempt + 1} 次驗證失敗（{len(errors)} 筆），重試",
@@ -1615,6 +1624,47 @@ def _align_coverage_units(chunk: str) -> list[str]:
     return list(dict.fromkeys(name for name, _scope in source_scopes(chunk)))
 
 
+PREAMBLE_REASON = "檔案開頭的說明，沒有受訪者的話"
+
+
+def _align_preamble_units(chunk: str) -> set[str]:
+    """The units that are only the opening of a file which declares its own
+    documents (`- source:` lines): its title and layout notes, not participant
+    material. Same split as source_scopes, which names that opening after the
+    file."""
+    parts: dict[str, list[str]] = {}
+    for block in (chunk or "").split(_SCOPE_SEPARATOR):
+        headers = list(_SCOPE_LINE_HEADER_RE.finditer(block))
+        for index, match in enumerate(headers):
+            end = headers[index + 1].start() if index + 1 < len(headers) else len(block)
+            parts.setdefault(match.group(1), []).append(block[match.end():end])
+    preambles = set()
+    for name, texts in parts.items():
+        content = "\n".join(texts)
+        declared = _SOURCE_DECLARATION_RE.search(content)
+        if declared and content[:declared.start()].strip():
+            preambles.add(name)
+    return preambles
+
+
+def _settle_preamble_coverage(reply: object, preambles: set[str]) -> None:
+    """2026-10-23 (focus-group run): a file opening carries no participant
+    words, so it never blocks a batch -- left out, or claimed as having
+    evidence while no evidence names it, it is recorded as having none. Every
+    other source is still checked strictly."""
+    if not preambles or not isinstance(reply, dict) or not isinstance(reply.get("source_coverage"), list) \
+            or not isinstance(reply.get("evidence"), list):
+        return
+    named = {item.get("source") for item in reply["evidence"] if isinstance(item, dict)}
+    covered = {e.get("source"): e for e in reply["source_coverage"] if isinstance(e, dict)}
+    for unit in sorted(preambles):
+        entry = covered.get(unit)
+        if entry is None:
+            reply["source_coverage"].append({"source": unit, "status": "no_relevant_evidence", "reason": PREAMBLE_REASON})
+        elif entry.get("status") != "no_relevant_evidence" and unit not in named:
+            entry.update({"status": "no_relevant_evidence", "reason": PREAMBLE_REASON})
+
+
 def _align_coverage_errors(reply: object, units: list[str]) -> list[str]:
     """Every source in the batch is accounted for exactly once, and what each
     entry claims agrees with the evidence. Batch-level errors: they never name
@@ -1663,9 +1713,11 @@ def _align_source_codes(units: list[str]) -> dict[str, str]:
     return {f"S{index}": unit for index, unit in enumerate(units, 1)}
 
 
-def _align_sources_note(units: list[str]) -> str:
+def _align_sources_note(units: list[str], preambles: set[str] = frozenset()) -> str:
     return ("\n\n這一批的來源（source_coverage 要逐一交代；每條證據與 source_coverage 的 source 都寫左邊的代號）：\n"
-            + "\n".join(f"- {code}：{unit}" for code, unit in _align_source_codes(units).items()))
+            + "\n".join(f"- {code}：{unit}" + ("（檔案開頭的說明，不是受訪者資料；受訪者的話要標在它所屬的文件代號，"
+                                              "這一項沒有受訪者的話就標 no_relevant_evidence 並寫一句理由）" if unit in preambles else "")
+                         for code, unit in _align_source_codes(units).items()))
 
 
 def _restore_source_codes(reply: object, codes: dict[str, str]) -> None:
@@ -1711,7 +1763,8 @@ def align(raw_material: str, opts: dict) -> tuple:
     def one(numbered: tuple[int, str]) -> tuple[list, dict]:
         number, chunk = numbered
         units = _align_coverage_units(chunk)
-        user = _ALIGN_USER_PREFIX + chunk + _ALIGN_USER_SUFFIX + _align_sources_note(units)
+        preambles = _align_preamble_units(chunk)
+        user = _ALIGN_USER_PREFIX + chunk + _ALIGN_USER_SUFFIX + _align_sources_note(units, preambles)
         label = f"align-chunk-{number:02d}-of-{len(chunks):02d}"
         transcripts = _align_chunk_transcripts(chunk)
         chunk_opts = {**opts, "diagnostics_label": label, "diagnostics_source": "、".join(transcripts)}
@@ -1721,6 +1774,7 @@ def align(raw_material: str, opts: dict) -> tuple:
 
         def validate_reply(reply):
             _restore_source_codes(reply, codes)
+            _settle_preamble_coverage(reply, preambles)
             # align-source-coverage: every source accounted for, then the
             # existing per-item checks on the evidence list (same error paths).
             coverage = _align_coverage_errors(reply, units)
@@ -1858,6 +1912,75 @@ def _project(evidence: list, fields: tuple = EVAL_ONLY_FIELDS) -> list:
     （見上方 compare() 的說明）。
     """
     return [{k: v for k, v in e.items() if k not in fields} for e in evidence]
+
+
+# source-attribution-integrity: keys whose values are identifiers, not prose.
+_IDENTITY_SCAN_SKIP_KEYS = frozenset({"id", "step_id", "stage_id", "evidence_refs", "relevance_refs", "primary_scenario",
+                                      "case_id", "schema_version", "inferred_parts", "status", "persona_relevance",
+                                      "hmw_relation", "candidate_id", "object_types"})
+
+
+def _session_code_errors(data: object, evidence_view: list | None, stage: str) -> list[str]:
+    """Generated CJM text never carries a session code: the code only tells the
+    model which evidence shares a session. Only the codes of this run count,
+    standing alone (not inside a product model like HPA-S300)."""
+    codes = {item.get("session") for item in evidence_view or [] if isinstance(item, dict) and item.get("session")}
+    if not codes:
+        return []
+    pattern = re.compile(r"(?<![A-Za-z0-9\-])(" + "|".join(sorted(map(re.escape, codes), key=len, reverse=True))
+                         + r")(?![0-9A-Za-z])")
+    errors: list[str] = []
+
+    def walk(node, where):
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key not in _IDENTITY_SCAN_SKIP_KEYS:
+                    walk(value, f"{where}.{key}" if where else key)
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                walk(value, f"{where}[{index}]")
+        elif isinstance(node, str) and pattern.search(node):
+            errors.append(f"[{stage}] {where} 寫了場次代號（{pattern.search(node).group(1)}）；場次代號只用來分組，"
+                          "文字裡寫「有受訪者⋯，另有受訪者⋯」，用證據引用標出來源")
+    walk(data, "")
+    return errors
+
+
+# source-attribution-integrity (2026-10-22 ruling): while any evidence person is
+# unconfirmed, text may count sources and sessions but not people. A closed list of
+# the known high-risk phrasings -- proportions, head counts and "another person"
+# claims about respondents; staff ("另一位店員") is not a respondent noun.
+_PERSON_NOUNS = r"(?:受訪者|使用者|顧客|消費者|參與者|民眾)"
+_UNCONFIRMED_PERSON_CLAIMS = re.compile(
+    r"(?:大多數|多數|大部分|少數|部分|半數|一半|所有|每位|每個|全部|每一位)的?" + _PERSON_NOUNS
+    + r"|(?:多數|大多數|少數)人"
+    + r"|(?:[0-9０-９]+|[一二兩三四五六七八九十幾數多]+)\s*(?:位|名|個)" + _PERSON_NOUNS
+    + r"|另(?:有)?(?:一)?(?:位|名)" + _PERSON_NOUNS)
+
+
+def _unconfirmed_person_claim_errors(data: object, evidence_view: list | None, stage: str) -> list[str]:
+    """Reject counts, proportions and distinct-person claims about respondents unless
+    every evidence item's person is confirmed. Session and source counts stay allowed."""
+    items = [item for item in evidence_view or [] if isinstance(item, dict)]
+    if not items or all(item.get("participant") for item in items):
+        return []
+    errors: list[str] = []
+
+    def walk(node, where):
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key not in _IDENTITY_SCAN_SKIP_KEYS:
+                    walk(value, f"{where}.{key}" if where else key)
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                walk(value, f"{where}[{index}]")
+        elif isinstance(node, str):
+            found = _UNCONFIRMED_PERSON_CLAIMS.search(node)
+            if found:
+                errors.append(f"[{stage}] {where} 寫了「{found.group(0)}」，但受訪者身分沒有確認，不能說人數、比例或另一位；"
+                              "改寫成資料或場次，例如「有一份走查紀錄⋯，另一個場次⋯」")
+    walk(data, "")
+    return errors
 
 
 def _researcher_note_block(researcher_note: str | None) -> str:
@@ -2254,13 +2377,24 @@ def _cjm_experience_errors(step: dict) -> list[str]:
     present = lambda key: bool(str(experience.get(key) or "").strip())  # noqa: E731
     if any(isinstance(text, str) and text.strip() for text in step.get("pain_points") or []) and not present("friction"):
         errors.append(f"[journey] step {sid} 有痛點，但 experience 沒有寫卡住的地方（friction）；痛點要從卡住的地方來")
-    # 2026-10-02 researcher ruling: no unjudged emotion. Every generated step
-    # carries one; without a reaction to ground a direction it is neutral (3).
-    emotion = step.get("emotion")
-    if not isinstance(emotion, int) or isinstance(emotion, bool) or not 1 <= emotion <= 5:
-        errors.append(f"[journey] step {sid} 每一步都要有情緒，是 1 到 5 的整數；看不出方向就寫 3（中性）")
-    elif emotion != 3 and not present("reaction"):
-        errors.append(f"[journey] step {sid} 情緒不是 3，但 experience 沒有寫反應（reaction）；沒有依據就寫 3（中性）")
+    # cjm-as-is-first-core-problems (2026-10-21 researcher ruling, superseding the
+    # 2026-10-02 "always 3"): emotion is judged from all respondents' evidence.
+    # Unknown is absent, never neutral; a level needs a reaction to rest on, and
+    # so does divergence, which names whose feelings differ instead of averaging.
+    # cjm-emotion-prejudged (2026-10-24 researcher ruling, superseding 2026-10-21's
+    # "no direction, no level"): every generated step carries a pre-judged level the
+    # researcher adjusts; the researcher may still set it back to unknown later.
+    if "emotion" not in step:
+        errors.append(f"[journey] step {sid} 每一步都要先預判情緒（1–5）；證據沒有直接講到感受，"
+                      "就從行為與結果推，並把 reaction 列進 inferred_parts")
+    else:
+        emotion = step.get("emotion")
+        if not isinstance(emotion, int) or isinstance(emotion, bool) or not 1 <= emotion <= 5:
+            errors.append(f"[journey] step {sid} 情緒是 1 到 5 的整數")
+        elif not present("reaction"):
+            errors.append(f"[journey] step {sid} 有情緒分數，但 experience 沒有寫反應（reaction）；沒有依據就不要給情緒")
+    if step.get("emotion_divergent") is True and not present("reaction"):
+        errors.append(f"[journey] step {sid} 標了感受分歧，但 experience 沒有寫反應（reaction）；要寫出是哪些人、各是什麼感受")
     satisfaction = step.get("satisfaction")
     if "satisfaction" in step and not isinstance(satisfaction, (dict, list)):
         errors.append(f"[journey] step {sid} 滿意度要寫成評價與理由（evaluation、reason），不是分數")
@@ -2277,23 +2411,26 @@ JOURNEY_TARGET_MIN_PRIMARY_STEPS = 10  # prompt target; not enforced (no invente
 JOURNEY_MAX_PRIMARY_STEPS = 15
 
 
+# cjm-as-is-first-core-problems: what a newly generated CJM records it was built from.
+JOURNEY_GENERATION_BASIS = "as_is_all_evidence"
+
+
 def journey(evidence: list, case: dict, opts: dict, coding_categories: list | None = None,
-            confirmed_persona: dict | None = None, hmw_scope: dict | None = None) -> tuple:
+            evidence_view: list | None = None, identity_block: str = "") -> tuple:
+    """cjm-as-is-first-core-problems (2026-10-21 researcher ruling): the as-is
+    journey is reconstructed from the case boundary, all typed evidence and the
+    axial coding only. The Persona, the selected JTBD and the HMW are not sent;
+    they reach the CJM later, through `journey_core_problems`."""
     boundary = {k: case.get(k) for k in ("case_id", "service_type", "customers", "primary_provider", "journey_start", "journey_end") if case.get(k) is not None}
     user = "## Minimal case boundary\n```yaml\n" + _yaml_dump(boundary) + "```\n\n"
-    if hmw_scope:
-        # The selected HMW says which part of the experience matters for design;
-        # it never supplies journey facts and never filters the evidence below.
-        user += ("## 研究者選定的 HMW（設計焦點，不是證據，也不篩選證據；旅程事實只從下面的證據來）\n```yaml\n"
-                 + _yaml_dump(hmw_scope) + "```\n\n")
-    user += "## Typed evidence\n```yaml\n" + _yaml_dump(_project(evidence)) + "```"
+    # source-attribution-integrity: with a view, evidence carries a session code and only
+    # confirmed identities -- never a file name.
+    user += identity_block
+    user += "## Typed evidence\n```yaml\n" + _yaml_dump(evidence_view if evidence_view is not None else _project(evidence)) + "```"
     coding = _journey_coding_view(coding_categories)
     if coding:
         user += ("\n\n## Axial coding (analysis of the evidence above; cite evidence ids only, never a category)\n```yaml\n"
                  + _yaml_dump(coding) + "```")
-    if confirmed_persona:
-        user += ("\n\n## Confirmed Persona and target segment (research scope, not participant evidence)\n```yaml\n"
-                 + _yaml_dump(confirmed_persona) + "```")
     evidence_ids = {e["id"] for e in evidence}
 
     def validate(d):
@@ -2306,10 +2443,17 @@ def journey(evidence: list, case: dict, opts: dict, coding_categories: list | No
             scenarios = d.get("scenarios") or []
         fresh_errors = []
         if isinstance(d, dict):
-            # The primary scenario is the confirmed Persona's journey and carries the
-            # experience reconstruction and its projection. Other scenarios stay as
-            # the read-only 「另一種走法」 (accepted surface, RESEARCH_SURFACE_INVARIANTS).
+            # The primary scenario is the as-is journey of all respondents and
+            # carries the experience reconstruction and its projection. A new CJM
+            # has no 「另一種走法」: differences belong inside the primary steps
+            # (2026-10-21 ruling); stored alternative scenarios stay readable.
             # Solutions are developed later, only for moments the researcher selects.
+            if len(scenarios) > 1:
+                fresh_errors.append(f"[journey] 只輸出主要歷程一個 scenario，目前有 {len(scenarios)} 個；"
+                                    "不同受訪者的不同做法寫在同一步裡，不要另外列替代路徑")
+            for field in ("generation_basis", "core_problems"):
+                if field in d:
+                    fresh_errors.append(f"[journey] {field} 由系統寫入，不要輸出")
             for scenario in d.get("scenarios") or []:
                 if not isinstance(scenario, dict):
                     continue
@@ -2324,6 +2468,10 @@ def journey(evidence: list, case: dict, opts: dict, coding_categories: list | No
                     if "pain_points" not in step:
                         fresh_errors.append(f"[journey] step {step.get('id')} 缺少 pain_points（沒有痛點就給空陣列）")
                     fresh_errors += _cjm_experience_errors(step)
+                    for field in ("core_problem", "core_problem_origin"):
+                        if field in step:
+                            fresh_errors.append(f"[journey] step {step.get('id')} 建立旅程時不寫核心問題（{field}）；"
+                                                "核心問題之後另外起草，由研究者決定")
                     if "as_is_solutions" in step:
                         fresh_errors.append(f"[journey] step {step.get('id')} 新 CJM 不輸出現行做法欄")
             # 2026-10-02 researcher ruling: a newly generated primary journey aims
@@ -2337,7 +2485,9 @@ def journey(evidence: list, case: dict, opts: dict, coding_categories: list | No
                 fresh_errors.append(f"[journey] 主要歷程最多 {JOURNEY_MAX_PRIMARY_STEPS} 步，目前 {primary_steps} 步："
                                     "把最細的相鄰時刻合併，保留研究者最需要看見的那些")
         return (_journey_errors(d, evidence_ids) + _generated_journey_id_errors(d)
-                + _generation_required_errors(d, "journey") + fresh_errors)
+                + _generation_required_errors(d, "journey") + fresh_errors
+                + _session_code_errors(d, evidence_view, "journey")
+                + _unconfirmed_person_claim_errors(d, evidence_view, "journey"))
 
     data, usage = _generate("journey", _system("journey"), user, validate, opts)
     data["schema_version"] = 2
@@ -2379,6 +2529,18 @@ def _step_digest(step: dict, fields: tuple) -> str:
     return "sha256:" + hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def effective_step(journey_data: dict, step: dict) -> dict:
+    """cjm-core-problem-synthesis: the step as Solution development reads it. A step
+    without its own `core_problem` takes the text of the adopted journey-level core
+    problems linked to it (joined with 「；」); nothing is copied onto the stored step.
+    A step with no linked record comes back unchanged, so its digest is as before."""
+    if str(step.get("core_problem") or "").strip() or not isinstance(journey_data, dict):
+        return step
+    linked = [str(r.get("problem") or "").strip() for r in journey_data.get("core_problems") or []
+              if isinstance(r, dict) and step.get("id") in (r.get("step_ids") or []) and str(r.get("problem") or "").strip()]
+    return {**step, "core_problem": "；".join(linked)} if linked else step
+
+
 def journey_step_digest(step: dict) -> str:
     return _step_digest(step, JOURNEY_STEP_DIGEST_FIELDS)
 
@@ -2410,15 +2572,17 @@ JOURNEY_SOLUTION_STEP_FIELDS = ("id", "label", "description", "stage_id", "custo
 
 
 def _journey_solutions_user_message(journey_data: dict, moment_ids: list[str], evidence: list,
-                                    confirmed_persona: dict | None, hmw_scope: dict | None) -> str:
+                                    confirmed_persona: dict | None, hmw_scope: dict | None,
+                                    evidence_view: list | None = None, identity_block: str = "",
+                                    context_block: str = "") -> str:
     steps = _primary_steps(journey_data)
     scenario = next((item for item in journey_data.get("scenarios") or []
                      if isinstance(item, dict) and item.get("id") == journey_data.get("primary_scenario")), {})
     journey_view = {
         "stages": [{"id": st.get("id"), "label": st.get("label")} for st in scenario.get("stages") or []
                    if isinstance(st, dict)],
-        "steps": [{k: step.get(k) for k in JOURNEY_SOLUTION_STEP_FIELDS if step.get(k) not in (None, [], "")}
-                  for step in steps],
+        "steps": [{k: eff.get(k) for k in JOURNEY_SOLUTION_STEP_FIELDS if eff.get(k) not in (None, [], "")}
+                  for eff in (effective_step(journey_data, step) for step in steps)],
     }
     cited: list[str] = []
     for step in steps:
@@ -2428,8 +2592,9 @@ def _journey_solutions_user_message(journey_data: dict, moment_ids: list[str], e
         for item in satisfaction_items(step.get("satisfaction")):
             cited += list(item.get("evidence_refs") or [])
     wanted = set(cited)
-    relevant = [item for item in evidence if isinstance(item, dict) and item.get("id") in wanted]
-    user = ""
+    source = evidence_view if evidence_view is not None else _project(evidence)
+    relevant = [item for item in source if isinstance(item, dict) and item.get("id") in wanted]
+    user = context_block
     if hmw_scope:
         user += ("## 研究者選定的 HMW（設計焦點，不是證據）\n```yaml\n" + _yaml_dump(hmw_scope) + "```\n\n")
     if confirmed_persona:
@@ -2437,7 +2602,8 @@ def _journey_solutions_user_message(journey_data: dict, moment_ids: list[str], e
     user += ("## 已經過研究者檢視的顧客旅程（主要歷程）\n```yaml\n" + _yaml_dump(journey_view) + "```\n\n"
              "## 研究者選定要發展解方的時刻（只對這些 step_id 輸出，一個都不能少，也不能多）\n```yaml\n"
              + _yaml_dump(moment_ids) + "```\n\n"
-             "## 旅程引用到的證據原文\n```yaml\n" + _yaml_dump(_project(relevant)) + "```")
+             + identity_block +
+             "## 旅程引用到的證據原文\n```yaml\n" + _yaml_dump(relevant) + "```")
     return user
 
 
@@ -2448,6 +2614,29 @@ _SENTENCE_BREAK_RE = re.compile(r"[。！？!?；;\n]")
 # to what extent -- in at most 50 characters, with no outcome tail.
 SOLUTION_TEXT_MAX_CHARS = 50
 _SOLUTION_OUTCOME_TAIL_RE = re.compile(r"[，,、]\s*(?:好讓|讓|使得|使|以便|以利|藉此)")
+
+
+def solution_constraint_errors(data: object, evidence_ids: set[str], business_input_ids: set[str]) -> list[str]:
+    """purpose-aware-research-calibration: a newly generated constraint carries
+    its basis -- evidence ids, a summarised business input (BI-n) of this run,
+    or nothing for an inference. Plain strings are for older journeys only."""
+    errors: list[str] = []
+    for moment in (data.get("moments") or []) if isinstance(data, dict) else []:
+        if not isinstance(moment, dict):
+            continue
+        for item in (moment.get("analysis") or {}).get("constraints") or []:
+            where = f"[journey_solutions] {moment.get('step_id')} 的限制"
+            if not isinstance(item, dict):
+                errors.append(f"{where}要寫成 {{text, basis, refs}}，標出依據")
+                continue
+            basis, refs = item.get("basis"), list(item.get("refs") or [])
+            if basis == "evidence" and (not refs or any(r not in evidence_ids for r in refs)):
+                errors.append(f"{where}「{item.get('text')}」標為證據，refs 要是存在的證據 id")
+            elif basis == "business_context" and (not refs or any(r not in business_input_ids for r in refs)):
+                errors.append(f"{where}「{item.get('text')}」標為業務輸入，refs 要是這個專案有摘要的業務輸入 id")
+            elif basis == "inference" and refs:
+                errors.append(f"{where}「{item.get('text')}」是推論，refs 要是空陣列")
+    return errors
 
 
 def _journey_solutions_errors(data: object, moment_ids: list[str], steps_by_id: dict, evidence_ids: set[str]) -> list[str]:
@@ -2490,23 +2679,163 @@ def _journey_solutions_errors(data: object, moment_ids: list[str], steps_by_id: 
 
 
 def journey_solutions(journey_data: dict, evidence: list, opts: dict, confirmed_persona: dict | None = None,
-                      hmw_scope: dict | None = None) -> tuple:
+                      hmw_scope: dict | None = None, evidence_view: list | None = None,
+                      identity_block: str = "", context_block: str = "",
+                      business_input_ids: set[str] | None = None) -> tuple:
     """Develop Solutions only for the moments the researcher selected."""
     moment_ids = selected_solution_moments(journey_data)
     if not moment_ids:
         raise ValueError("研究者還沒有選任何要發展解方的時刻。")
     steps_by_id = {step["id"]: step for step in _primary_steps(journey_data) if step.get("id")}
     evidence_ids = {item["id"] for item in evidence if isinstance(item, dict) and item.get("id")}
-    user = _journey_solutions_user_message(journey_data, moment_ids, evidence, confirmed_persona, hmw_scope)
+    user = _journey_solutions_user_message(journey_data, moment_ids, evidence, confirmed_persona, hmw_scope,
+                                           evidence_view, identity_block, context_block)
     return _generate("journey_solutions", _system("journey_solutions"), user,
-                     lambda d: _journey_solutions_errors(d, moment_ids, steps_by_id, evidence_ids), opts)
+                     lambda d: _journey_solutions_errors(d, moment_ids, steps_by_id, evidence_ids)
+                     + solution_constraint_errors(d, evidence_ids, business_input_ids or set())
+                     + V.context_ids_never_in_evidence_refs(d, "journey_solutions")
+                     + _session_code_errors(d, evidence_view, "journey_solutions")
+                     + _unconfirmed_person_claim_errors(d, evidence_view, "journey_solutions"), opts)
+
+
+# cjm-as-is-first-core-problems (2026-10-21 researcher ruling): the third CJM
+# layer. The as-is journey is already reconstructed from all evidence; this
+# call marks each step's relevance to the target Persona and drafts at most one
+# evidence-cited core problem per step. The HMW is only compared against, never
+# grounds a problem. Persona member evidence ids are computed by code
+# (journey_core_problems.group_evidence) and checked here against the output.
+JOURNEY_CORE_PROBLEM_STEP_FIELDS = ("id", "label", "description", "stage_id", "customer_actions", "experience",
+                                    "pain_points", "emotion", "emotion_divergent", "satisfaction", "evidence_refs")
+
+
+def _journey_core_problems_errors(d: object, step_ids: set[str], evidence_ids: set[str], group_ids: set[str],
+                                  has_persona: bool, has_hmw: bool, *, has_jtbd: bool = False,
+                                  pain_points: set[str] | None = None, sessions: dict[str, str] | None = None) -> list[str]:
+    """cjm-core-problem-synthesis (2026-10-22 researcher ruling): relevance per step,
+    core problems as a journey-level synthesis. The basis values are justification
+    categories, not gates: only claims inconsistent with their evidence are refused."""
+    schema = V.load_schema("journey-core-problems")
+    draft = {**schema["definitions"]["draft"], "definitions": schema["definitions"]}
+    errors = V.structural_errors(d, draft)
+    if not isinstance(d, dict):
+        return errors
+    seen: set[str] = set()
+    for entry in d.get("steps") or []:
+        if not isinstance(entry, dict):
+            continue
+        sid = entry.get("step_id")
+        if sid not in step_ids:
+            errors.append(f"[核心問題] step {sid} 不在主要歷程裡")
+        if sid in seen:
+            errors.append(f"[核心問題] step {sid} 重複出現；每一步只寫一則")
+        seen.add(sid)
+        relevance = entry.get("persona_relevance")
+        refs = [ref for ref in entry.get("relevance_refs") or [] if isinstance(ref, str)]
+        if not has_persona and relevance != "not_assessed":
+            errors.append(f"[核心問題] step {sid} 沒有已確認的 Persona，相關性只能是 not_assessed")
+        if has_persona and relevance == "not_assessed":
+            errors.append(f"[核心問題] step {sid} 有已確認的 Persona，要判斷相關性，不能寫 not_assessed")
+        if relevance == "relevant":
+            if not refs:
+                errors.append(f"[核心問題] step {sid} 寫了 relevant，但沒有引用目標族群的證據（relevance_refs）")
+            outside = [ref for ref in refs if ref not in group_ids]
+            if outside:
+                errors.append(f"[核心問題] step {sid} relevance_refs {outside} 不是目標族群的證據；只能用目標族群證據 id")
+    pains = {p.strip() for p in pain_points or set() if isinstance(p, str) and p.strip()}
+    differs = False
+    for index, problem in enumerate(d.get("core_problems") or [], 1):
+        if not isinstance(problem, dict):
+            continue
+        name = f"核心問題 {index}"
+        linked = [sid for sid in problem.get("step_ids") or [] if isinstance(sid, str)]
+        unknown = [sid for sid in linked if sid not in step_ids]
+        if unknown:
+            errors.append(f"[核心問題] {name} 的 step_ids {unknown} 不在主要歷程裡")
+        cited = [ref for ref in problem.get("evidence_refs") or [] if isinstance(ref, str)]
+        if not cited:
+            errors.append(f"[核心問題] {name} 沒有引用證據（evidence_refs）")
+        missing = [ref for ref in cited if ref not in evidence_ids]
+        if missing:
+            errors.append(f"[核心問題] {name} evidence_refs {missing} 不存在")
+        if not str(problem.get("why_core") or "").strip():
+            errors.append(f"[核心問題] {name} 沒有寫為什麼重要（why_core）")
+        # core-problem-evidence-elicitation: every cited item says how it was elicited.
+        elicitation = [item.get("evidence_ref") for item in problem.get("evidence_elicitation") or [] if isinstance(item, dict)]
+        if "evidence_elicitation" in problem and (sorted(elicitation) != sorted(set(cited)) or len(elicitation) != len(set(elicitation))):
+            errors.append(f"[核心問題] {name} 的 evidence_elicitation 要逐筆涵蓋 evidence_refs，一筆不多、一筆不少")
+        if str(problem.get("problem") or "").strip() in pains:
+            errors.append(f"[核心問題] {name} 跟某一步的痛點一字不差；核心問題要綜整，不要把痛點換個位置重列")
+        basis = set(problem.get("basis") or [])
+        if "recurs_across_steps" in basis and len(set(linked)) < 2:
+            errors.append(f"[核心問題] {name} 宣稱跨步驟重複，但只連到 {len(set(linked))} 步")
+        if "recurs_across_sessions" in basis and sessions is not None:
+            cited_sessions = {sessions.get(ref) for ref in cited} - {None}
+            if len(cited_sessions) < 2:
+                errors.append(f"[核心問題] {name} 宣稱跨場次出現，但引用的證據只來自 {len(cited_sessions)} 個場次")
+        if "blocks_jtbd" in basis:
+            if not has_jtbd:
+                errors.append(f"[核心問題] {name} 宣稱阻礙顧客任務，但研究者沒有選定顧客任務")
+            elif not str(problem.get("jtbd_note") or "").strip():
+                errors.append(f"[核心問題] {name} 宣稱阻礙顧客任務，要在 jtbd_note 寫明擋住哪一個、怎麼擋住")
+        if has_persona and cited and not any(ref in group_ids for ref in cited) and problem.get("inferred") is not True:
+            errors.append(f"[核心問題] {name} 沒有引用任何目標族群證據，inferred 要寫 true")
+        relation = problem.get("hmw_relation")
+        differs = differs or relation == "differs"
+        if not has_hmw and relation != "no_hmw":
+            errors.append(f"[核心問題] {name} 沒有選定的 HMW，hmw_relation 只能是 no_hmw")
+        if has_hmw and relation == "no_hmw":
+            errors.append(f"[核心問題] {name} 有選定的 HMW，hmw_relation 要寫 consistent 或 differs")
+    if has_hmw and differs and not str(d.get("hmw_scope_note") or "").strip():
+        errors.append("[核心問題] 有候選跟目前的 HMW 不同，要寫 hmw_scope_note 說明可能的範圍差異")
+    return errors
+
+
+def journey_core_problems(journey_data: dict, evidence: list, opts: dict, *, group_ids: set[str] | None,
+                          group_evidence_limited: bool = False, persona: dict | None = None,
+                          jtbd: object = None, hmw_scope: dict | None = None,
+                          evidence_view: list | None = None, identity_block: str = "") -> tuple:
+    """Draft Persona relevance and core problem candidates for the as-is
+    journey. `group_ids` is None when no Persona is confirmed."""
+    steps = [step for step in _primary_steps(journey_data) if isinstance(step, dict) and step.get("id")]
+    if not steps:
+        raise ValueError("這份旅程沒有主要歷程的步驟。")
+    step_ids = {step["id"] for step in steps}
+    evidence_ids = {item["id"] for item in evidence if isinstance(item, dict) and item.get("id")}
+    view = [{k: step[k] for k in JOURNEY_CORE_PROBLEM_STEP_FIELDS if k in step} for step in steps]
+    has_persona = group_ids is not None
+    user = "## 現況顧客歷程（全部受訪者的經驗；研究者檢視過的分析）\n```yaml\n" + _yaml_dump(view) + "```\n\n"
+    if has_persona:
+        user += "## 目標族群（Persona；看事情的角度，不是證據）\n```yaml\n" + _yaml_dump(persona or {}) + "```\n\n"
+        note = "（目標族群的個人歸屬還沒確認，這份清單只含分群時引用的證據，範圍有限）" if group_evidence_limited else ""
+        user += f"## 目標族群證據 id{note}\n```yaml\n" + _yaml_dump(sorted(group_ids)) + "```\n\n"
+    else:
+        user += "## 目標族群\n沒有已確認的 Persona：每一步的相關性都寫 not_assessed。\n\n"
+    if jtbd:
+        user += "## 研究者選定的顧客任務（JTBD；分析框架，不是證據）\n```yaml\n" + _yaml_dump(jtbd) + "```\n\n"
+    if hmw_scope:
+        user += ("## 研究者目前選定的 HMW（只用來對照，不是問題存在的證據）\n```yaml\n"
+                 + _yaml_dump(hmw_scope) + "```\n\n")
+    else:
+        user += "## HMW\n沒有選定的 HMW：每個候選的 hmw_relation 都寫 no_hmw。\n\n"
+    user += identity_block
+    user += "## 證據\n```yaml\n" + _yaml_dump(evidence_view if evidence_view is not None else _project(evidence)) + "```"
+    group = set(group_ids or ())
+    pains = {p for step in steps for p in step.get("pain_points") or [] if isinstance(p, str)}
+    sessions = ({item["id"]: item.get("session") for item in evidence_view if isinstance(item, dict) and item.get("id")}
+                if evidence_view is not None else None)
+    return _generate("journey_core_problems", _system("journey_core_problems"), user,
+                     lambda d: _journey_core_problems_errors(d, step_ids, evidence_ids, group, has_persona,
+                                                             bool(hmw_scope), has_jtbd=bool(jtbd),
+                                                             pain_points=pains, sessions=sessions)
+                     + _session_code_errors(d, evidence_view, "核心問題")
+                     + _unconfirmed_person_claim_errors(d, evidence_view, "核心問題"), opts)
 
 
 def apply_journey_solutions(journey_data: dict, output: dict) -> dict:
     """Write developed Solutions back onto their steps. The step's earlier
-    candidates are replaced; the new Solution is adopted, because checking
-    發展解方 is the researcher's adoption (2026-10-02 ruling). Ids are
-    assigned here, never by the model."""
+    candidates are replaced; the new Solution waits for the researcher to adopt
+    it at the SBP station (2026-10-23 ruling, superseding 2026-10-02's
+    "checking is adoption"). Ids are assigned here, never by the model."""
     result = copy.deepcopy(journey_data)
     by_step = {m["step_id"]: m for m in output.get("moments") or [] if isinstance(m, dict)}
     for step in _primary_steps(result):
@@ -2514,18 +2843,19 @@ def apply_journey_solutions(journey_data: dict, output: dict) -> dict:
         if moment is None:
             continue
         step["solution_analysis"] = copy.deepcopy(moment["analysis"])
-        # The researcher's own wording of the core problem stays the problem the
-        # Solution answers; the model never replaces it.
-        if str(step.get("core_problem") or "").strip():
-            step["solution_analysis"]["problem"] = step["core_problem"].strip()
+        # The researcher's own wording of the core problem -- or the adopted journey-level
+        # core problems linked to this moment -- stays the problem the Solution answers.
+        effective = effective_step(result, step)
+        if str(effective.get("core_problem") or "").strip():
+            step["solution_analysis"]["problem"] = effective["core_problem"].strip()
         solution = moment["solution"]
         step["solution_candidates"] = [
             {"id": f"{step['id']}-SOL-1", "text": solution["text"],
              "evidence_refs": list(solution.get("evidence_refs") or []),
              "basis": solution["basis"], "delivery": copy.deepcopy(solution["delivery"])}
         ]
-        step["selected_solution_ids"] = [f"{step['id']}-SOL-1"]
-        step["solution_basis"] = journey_step_digest(step)
+        step["selected_solution_ids"] = []
+        step["solution_basis"] = journey_step_digest(effective_step(result, step))
     return result
 
 
@@ -2635,14 +2965,17 @@ def selective_themes(view: dict, opts: dict) -> tuple:
     from the axial themes in relation to the research purpose. `view` is
     `selective_themes.structure_input(run_dir)`; nothing is written here."""
     from . import selective_themes as ST
-    user = (f"## 研究目的\n{view['research_purpose']}\n\n"
-            "## 主軸主題\n```yaml\n" + _yaml_dump(view["axial_themes"]) + "```\n\n"
+    purpose = view.get("research_purpose") or "（研究者沒有寫研究目的；核心主題依指示裡「沒有研究目的時」的判準判斷）"
+    user = (f"## 研究目的\n{purpose}\n\n"
+            + (view.get("context_block") or "")
+            + "## 主軸主題\n```yaml\n" + _yaml_dump(view["axial_themes"]) + "```\n\n"
             "## 主軸主題引用的開放編碼\n```yaml\n" + _yaml_dump(view["open_codes"]) + "```\n\n"
             f"## 主題形成說明\n{view.get('formation_note') or '（沒有）'}")
     schema = V.load_schema("selective-themes-draft")
 
     def validate(data):
-        return V.structural_errors(data, schema) or ST.theme_errors(data, view)
+        return (V.structural_errors(data, schema) or ST.theme_errors(data, view)) \
+            + V.context_ids_never_in_evidence_refs(data, "selective_themes")
 
     return _generate("selective_themes", _system("selective_themes"), user, validate, opts)
 
@@ -3756,16 +4089,59 @@ def reconcile(graph: dict, hypotheses: dict, conflicts: list, case: dict, opts: 
     return data, usage
 
 
-def _axial_coding_user_message(concepts: list, case_id: str, evidence: list | None = None) -> str:
+def axial_concept_participants(concepts: list, evidence: list | None, attribution: dict | None) -> dict[str, str]:
+    """purpose-aware-research-calibration: each concept's participant -- the
+    confirmed participant id(s) of its evidence when speaker attribution exists,
+    otherwise the source code(s) S1..Sn of the files it was coded from."""
+    from . import source_attribution
+    evidence = [e for e in evidence or [] if isinstance(e, dict)]
+    by_id = {e.get("id"): e for e in evidence if e.get("id")}
+    person_of: dict[str, str] = {}
+    for p in source_attribution.fixed_participants(evidence, attribution):
+        for ref in p["evidence_refs"]:
+            person_of[ref] = p["id"]
+    codes = source_attribution.session_codes(evidence)
+    if not codes:
+        codes = {src: f"S{i}" for i, src in enumerate(sorted({str(c.get("source")) for c in concepts
+                                                               if isinstance(c, dict) and c.get("source")}), 1)}
+    result: dict[str, str] = {}
+    for c in concepts:
+        if not isinstance(c, dict):
+            continue
+        refs = c.get("evidence_refs") or []
+        people = list(dict.fromkeys(person_of[r] for r in refs if r in person_of))
+        if not people:
+            sources = list(dict.fromkeys(str(by_id[r].get("source")) for r in refs if r in by_id and by_id[r].get("source")))
+            people = [codes[s] for s in sources if s in codes] or ([codes[str(c["source"])]] if str(c.get("source")) in codes else [])
+        result[c.get("id")] = "、".join(people) or "未知"
+    return result
+
+
+def _axial_coding_user_message(concepts: list, case_id: str, evidence: list | None = None,
+                               attribution: dict | None = None, segments: dict | None = None) -> str:
     """feed-axial-coding-the-open-coding-concepts：模型看到的是開放編碼的
     概念層，不是逐字稿原話——`tools/tests/test_axial_coding_input_contract.py`
     把這裡送出的欄位跟 prompt 陳述的欄位綁在一起測，兩邊不一致就會紅。
     """
+    from .semantic_segments import standalone_quote_problem  # local: semantic_segments imports stages
+    evidence_by_id = {e["id"]: e for e in evidence or [] if isinstance(e, dict) and e.get("id")}
+    # representative-quotes-standalone: a quote that cannot be a representative
+    # quote is marked, so the model does not pick it and get refused.
+    # purpose-aware-research-calibration: who said it and in what situation, so
+    # the model can read each person's account before comparing people.
+    participants = axial_concept_participants(concepts, evidence, attribution)
+    segments = segments or {}
     items = [
-        {"id": c.get("id"), "name": c.get("name"), "description": c.get("description"),
-         "evidence_refs": c.get("evidence_refs"), **({"quote": c["quote"]} if c.get("quote") else {})}
+        {"id": c.get("id"), "participant": participants.get(c.get("id"), "未知"),
+         "segment_context": "／".join(str((segments.get(ref) or {}).get("summary") or "").strip()
+                                     for ref in c.get("segment_refs") or [] if (segments.get(ref) or {}).get("summary")),
+         "name": c.get("name"), "description": c.get("description"),
+         "evidence_refs": c.get("evidence_refs"), **({"quote": c["quote"]} if c.get("quote") else {}),
+         **({"standalone_quote": False} if c.get("quote") and standalone_quote_problem(c, evidence_by_id) else {})}
         for c in concepts if isinstance(c, dict)
     ]
+    order = list(dict.fromkeys(item["participant"] for item in items))
+    items.sort(key=lambda item: order.index(item["participant"]))
     # converge-coding-contracts: when every concept carries its readable quote,
     # representative quotes are picked from those, so the verbatim evidence
     # block (whose only use was picking quotes) is not sent.
@@ -3807,8 +4183,67 @@ def support_summary_errors(owner: str, text: object) -> list[str]:
     return errors
 
 
+PARADIGM_FIELDS = ("conditions", "actions", "consequences")
+PARADIGM_REASONING_MAX_CHARS = 120
+
+
+def axial_paradigm_errors(data: dict, evidence_ids: set[str]) -> list[str]:
+    """purpose-aware-research-calibration: in newly generated axial coding the
+    paradigm model is the category's main product -- at least one non-empty
+    list or a stated gap; every item an object with its basis; an inference
+    with its reasoning; evidence and synthesis citing real evidence; a
+    condition saying whether it is situational or the user's; supporting
+    participants named; exceptions citing real evidence."""
+    errors: list[str] = []
+    for category in data.get("categories") or []:
+        if not isinstance(category, dict):
+            continue
+        cid = category.get("id")
+        lists = {f: category.get(f) or [] for f in PARADIGM_FIELDS}
+        if not any(lists.values()) and not str(category.get("paradigm_gap") or "").strip():
+            errors.append(f"[axial_coding] category {cid} 的典範模型三組都是空的，要寫至少一組，或用 paradigm_gap 說明為什麼")
+        for field, items in lists.items():
+            for index, item in enumerate(items):
+                where = f"[axial_coding] category {cid} 的 {field}[{index}]"
+                if not isinstance(item, dict):
+                    errors.append(f"{where} 要寫成 {{text, basis, evidence_refs}}，標出依據")
+                    continue
+                basis, refs = item.get("basis"), list(item.get("evidence_refs") or [])
+                if basis == "inference":
+                    reasoning = str(item.get("reasoning") or "").strip()
+                    if not reasoning:
+                        errors.append(f"{where} 是推論，要寫 reasoning：誰做了什麼、所以推出什麼")
+                    elif len(reasoning) > PARADIGM_REASONING_MAX_CHARS:
+                        errors.append(f"{where} 的 reasoning 要在 {PARADIGM_REASONING_MAX_CHARS} 字以內")
+                elif basis in ("evidence", "synthesis") and not refs:
+                    errors.append(f"{where} 標為 {basis}，至少要引用一則證據")
+                for ref in refs:
+                    if ref not in evidence_ids:
+                        errors.append(f"{where} 引用不存在的證據：{ref}")
+                if field == "conditions" and item.get("kind") not in ("situational", "user"):
+                    errors.append(f"{where} 要標 kind：situational（情境條件）或 user（使用者條件）")
+        if not category.get("supported_by"):
+            errors.append(f"[axial_coding] category {cid} 要寫 supported_by：這一類的證據來自哪些受訪者")
+        for exc in category.get("exceptions") or []:
+            if isinstance(exc, dict) and exc.get("evidence_ref") not in evidence_ids:
+                errors.append(f"[axial_coding] category {cid} 的例外引用不存在的證據：{exc.get('evidence_ref')}")
+    return errors
+
+
+def paradigm_basis_counts(data: dict) -> dict[str, int]:
+    """For the command's completion line: how many paradigm items carry each basis."""
+    counts = {"evidence": 0, "synthesis": 0, "inference": 0}
+    for category in (data or {}).get("categories") or []:
+        for field in PARADIGM_FIELDS:
+            for item in (category or {}).get(field) or []:
+                if isinstance(item, dict) and item.get("basis") in counts:
+                    counts[item["basis"]] += 1
+    return counts
+
+
 def _axial_generation_errors(data: object, evidence_ids: set[str], concept_ids: set[str],
-                             quoted_ids: set[str] | None = None) -> list[str]:
+                             quoted_ids: set[str] | None = None, *, concepts_by_id: dict | None = None,
+                             evidence_by_id: dict | None = None) -> list[str]:
     """axial-explicit-membership (2026-10-03): what newly generated axial coding
     must carry on top of `_axial_coding_errors` -- a short definition, explicit
     open codes, representative evidence chosen from the category's own, and a
@@ -3818,6 +4253,7 @@ def _axial_generation_errors(data: object, evidence_ids: set[str], concept_ids: 
     errors = _axial_coding_errors(data, evidence_ids)
     if not isinstance(data, dict):
         return errors
+    errors += axial_paradigm_errors(data, evidence_ids)
     if not str(data.get("formation_note") or "").strip():
         errors.append("[axial_coding] 缺少主題形成說明（formation_note）")
     for category in data.get("categories") or []:
@@ -3841,8 +4277,8 @@ def _axial_generation_errors(data: object, evidence_ids: set[str], concept_ids: 
             picked = category.get("representative_quote_refs")
             if category.get("representative_evidence_refs"):
                 errors.append(f"[axial_coding] category {cid} 新產出用 representative_quote_refs 挑代表語句，不寫 representative_evidence_refs")
-            if not picked:
-                errors.append(f"[axial_coding] category {cid} 缺少代表語句（representative_quote_refs）")
+            # representative-quotes-standalone: zero picks are legal only when no
+            # member quote reads on its own -- checked below with the quotes.
             for ref in picked or []:
                 if ref not in members:
                     errors.append(f"[axial_coding] category {cid} 的代表語句 {ref} 不是這個主題包含的開放編碼")
@@ -3856,6 +4292,9 @@ def _axial_generation_errors(data: object, evidence_ids: set[str], concept_ids: 
         for ref in picked or []:
             if ref not in own:
                 errors.append(f"[axial_coding] category {cid} 的代表語句 {ref} 不在這個主題的 evidence_refs 裡")
+    if quoted_ids is not None and concepts_by_id is not None:
+        errors += [f"[axial_coding] {detail}" for detail in V.representative_quote_not_standalone(
+            data, evidence_by_id=evidence_by_id or {}, concepts_by_id=concepts_by_id, kind="axial")]
     return errors
 
 
@@ -3924,7 +4363,8 @@ def axial_label_quality_signals(data: object) -> list[dict]:
     return signals
 
 
-def axial_coding(concepts: list, evidence: list, opts: dict) -> tuple:
+def axial_coding(concepts: list, evidence: list, opts: dict, attribution: dict | None = None,
+                 segments: dict | None = None) -> tuple:
     """feed-axial-coding-the-open-coding-concepts：把開放編碼產出的概念聚成
     有解釋力的類別，不是重新從逐字稿原話分類一次（那是這支 change 修掉的
     行為——見 design.md「Axial coding receives concepts, and the model
@@ -3942,7 +4382,7 @@ def axial_coding(concepts: list, evidence: list, opts: dict) -> tuple:
     """
     case_id = opts.get("case_id") or "unknown"
     evidence_ids = {e["id"] for e in evidence if isinstance(e, dict) and e.get("id")}
-    user = _axial_coding_user_message(concepts, case_id, evidence)
+    user = _axial_coding_user_message(concepts, case_id, evidence, attribution, segments)
     # `axial_coding` is registered in STAGE_SCHEMA_KINDS but this call used to
     # pass `_prompt(...)` (hand-written prose only) instead of `_system(...)`
     # (prose plus the schema-derived output contract) -- the same bug already
@@ -3957,7 +4397,10 @@ def axial_coding(concepts: list, evidence: list, opts: dict) -> tuple:
     quoted_ids = quoted if concepts and len(quoted) == len(concept_ids) else None
     data, usage = _generate(
         "axial_coding", _system("axial_coding"), user,
-        lambda d: _axial_generation_errors(d, evidence_ids, concept_ids, quoted_ids), opts,
+        lambda d: _axial_generation_errors(
+            d, evidence_ids, concept_ids, quoted_ids,
+            concepts_by_id={c.get("id"): c for c in concepts if isinstance(c, dict) and c.get("id")},
+            evidence_by_id={e["id"]: e for e in evidence if isinstance(e, dict) and e.get("id")}), opts,
     )
     data["case_id"] = case_id
     return data, usage
@@ -3987,6 +4430,52 @@ def _group_evidence_by_source(evidence: list) -> list[tuple[str | None, list]]:
 OPEN_CODING_MAX_CODES_PER_SEGMENT = 2
 
 
+def _answer_kind_unit(e: dict, *fields: str) -> dict:
+    """evidence-answer-kind-open-coding: `_evidence_unit` with the answer kind
+    attached unless the respondent made a substantive statement."""
+    unit = _evidence_unit(e, *fields)
+    kind = answer_kind.classify(e)
+    if kind != answer_kind.SUBSTANTIVE:
+        unit["answer_kind"] = kind
+    return unit
+
+
+def _open_coding_evidence_unit(e: dict) -> dict:
+    """An evidence unit for open coding (id, text, question, answer kind)."""
+    return _answer_kind_unit(e, "id", "text")
+
+
+# Named by the prompt's 「簡短回答怎麼命名」 section; a brief answer's concept
+# must not carry a reason the respondent did not give.
+OPEN_CODING_AGREEMENT_MARKER = "訪員"
+OPEN_CODING_CAUSAL_CONNECTIVES = ("因為", "因此", "所以", "由於", "導致", "為了")
+
+
+def _open_coding_answer_kind_errors(concepts: object, evidence_by_id: dict) -> list[str]:
+    """A concept resting only on brief agreements says the respondent affirmed
+    the interviewer; one resting only on brief answers adds no reason. A concept
+    citing any substantive statement is not checked."""
+    if not isinstance(concepts, list):
+        return []
+    errors = []
+    for concept in concepts:
+        if not isinstance(concept, dict):
+            continue
+        refs = [ref for ref in concept.get("evidence_refs") or [] if ref in evidence_by_id]
+        kinds = {answer_kind.classify(evidence_by_id[ref]) for ref in refs}
+        cid, name = concept.get("id"), str(concept.get("name") or "")
+        if kinds == {answer_kind.BRIEF_AGREEMENT} and OPEN_CODING_AGREEMENT_MARKER not in name:
+            errors.append(f"[open_coding] concept {cid} 只靠簡短附和（{'、'.join(refs)}）：受訪者只是肯定訪員提出的說法，"
+                          f"名稱要寫出這是訪員的說法，例如「肯定訪員說CP值可以」，不能寫成受訪者自己的判斷")
+        elif kinds == {answer_kind.BRIEF_ANSWER}:
+            text = name + str(concept.get("description") or "")
+            found = [word for word in OPEN_CODING_CAUSAL_CONNECTIVES if word in text]
+            if found:
+                errors.append(f"[open_coding] concept {cid} 只靠簡短回答（{'、'.join(refs)}）：受訪者只回答了問題，沒有說理由，"
+                              f"名稱與描述不能出現「{'、'.join(found)}」這類理由")
+    return errors
+
+
 def _open_coding_user_message(segments: list, evidence_by_id: dict, case_id: str) -> str:
     """The transcript's in-scope semantic segments: full respondent passage,
     the interviewer's question, a reading summary, and the evidence units the
@@ -3997,7 +4486,7 @@ def _open_coding_user_message(segments: list, evidence_by_id: dict, case_id: str
             "segment": segment["id"], "summary": segment.get("summary"), "role": segment.get("role"),
             "interviewer": segment.get("question_passage") or "",
             "respondent": segment.get("respondent_passage") or "",
-            "evidence": [_evidence_unit(evidence_by_id[ref], "id", "text")
+            "evidence": [_open_coding_evidence_unit(evidence_by_id[ref])
                          for ref in segment.get("evidence_refs") or [] if ref in evidence_by_id],
         })
     return (
@@ -4150,7 +4639,7 @@ def _open_coding_target_parts(targets: frozenset) -> tuple[set, dict, set]:
 _OPEN_CODING_FIELD_LABELS = {"name": "名稱", "description": "描述", "question": "question"}
 
 
-def _open_coding_partial_repair_closing(targets: frozenset, errors=()) -> str:
+def _open_coding_partial_repair_closing(targets: frozenset, errors=(), must_cite=frozenset()) -> str:
     """The last paragraph of a partial repair request: which segments and
     fields failed which existing rules, and to redo only those. Nothing else is
     said; with cap errors only and no coupled segment (or no errors given) it
@@ -4174,6 +4663,11 @@ def _open_coding_partial_repair_closing(targets: frozenset, errors=()) -> str:
         asks.append("請只重做這幾段，其餘概念維持不變，也不用回傳。")
     if coupled:
         asks.append(f"重做的概念可以照原文同時引用 {'、'.join(sorted(coupled))}。")
+        # open-coding-repair-keeps-coupled-cited: the splice abandons the repair when one
+        # of these is left uncited, so the request says so instead of "may".
+        held = sorted(set(must_cite) & coupled)
+        if held:
+            asks.append(f"其中 {'、'.join(held)} 目前只有要重做的概念引用，重做後至少要有一個概念照原文引用它。")
     if fields:
         asks.append("被點名的概念只改那個欄位，保留原本的 id 與其他欄位。")
     if not segments:
@@ -4296,6 +4790,43 @@ class _OpenCodingPartialRepair:
     closing = staticmethod(_open_coding_partial_repair_closing)
     splice = staticmethod(_splice_open_coding_repair)
 
+    def __init__(self, segments: list, evidence_by_id: dict, case_id: str):
+        self.segments, self.evidence_by_id, self.case_id = segments, evidence_by_id, case_id
+
+    def request(self, baseline: object, errors: list, targets: frozenset) -> str:
+        """open-coding-compact-repair-request: only the segments and concepts the
+        repair touches, never the whole transcript or the whole baseline. The
+        rules reach the model through the system prompt, sent on every attempt."""
+        segments, fields, coupled = _open_coding_target_parts(targets)
+        concepts = _concepts_of(baseline) or []
+        shown_segments = segments | coupled
+        named = [c for c in concepts if isinstance(c, dict) and c.get("id") in fields]
+        for concept in named:
+            shown_segments |= set(concept.get("segment_refs") or [])
+        touched = [c for c in concepts if isinstance(c, dict)
+                   and (c.get("id") in fields or shown_segments.intersection(c.get("segment_refs") or []))]
+        passages = _open_coding_user_message(
+            [s for s in self.segments if s.get("id") in shown_segments], self.evidence_by_id, self.case_id)
+        passages = passages.replace("## 逐字稿的語意段落（單一來源，依時間順序）", "## 要修補的語意段落（只列這次牽涉的段落）")
+        shown = "\n".join(f"- {e}" for e in errors[:40])
+        more = f"\n（另有 {len(errors) - 40} 筆同類錯誤）" if len(errors) > 40 else ""
+        return (
+            f"{passages}\n\n---\n\n這幾段目前的概念：\n\n"
+            + json.dumps({"concepts": touched}, indent=2, ensure_ascii=False)
+            + f"\n\n這次驗證沒通過，問題如下：\n\n{shown}{more}\n\n"
+            + self.closing(targets, errors, self.must_cite(baseline, targets))
+        )
+
+    @staticmethod
+    def must_cite(baseline: object, targets: frozenset) -> frozenset:
+        """Coupled segments that only recoded concepts cite: exactly the ones the
+        splice requires a returned concept to cite (open-coding-repair-keeps-coupled-cited)."""
+        segments, _fields, coupled = _open_coding_target_parts(targets)
+        kept = [c for c in _concepts_of(baseline) or []
+                if isinstance(c, dict) and not segments.intersection(c.get("segment_refs") or [])]
+        cited = {ref for c in kept for ref in c.get("segment_refs") or []}
+        return frozenset(coupled - cited)
+
 
 def _partial_repair_record(targets: frozenset, outcome: str, reason: str | None = None,
                            key: str = "targeted_segments") -> dict:
@@ -4394,6 +4925,7 @@ def open_code_transcript(source, segments: list, evidence_by_id: dict, case_id: 
         candidate = {"schema_version": 1, "case_id": case_id, "concepts": concepts_with_source}
         errors = V.open_coding_errors(candidate, evidence_ids)
         errors += _open_coding_segment_errors(candidate.get("concepts"), segments)
+        errors += _open_coding_answer_kind_errors(candidate.get("concepts"), evidence_by_id)
         if isinstance(candidate.get("concepts"), list):
             for concept in candidate["concepts"]:
                 if not isinstance(concept, dict):
@@ -4410,7 +4942,7 @@ def open_code_transcript(source, segments: list, evidence_by_id: dict, case_id: 
     call_opts = {**opts, "diagnostics_label": f"open-coding-{number:02d}-of-{total:02d}",
                  "diagnostics_source": source_label}
     data, usage = _generate("open_coding", _prompt("open_coding"), user, _validate, call_opts,
-                            partial_repair=_OpenCodingPartialRepair)
+                            partial_repair=_OpenCodingPartialRepair(segments, evidence_by_id, case_id))
     call = {
         "source": source_label,
         "seconds": usage.get("seconds", 0),
@@ -4712,8 +5244,11 @@ def _core_category_candidates_errors(data: object, category_ids: set[str]) -> li
     return errors
 
 
-def _propose_core_category_candidates_user_message(categories_doc: dict, evidence: list, case_id: str) -> str:
-    findings = V.axial_coding_warnings(categories_doc, evidence)
+def _propose_core_category_candidates_user_message(categories_doc: dict, evidence: list, case_id: str,
+                                                   attribution: dict | None = None) -> str:
+    # purpose-aware-research-calibration: the single-respondent check counts
+    # confirmed participants when the run records speaker attribution.
+    findings = V.axial_coding_warnings(categories_doc, evidence, attribution=attribution)
     blocks = []
     for category in categories_doc.get("categories") or []:
         if not isinstance(category, dict):
@@ -4732,7 +5267,8 @@ def _propose_core_category_candidates_user_message(categories_doc: dict, evidenc
     )
 
 
-def propose_core_category_candidates(categories_doc: dict, evidence: list, opts: dict) -> tuple:
+def propose_core_category_candidates(categories_doc: dict, evidence: list, opts: dict,
+                                     attribution: dict | None = None) -> tuple:
     """propose-core-category-candidates：讀完全部主軸編碼類別跟既有判準發現，
     提出剛好 3 個核心類別候選並各附理由，不推薦任何一個為預設答案——挑哪一個
     是研究者的判斷，這支函式只負責讀完、排序、講重點（CLAUDE.md「助理的
@@ -4740,7 +5276,7 @@ def propose_core_category_candidates(categories_doc: dict, evidence: list, opts:
     """
     case_id = opts.get("case_id") or "unknown"
     category_ids = {c["id"] for c in (categories_doc.get("categories") or []) if isinstance(c, dict) and c.get("id")}
-    user = _propose_core_category_candidates_user_message(categories_doc, evidence, case_id)
+    user = _propose_core_category_candidates_user_message(categories_doc, evidence, case_id, attribution)
     data, usage = _generate(
         "core_category_candidates", _system("core_category_candidates"), user,
         lambda d: _core_category_candidates_errors(d, category_ids), opts,
@@ -4965,8 +5501,9 @@ def _persona_dimensions_selection_errors(data: object, category_ids: set[str]) -
     return errors
 
 
-def _propose_persona_dimension_candidates_user_message(categories_doc: dict, evidence: list, case_id: str) -> str:
-    findings = V.axial_coding_warnings(categories_doc, evidence)
+def _propose_persona_dimension_candidates_user_message(categories_doc: dict, evidence: list, case_id: str,
+                                                       attribution: dict | None = None) -> str:
+    findings = V.axial_coding_warnings(categories_doc, evidence, attribution=attribution)
     blocks = []
     for category in categories_doc.get("categories") or []:
         if not isinstance(category, dict):
@@ -5077,7 +5614,8 @@ def _assemble_candidate_axes_from_properties(candidates_raw: list, properties_by
 
 
 def propose_persona_dimension_candidates(categories_doc: dict, evidence: list, opts: dict,
-                                          properties_doc: dict | None = None) -> tuple:
+                                          properties_doc: dict | None = None,
+                                          attribution: dict | None = None) -> tuple:
     """propose-persona-dimension-candidates：不推薦任何一組為預設答案——挑
     哪一組是研究者的判斷,這支函式只負責讀完、排序、講重點（CLAUDE.md「助理
     的界線」）。
@@ -5118,7 +5656,7 @@ def propose_persona_dimension_candidates(categories_doc: dict, evidence: list, o
         return result, usage
 
     category_ids = {c["id"] for c in (categories_doc.get("categories") or []) if isinstance(c, dict) and c.get("id")}
-    user = _propose_persona_dimension_candidates_user_message(categories_doc, evidence, case_id)
+    user = _propose_persona_dimension_candidates_user_message(categories_doc, evidence, case_id, attribution)
     data, usage = _generate(
         "persona_dimension_candidates", _system("persona_dimension_candidates"), user,
         lambda d: _persona_dimension_candidates_errors(d, category_ids), opts,
@@ -5269,9 +5807,62 @@ def propose_primary_hmw_candidates(hmw_doc: dict, categories_doc: dict, opts: di
 _DEFAULT_PAIR_SUPERLATIVE = re.compile(r"最佳|最好|最適合|最理想")
 
 
+# axis-brief-pole-consistency (2026-10-22, P0): a brief must say the same as the
+# Matrix. Only unambiguous sentences are judged; anything else is skipped.
+_BRIEF_SUBJECT = re.compile(r"P-\d+")
+_POLE_MATCH_MIN, _POLE_MATCH_OTHER_MAX = 4, 2
+
+
+def _longest_common(a: str, b: str) -> int:
+    import difflib
+    return difflib.SequenceMatcher(None, a, b, autojunk=False).find_longest_match(0, len(a), 0, len(b)).size
+
+
+def axis_brief_pole_conflicts(text: str, axis: dict, positions: dict[str, str]) -> list[tuple[str, str, str]]:
+    """(subject, pole the brief states, pole the subject sits at) for every sentence
+    that names one or more subjects all sitting at the same end while clearly
+    matching the other pole. Contrast sentences (subjects at different ends),
+    middle / no-data subjects and sentences matching both poles are skipped."""
+    low, high = str(axis.get("pole_low") or ""), str(axis.get("pole_high") or "")
+    if not low or not high or not isinstance(text, str):
+        return []
+    conflicts: list[tuple[str, str, str]] = []
+    for sentence in re.split(r"[。；]", text):
+        named = list(dict.fromkeys(_BRIEF_SUBJECT.findall(sentence)))
+        if not named:
+            continue
+        lo, hi = _longest_common(sentence, low), _longest_common(sentence, high)
+        if lo >= _POLE_MATCH_MIN and hi <= _POLE_MATCH_OTHER_MAX:
+            stated = "near_low"
+        elif hi >= _POLE_MATCH_MIN and lo <= _POLE_MATCH_OTHER_MAX:
+            stated = "near_high"
+        else:
+            continue
+        actual = {positions.get(sid) for sid in named}
+        if len(actual) != 1 or not actual <= {"near_low", "near_high"}:
+            continue
+        sits = actual.pop()
+        if sits != stated:
+            conflicts += [(sid, stated, sits) for sid in named]
+    return conflicts
+
+
+def placements_by_axis(persona_matrix_doc: dict) -> dict[str, dict[str, str]]:
+    """{axis_id: {subject_id: position}} from a persona_matrix document."""
+    out: dict[str, dict[str, str]] = {}
+    for subject in persona_matrix_doc.get("subjects") or []:
+        if not isinstance(subject, dict):
+            continue
+        for placement in subject.get("placements") or []:
+            if isinstance(placement, dict) and placement.get("axis_id"):
+                out.setdefault(placement["axis_id"], {})[subject.get("id")] = placement.get("position")
+    return out
+
+
 def _segmentation_axis_candidates_errors(data: object, axis_ids: set[str], *,
                                          selectable_axis_ids: set[str] | None = None,
-                                         require_default: bool = False) -> list[str]:
+                                         require_default: bool = False,
+                                         persona_matrix_doc: dict | None = None) -> list[str]:
     """add-segmentation-axis-designation：跟其他候選機制的 `_errors` 函式
     一樣的純函式——每一條軸都要有一份簡報，不遺漏也不重複；schema 的
     `minItems: 1` 表達不了「剛好等於這次 run 的軸數」這種依賴外部輸入的數量
@@ -5318,6 +5909,18 @@ def _segmentation_axis_candidates_errors(data: object, axis_ids: set[str], *,
             errors.append("[segmentation_axis_candidates] default_pair 的依據不要寫最佳／最好，這只是預設的切法")
     elif require_default and len(selectable) >= 2 and not no_pair_reason:
         errors.append("[segmentation_axis_candidates] 有兩條以上可選的軸：提出 default_pair，或在 no_default_pair_reason 講為什麼沒有一對撐得起分群")
+    if persona_matrix_doc and isinstance(data, dict):
+        axes = {a.get("id"): a for a in persona_matrix_doc.get("axes") or [] if isinstance(a, dict)}
+        positions = placements_by_axis(persona_matrix_doc)
+        for brief in data.get("briefs") or []:
+            if not isinstance(brief, dict) or brief.get("axis_id") not in axes:
+                continue
+            for sid, stated, sits in axis_brief_pole_conflicts(brief.get("evidence_summary") or "",
+                                                               axes[brief["axis_id"]], positions.get(brief["axis_id"], {})):
+                pole = axes[brief["axis_id"]]
+                errors.append(f"[segmentation_axis_candidates] {brief['axis_id']} 的證據摘要把 {sid} 寫在"
+                              f"「{pole.get('pole_low' if stated == 'near_low' else 'pole_high')}」那一端，"
+                              f"但這位受訪者實際落在「{pole.get('pole_low' if sits == 'near_low' else 'pole_high')}」那一端")
     return errors
 
 
@@ -5337,28 +5940,64 @@ def _segmentation_axis_selection_errors(data: object, axis_ids: set[str]) -> lis
     return errors
 
 
+def segmentation_purpose_focus_errors(data: object, purposes: list[str], selectable: set[str]) -> list[str]:
+    """purpose-aware-research-calibration (2026-10-23 ruling): with a purpose,
+    every brief says which concerns named in the purposes its axis relates to,
+    quoting them verbatim, and the default pair includes such a selectable axis
+    whenever one exists. Without a purpose, no brief names a concern."""
+    if not isinstance(data, dict):
+        return []
+    briefs = [b for b in data.get("briefs") or [] if isinstance(b, dict)]
+    errors: list[str] = []
+    related: set[str] = set()
+    for brief in briefs:
+        where = f"[segmentation_axis_candidates] {brief.get('axis_id')} 的 purpose_focus"
+        if purposes and "purpose_focus" not in brief:
+            errors.append(f"[segmentation_axis_candidates] {brief.get('axis_id')} 的簡報要寫 purpose_focus（無關就寫空陣列）")
+            continue
+        errors += V.purpose_focus_errors(brief.get("purpose_focus"), purposes, where)
+        if brief.get("purpose_focus"):
+            related.add(brief.get("axis_id"))
+    pair = data.get("default_pair")
+    candidates = related & selectable
+    if purposes and isinstance(pair, dict) and candidates and not candidates & set(pair.get("axis_ids") or []):
+        errors.append("[segmentation_axis_candidates] 有跟目的裡關注點相關、兩端都有描述的軸，預設兩軸要至少放進一條")
+    return errors
+
+
 def _propose_segmentation_axis_candidates_user_message(persona_matrix_doc: dict, case_id: str,
-                                                       hmw_scope: dict | None = None) -> str:
+                                                       hmw_scope: dict | None = None, context_block: str = "") -> str:
     axes = [
         {"id": a.get("id"), "label": a.get("label"), "representation": a.get("representation") or "continuum",
          "pole_low": a.get("pole_low"), "pole_high": a.get("pole_high"),
          "discriminating_basis": a.get("discriminating_basis")}
         for a in (persona_matrix_doc.get("axes") or []) if isinstance(a, dict)
     ]
-    real_placements_by_axis: dict[str, list[dict]] = {}
-    for subject in persona_matrix_doc.get("subjects") or []:
-        if not isinstance(subject, dict):
-            continue
-        for placement in subject.get("placements") or []:
-            if not isinstance(placement, dict) or placement.get("position") == "no_data":
+    # axis-brief-pole-consistency: placements are grouped under the pole's own text, so
+    # the brief never has to map a position code back to a pole (MUJI AXIS-4 was reversed).
+    pole_text = {a.get("id"): a for a in persona_matrix_doc.get("axes") or [] if isinstance(a, dict)}
+    real_placements_by_axis: dict[str, dict[str, list[str]]] = {}
+    for axis_id, by_subject in placements_by_axis(persona_matrix_doc).items():
+        axis = pole_text.get(axis_id) or {}
+        groups: dict[str, list[str]] = {}
+        for sid, position in by_subject.items():
+            if position == "near_low":
+                key = f"「{axis.get('pole_low')}」端"
+            elif position == "near_high":
+                key = f"「{axis.get('pole_high')}」端"
+            elif position == "mid":
+                key = "中間"
+            else:
                 continue
-            real_placements_by_axis.setdefault(placement.get("axis_id"), []).append(
-                {"subject_id": subject.get("id"), "position": placement.get("position")})
+            groups.setdefault(key, []).append(sid)
+        if groups:
+            real_placements_by_axis[axis_id] = groups
     return (
         f"## 案例\ncase_id: {case_id}\n\n"
+        + context_block
         + _hmw_scope_section(hmw_scope)
         + "## 軸的定義\n```yaml\n" + _yaml_dump(axes) + "```\n\n"
-        "## 每一條軸的真實落點（不含 no_data）\n```yaml\n"
+        "## 每一條軸的真實落點（依落在哪一端分組，key 就是那一端的文字；沒有證據的受訪者不列）\n```yaml\n"
         + _yaml_dump(real_placements_by_axis) + "```\n\n"
         "## 每一對軸的共同涵蓋（由程式算出：兩條軸都落在其中一端、能放進四格的受訪者）\n```yaml\n"
         + _yaml_dump(joint_participant_support(persona_matrix_doc)) + "```"
@@ -5388,7 +6027,8 @@ def joint_participant_support(persona_matrix_doc: dict) -> list[dict]:
 
 
 def propose_segmentation_axis_candidates(persona_matrix_doc: dict, opts: dict,
-                                         hmw_scope: dict | None = None) -> tuple:
+                                         hmw_scope: dict | None = None, context_block: str = "",
+                                         purposes: list[str] | None = None) -> tuple:
     """add-segmentation-axis-designation：讀完 persona_matrix.yaml 已經產出的
     軸與真實落點，對每一條軸寫一份簡報（不篩選、不排序）。
     persona-matrix-hmw-scope-default（2026-10-01 裁定）另外提出一組預設兩軸
@@ -5417,9 +6057,11 @@ def propose_segmentation_axis_candidates(persona_matrix_doc: dict, opts: dict,
 
     def _validate(partial):
         return _segmentation_axis_candidates_errors(
-            _candidate(partial), axis_ids, selectable_axis_ids=selectable, require_default=True)
+            _candidate(partial), axis_ids, selectable_axis_ids=selectable, require_default=True,
+            persona_matrix_doc=persona_matrix_doc) + V.context_ids_never_in_evidence_refs(partial, "segmentation_axis_candidates") \
+            + segmentation_purpose_focus_errors(_candidate(partial), purposes or [], selectable)
 
-    user = _propose_segmentation_axis_candidates_user_message(persona_matrix_doc, case_id, hmw_scope)
+    user = _propose_segmentation_axis_candidates_user_message(persona_matrix_doc, case_id, hmw_scope, context_block)
     data, usage = _generate(
         "segmentation_axis_candidates", _prompt("segmentation_axis_candidates"), user,
         _validate, opts,
@@ -5765,7 +6407,8 @@ def _persona_matrix_user_message(evidence: list, categories_doc: dict, case_id: 
                                   selected_axes: list | None = None,
                                   core_category: dict | None = None,
                                   hmw_scope: dict | None = None,
-                                  attribution: dict | None = None) -> str:
+                                  attribution: dict | None = None,
+                                  research_purpose: str | None = None) -> str:
     # persona-segmentation-reasoning-contract (2026-10-01): the analysis
     # object is the comparison of participants, so evidence arrives grouped
     # by source (who said it) and each unit's text appears exactly once;
@@ -5779,7 +6422,7 @@ def _persona_matrix_user_message(evidence: list, categories_doc: dict, case_id: 
     for e in evidence:
         if isinstance(e, dict):
             sources.setdefault(str(e.get("source") or ""), []).append(
-                {**_evidence_unit(e, "id", "role", "text"), **unit_extra.get(e.get("id"), {})})
+                {**_answer_kind_unit(e, "id", "role", "text"), **unit_extra.get(e.get("id"), {})})
     groups = [{"source": source, "units": units} for source, units in sources.items()]
     categories = []
     for c in categories_doc.get("categories") or []:
@@ -5799,8 +6442,12 @@ def _persona_matrix_user_message(evidence: list, categories_doc: dict, case_id: 
             "## 研究者已選定的維度（沿用這些軸，逐字重製，不要改寫或重新排序；"
             "你的工作是把受訪者放到這些軸上）\n```yaml\n" + _yaml_dump(selected_axes) + "```\n\n"
         )
+    purpose_block = (
+        "## 研究目的（不是證據；只用來寫每條軸和研究目的的關係，不拿來篩人或刪軸）\n"
+        f"{research_purpose.strip()}\n\n") if research_purpose and research_purpose.strip() else ""
     return (
         f"## 案例\ncase_id: {case_id}\n\n"
+        + purpose_block
         + _hmw_scope_section(hmw_scope)
         + _core_category_block(core_category)
         + selected_block
@@ -5812,7 +6459,8 @@ def _persona_matrix_user_message(evidence: list, categories_doc: dict, case_id: 
 
 
 def _persona_matrix_errors(data: object, category_ids: set[str], evidence_ids: set[str],
-                           selected_axes: list | None = None, *, generation: bool = False) -> list[str]:
+                           selected_axes: list | None = None, *, generation: bool = False,
+                           evidence_by_id: dict | None = None) -> list[str]:
     """add-persona-matrix：跟 `_axial_coding_errors` 一樣的純函式，檢查 schema
     表達不了的兩件事：每一條軸的 `grounded_in` 是不是真的在主軸編碼的類別清單
     裡、每個受訪者的 `evidence_refs` 是不是真的在證據清單裡。
@@ -5878,10 +6526,145 @@ def _persona_matrix_errors(data: object, category_ids: set[str], evidence_ids: s
             )
     if selected_axes is not None:
         errors.extend(_dimension_selection_mismatches(axes, selected_axes))
+    elif generation and evidence_by_id is not None:
+        errors.extend(_persona_comparison_errors(data, evidence_by_id, category_ids))
     return errors
 
 
 AXIS_REPRESENTATIONS = ("continuum", "contrast")
+
+# persona-matrix-comparison-first (2026-10-22, method B): the values the
+# prompt's 「先比較人，再定軸」 section names.
+CONCERN_OUTCOMES = ("axis", "coexisting_factors", "situational_only", "no_difference", "insufficient")
+COMPARISON_SCOPES = ("across_situations", "in_situation", "unclear")
+AXIS_DIFFERENCE_KINDS = ("across_situations", "in_situation")
+UNPLACED_REASONS = ("insufficient_evidence", "poles_do_not_fit", "mixed", "situation_dependent")
+# persona-matrix-comparison-first, stage 2: what an axis may describe, and
+# the extra outcome for a difference that only evaluates this service.
+SYNTHESIS_OUTCOMES = ("axis", "coexisting_factors", "situational_only", "service_evaluation",
+                      "no_difference", "insufficient")
+AXIS_TYPES = ("judgment_or_behavior", "need", "experience_condition", "situational_mode", "dominant_orientation")
+# Answer kinds that can carry a person's judgment on their own.
+_JUDGMENT_ANSWER_KINDS = (answer_kind.SUBSTANTIVE, answer_kind.BRIEF_ANSWER)
+
+
+def axis_concern_refs(axis: dict) -> list[str]:
+    """The concerns an axis comes from: `concern_refs` (a cross-concern axis
+    from the two-stage synthesis) or the single `concern_ref`."""
+    refs = axis.get("concern_refs")
+    if isinstance(refs, list) and refs:
+        return [r for r in refs if isinstance(r, str)]
+    return [axis["concern_ref"]] if isinstance(axis.get("concern_ref"), str) else []
+
+
+def _persona_comparison_errors(data: dict, evidence_by_id: dict, category_ids: set[str]) -> list[str]:
+    """persona-matrix-comparison-first: the per-person comparison of each
+    shared concern is written before the axes, and the axes and placements
+    are checked to rest on it (design.md, rules 1-7)."""
+    errors: list[str] = []
+
+    def carries_judgment(refs) -> bool:
+        return any(answer_kind.classify(evidence_by_id[r]) in _JUDGMENT_ANSWER_KINDS
+                   for r in refs if r in evidence_by_id)
+
+    subjects = {s.get("id"): s for s in data.get("subjects") or [] if isinstance(s, dict)}
+    own = {sid: set(s.get("evidence_refs") or []) for sid, s in subjects.items()}
+    attributed = set().union(*own.values()) if own else set()
+    concerns = [c for c in data.get("concerns") or [] if isinstance(c, dict)]
+    if not concerns:
+        return ["[persona_matrix] 要先寫 concerns：每個共同關切的逐人比較，軸只能從比較裡長出來"]
+    by_id, compared = {}, {}
+    for concern in concerns:
+        cid = concern.get("id")
+        by_id[cid] = concern
+        for ref in concern.get("grounded_in") or []:
+            if ref not in category_ids:
+                errors.append(f"[persona_matrix] 關切 {cid} 引用不存在的類別：{ref}")
+        for field in ("question", "outcome_note"):
+            if internal_id_patterns.contains_internal_id(str(concern.get(field) or "")):
+                errors.append(f"[persona_matrix] 關切 {cid} 的 {field} 寫了內部編號；用講得出是誰、說了什麼的方式寫")
+        compared[cid] = {}
+        for comparison in concern.get("comparisons") or []:
+            if not isinstance(comparison, dict):
+                continue
+            sid, refs = comparison.get("subject_id"), comparison.get("evidence_refs") or []
+            if sid not in subjects:
+                errors.append(f"[persona_matrix] 關切 {cid} 比較了不存在的受訪者：{sid}")
+                continue
+            if sid in compared[cid]:
+                errors.append(f"[persona_matrix] 關切 {cid} 把受訪者 {sid} 比較了兩次；一個人在一個關切裡只寫一筆")
+            compared[cid][sid] = set(refs)
+            foreign = [r for r in refs if r not in own[sid]]
+            if foreign:
+                errors.append(f"[persona_matrix] 關切 {cid} 裡 {sid} 的比較引用了不屬於他的證據：{'、'.join(foreign)}")
+            elif not carries_judgment(refs):
+                errors.append(f"[persona_matrix] 關切 {cid} 裡 {sid} 的比較只靠簡短附和或無法判斷的短答（{'、'.join(refs)}），"
+                              "撐不起他的判斷方式；有他自己說的話才寫比較")
+            if internal_id_patterns.contains_internal_id(str(comparison.get("judgment") or "")):
+                errors.append(f"[persona_matrix] 關切 {cid} 裡 {sid} 的判斷方式寫了內部編號；證據 id 只放 evidence_refs")
+        for finding in concern.get("unattributed_findings") or []:
+            claimed = [r for r in (finding or {}).get("evidence_refs") or [] if r in attributed]
+            if claimed:
+                errors.append(f"[persona_matrix] 關切 {cid} 的歸屬不明發現用了已歸屬到受訪者的證據：{'、'.join(claimed)}")
+    axes = [a for a in data.get("axes") or [] if isinstance(a, dict)]
+    axis_concern = {}
+    for axis in axes:
+        aid, refs_of_axis = axis.get("id"), axis_concern_refs(axis)
+        if not refs_of_axis:
+            errors.append(f"[persona_matrix] axis {aid} 要寫 concern_ref：它來自哪個共同關切")
+        good = True
+        for ref in refs_of_axis:
+            concern = by_id.get(ref)
+            if concern is None:
+                errors.append(f"[persona_matrix] axis {aid} 引用了不存在的關切：{ref}")
+                good = False
+            elif concern.get("outcome") != "axis":
+                errors.append(f"[persona_matrix] axis {aid} 來自關切 {ref}，但那個關切的結論不是成為維度"
+                              f"（是 {concern.get('outcome')}）；結論不是 axis 的關切不能長出軸")
+                good = False
+        if refs_of_axis and good:
+            axis_concern[aid] = refs_of_axis
+        if axis.get("difference_kind") not in AXIS_DIFFERENCE_KINDS:
+            errors.append(f"[persona_matrix] axis {aid} 要寫 difference_kind：across_situations 或 in_situation")
+        relevance = str(axis.get("purpose_relevance") or "").strip()
+        if not relevance:
+            errors.append(f"[persona_matrix] axis {aid} 要寫 purpose_relevance：這個差異和研究目的的關係")
+        elif internal_id_patterns.contains_internal_id(relevance):
+            errors.append(f"[persona_matrix] axis {aid} 的 purpose_relevance 寫了內部編號")
+    referenced = {ref for axis in axes for ref in axis_concern_refs(axis)}
+    for cid, concern in by_id.items():
+        if concern.get("outcome") == "axis" and cid not in referenced:
+            errors.append(f"[persona_matrix] 關切 {cid} 的結論是成為維度，卻沒有任何一條軸指向它")
+    for sid, subject in subjects.items():
+        for placement in subject.get("placements") or []:
+            if not isinstance(placement, dict) or placement.get("axis_id") not in axis_concern:
+                continue
+            aid = placement.get("axis_id")
+            # A cross-concern axis: the subject's comparisons in any of its concerns.
+            found = [compared[cid][sid] for cid in axis_concern[aid] if sid in compared.get(cid, {})]
+            comparison = set().union(*found) if found else None
+            position, refs = placement.get("position"), placement.get("evidence_refs") or []
+            if position == "no_data":
+                reason = placement.get("unplaced_reason")
+                if reason not in UNPLACED_REASONS:
+                    errors.append(f"[persona_matrix] subject {sid} 在 {aid} 沒有落點，要寫 unplaced_reason："
+                                  f"{'、'.join(UNPLACED_REASONS)}")
+                elif comparison is not None and reason == "insufficient_evidence":
+                    errors.append(f"[persona_matrix] subject {sid} 在 {aid} 的關切裡有比較，不是證據不足；"
+                                  "寫清楚是兩極表達不了、兩端都有，還是看情境")
+                elif comparison is None and reason != "insufficient_evidence":
+                    errors.append(f"[persona_matrix] subject {sid} 在 {aid} 的關切裡沒有比較，沒有落點的原因只能是證據不足；"
+                                  "如果他其實談過，先把他寫進比較")
+            elif position in ("near_low", "mid", "near_high"):
+                if comparison is None:
+                    errors.append(f"[persona_matrix] subject {sid} 在 {aid} 有落點，卻沒有出現在這條軸的關切比較裡；先比較再落點")
+                    continue
+                outside = [r for r in refs if r not in comparison]
+                if outside:
+                    errors.append(f"[persona_matrix] subject {sid} 在 {aid} 的落點證據不在他的比較裡：{'、'.join(outside)}")
+                elif refs and not carries_judgment(refs):
+                    errors.append(f"[persona_matrix] subject {sid} 在 {aid} 的落點只靠簡短附和或無法判斷的短答，不能撐起位置")
+    return errors
 
 
 def _persona_placement_errors(subject: dict, placements: list[dict]) -> list[str]:
@@ -5913,7 +6696,7 @@ def _persona_placement_errors(subject: dict, placements: list[dict]) -> list[str
 
 def persona_matrix(evidence: list, categories_doc: dict, opts: dict, selected_axes: list | None = None,
                     core_category: dict | None = None, hmw_scope: dict | None = None,
-                    attribution: dict | None = None) -> tuple:
+                    attribution: dict | None = None, research_purpose: str | None = None) -> tuple:
     """add-persona-matrix：把主軸編碼（axial-coding）產出的類別讀成一組區辨
     行為變項軸，並把每個可辨識的受訪者放到這些軸上。
 
@@ -5944,20 +6727,369 @@ def persona_matrix(evidence: list, categories_doc: dict, opts: dict, selected_ax
     """
     case_id = opts.get("case_id") or "unknown"
     category_ids = {c["id"] for c in (categories_doc.get("categories") or []) if isinstance(c, dict) and c.get("id")}
-    evidence_ids = {e["id"] for e in evidence if isinstance(e, dict) and e.get("id")}
+    evidence_by_id = {e["id"]: e for e in evidence if isinstance(e, dict) and e.get("id")}
+    evidence_ids = set(evidence_by_id)
     axes_with_ids = _assign_axis_ids(selected_axes) if selected_axes else None
     user = _persona_matrix_user_message(evidence, categories_doc, case_id, axes_with_ids, core_category,
-                                        hmw_scope=hmw_scope, attribution=attribution)
+                                        hmw_scope=hmw_scope, attribution=attribution,
+                                        research_purpose=research_purpose)
     # speaker-attribution-for-persona: with a source attribution file, a
     # respondent is one confirmed person backed by that person's evidence.
+    # persona-matrix-comparison-first: those persons are fixed by the system.
     from . import source_attribution
-    data, usage = _generate(
-        "persona_matrix", _system("persona_matrix"), user,
-        lambda d: _persona_matrix_errors(d, category_ids, evidence_ids, axes_with_ids, generation=True)
-        + source_attribution.persona_attribution_errors(d, evidence, attribution), opts,
-    )
+    participants = source_attribution.fixed_participants(evidence, attribution)
+
+    def _validate(d):
+        return (_fixed_participant_errors(d, participants)
+                + _persona_matrix_errors(d, category_ids, evidence_ids, axes_with_ids, generation=True,
+                                         evidence_by_id=evidence_by_id)
+                + source_attribution.persona_attribution_errors(d, evidence, attribution))
+
+    data, usage = _generate("persona_matrix", _system("persona_matrix"), user, _validate, opts)
+    _fixed_participant_errors(data, participants)
     data["case_id"] = case_id
     return data, usage
+
+
+def _fixed_participant_errors(data: object, participants: list[dict]) -> list[str]:
+    """persona-matrix-comparison-first: with confirmed persons, the subjects
+    are exactly those persons. Each subject's `evidence_refs` is set here from
+    the fixed list (the system owns who said what); an unknown or missing
+    respondent is an error. No confirmed persons: nothing is checked."""
+    if not participants or not isinstance(data, dict) or not isinstance(data.get("subjects"), list):
+        return []
+    fixed = {p["id"]: p["evidence_refs"] for p in participants}
+    errors, seen = [], []
+    for subject in data["subjects"]:
+        if not isinstance(subject, dict):
+            continue
+        sid = subject.get("id")
+        if sid not in fixed:
+            errors.append(f"[persona_matrix] subject {sid} 不在已確認的受訪者清單裡；受訪者由系統固定，不要新增或改編號")
+            continue
+        subject["evidence_refs"] = list(fixed[sid])
+        seen.append(sid)
+    duplicated = sorted({sid for sid in seen if seen.count(sid) > 1})
+    if duplicated:
+        errors.append(f"[persona_matrix] 受訪者重複出現：{'、'.join(duplicated)}")
+    missing = [sid for sid in fixed if sid not in seen]
+    if missing:
+        errors.append(f"[persona_matrix] 少了已確認的受訪者：{'、'.join(missing)}；每一位都要列出，沒有落點就寫 no_data")
+    return errors
+
+
+# --------------------------------------------------------------------------
+# persona-matrix-comparison-first: method B in two stages (2026-10-22 ruling)
+# --------------------------------------------------------------------------
+# Stage 1 compares the confirmed participants and stops; Stage 2 reads only
+# that comparison and decides which differences become axes. The system
+# keeps the participant roster and assembles persona_matrix.yaml.
+PERSONA_STAGE_MAX_RETRIES = 1  # one corrective retry; no patch-retry chains
+UNPLACED_INSUFFICIENT_RATIONALE = "這位受訪者在比較裡沒有談到這個關切。"
+
+
+def _persona_evidence_groups(evidence: list, attribution: dict | None) -> tuple[str, list[dict]]:
+    """Evidence grouped by source, each unit once, with its answer kind and
+    (under a confirmed attribution) its fixed participant."""
+    from . import source_attribution
+    attribution_block, unit_extra = source_attribution.generation_block(evidence, attribution)
+    sources: dict[str, list[dict]] = {}
+    for e in evidence:
+        if isinstance(e, dict):
+            sources.setdefault(str(e.get("source") or ""), []).append(
+                {**_answer_kind_unit(e, "id", "role", "text"), **unit_extra.get(e.get("id"), {})})
+    return attribution_block, [{"source": source, "units": units} for source, units in sources.items()]
+
+
+def _persona_comparison_user_message(evidence: list, categories_doc: dict, case_id: str,
+                                     attribution: dict | None) -> str:
+    """Stage 1 input: participants, evidence and coding categories only -- no
+    HMW, no research purpose, no earlier matrix, so nothing suggests poles."""
+    attribution_block, groups = _persona_evidence_groups(evidence, attribution)
+    categories = [{"id": c.get("id"), "label": c.get("label"), "evidence_refs": c.get("evidence_refs") or []}
+                  for c in categories_doc.get("categories") or [] if isinstance(c, dict)]
+    return (f"## 案例\ncase_id: {case_id}\n\n" + attribution_block
+            + "## 主軸編碼類別（只用來記 grounded_in，不是分類答案）\n```yaml\n" + _yaml_dump(categories) + "```\n\n"
+            + "## 證據單元（依 source 分組）\n```yaml\n" + _yaml_dump(groups) + "```")
+
+
+def _persona_stage1_errors(doc: object, participants: list[dict], evidence_by_id: dict,
+                           category_ids: set[str]) -> list[str]:
+    """Stage 1: comparisons name fixed participants and only their evidence;
+    every statement stands on evidence that can carry the person's judgment
+    (a brief agreement next to substantive words does not make its claim
+    stand); group findings use only unattributable evidence."""
+    errors = V.structural_errors(doc, V.load_schema("persona-comparison"))
+    if not isinstance(doc, dict):
+        return errors
+    own = {p["id"]: set(p["evidence_refs"]) for p in participants}
+    attributed = set().union(*own.values()) if own else set()
+    for concern in doc.get("concerns") or []:
+        if not isinstance(concern, dict):
+            continue
+        cid = concern.get("id")
+        for ref in concern.get("grounded_in") or []:
+            if ref not in category_ids:
+                errors.append(f"[persona_comparison] 關切 {cid} 引用不存在的類別：{ref}")
+        for field in ("question", "observed_differences"):
+            if internal_id_patterns.contains_internal_id(str(concern.get(field) or "")):
+                errors.append(f"[persona_comparison] 關切 {cid} 的 {field} 寫了內部編號")
+        seen = set()
+        for comparison in concern.get("comparisons") or []:
+            if not isinstance(comparison, dict):
+                continue
+            sid = comparison.get("subject_id")
+            if sid not in own:
+                errors.append(f"[persona_comparison] 關切 {cid} 比較了不在已確認名單上的受訪者：{sid}")
+                continue
+            if sid in seen:
+                errors.append(f"[persona_comparison] 關切 {cid} 把受訪者 {sid} 比較了兩次")
+            seen.add(sid)
+            for field in ("judgment", "reference_point", "condition", "limits"):
+                if internal_id_patterns.contains_internal_id(str(comparison.get(field) or "")):
+                    errors.append(f"[persona_comparison] 關切 {cid} 裡 {sid} 的 {field} 寫了內部編號")
+            for n, statement in enumerate(comparison.get("statements") or [], start=1):
+                if not isinstance(statement, dict):
+                    continue
+                refs = statement.get("evidence_refs") or []
+                foreign = [r for r in refs if r not in own[sid]]
+                if foreign:
+                    errors.append(f"[persona_comparison] 關切 {cid} 裡 {sid} 的第 {n} 句引用了不屬於他的證據：{'、'.join(foreign)}")
+                elif not any(answer_kind.classify(evidence_by_id[r]) in _JUDGMENT_ANSWER_KINDS
+                             for r in refs if r in evidence_by_id):
+                    errors.append(f"[persona_comparison] 關切 {cid} 裡 {sid} 的第 {n} 句「{statement.get('text')}」"
+                                  "只靠簡短附和或無法判斷的短答；這句不要寫，或換成他自己說的話")
+                if internal_id_patterns.contains_internal_id(str(statement.get("text") or "")):
+                    errors.append(f"[persona_comparison] 關切 {cid} 裡 {sid} 的第 {n} 句寫了內部編號")
+        for finding in concern.get("unattributed_findings") or []:
+            claimed = [r for r in (finding or {}).get("evidence_refs") or [] if r in attributed]
+            if claimed:
+                errors.append(f"[persona_comparison] 關切 {cid} 的歸屬不明發現用了已歸屬到受訪者的證據：{'、'.join(claimed)}")
+    # Nothing silently disappears: a category or a participant left out of
+    # every concern is listed with a reason.
+    concerns = [c for c in doc.get("concerns") or [] if isinstance(c, dict)]
+    used = {ref for c in concerns for ref in c.get("grounded_in") or []}
+    set_aside = {x.get("category_id") for x in doc.get("set_aside_categories") or [] if isinstance(x, dict)}
+    for cat in sorted(category_ids - used - set_aside):
+        errors.append(f"[persona_comparison] 類別 {cat} 沒有進入任何共同關切，要寫進 set_aside_categories 並說明原因")
+    compared = {x.get("subject_id") for c in concerns for x in c.get("comparisons") or [] if isinstance(x, dict)}
+    listed = {x.get("subject_id") for x in doc.get("uncompared_participants") or [] if isinstance(x, dict)}
+    for sid in [p["id"] for p in participants if p["id"] not in compared | listed]:
+        errors.append(f"[persona_comparison] 受訪者 {sid} 沒有出現在任何比較裡，要寫進 uncompared_participants 並說明原因")
+    for x in list(doc.get("set_aside_categories") or []) + list(doc.get("uncompared_participants") or []):
+        if isinstance(x, dict) and internal_id_patterns.contains_internal_id(str(x.get("reason") or "")):
+            errors.append("[persona_comparison] 擱置原因寫了內部編號；用講得出是誰、說了什麼的方式寫")
+    return errors
+
+
+def persona_comparison(evidence: list, categories_doc: dict, opts: dict, attribution: dict | None) -> tuple:
+    """Method B stage 1: the evidence-based comparison. Needs confirmed
+    participants; produces no axes, poles or placements."""
+    from . import source_attribution
+    participants = source_attribution.fixed_participants(evidence, attribution)
+    if not participants:
+        raise ValueError("還沒有確認的受訪者，無法比較；先確認各來源的受訪人數與講者。")
+    case_id = opts.get("case_id") or "unknown"
+    evidence_by_id = {e["id"]: e for e in evidence if isinstance(e, dict) and e.get("id")}
+    category_ids = {c["id"] for c in categories_doc.get("categories") or [] if isinstance(c, dict) and c.get("id")}
+    user = _persona_comparison_user_message(evidence, categories_doc, case_id, attribution)
+    data, usage = _generate("persona_comparison", _system("persona_comparison"), user,
+                            lambda d: _persona_stage1_errors(d, participants, evidence_by_id, category_ids),
+                            opts, max_retries=PERSONA_STAGE_MAX_RETRIES)
+    data["case_id"] = case_id
+    return data, usage
+
+
+def _comparison_evidence(comparison: dict) -> list[str]:
+    return list(dict.fromkeys(r for st in comparison.get("statements") or [] if isinstance(st, dict)
+                              for r in st.get("evidence_refs") or []))
+
+
+def _persona_synthesis_user_message(comparison_doc: dict, evidence_by_id: dict, case_id: str,
+                                    research_purpose: str | None, hmw_scope: dict | None,
+                                    researcher_limits: list[str] | None = None, context_block: str = "") -> str:
+    """Stage 2 input: the checked comparison with each statement's verbatim
+    evidence; the research purpose and HMW only for judging relevance."""
+    def unit(ref):
+        e = evidence_by_id.get(ref) or {}
+        return _answer_kind_unit(e, "id", "text") if e else {"id": ref}
+
+    concerns = []
+    for c in comparison_doc.get("concerns") or []:
+        concerns.append({
+            "id": c.get("id"), "question": c.get("question"),
+            **({"observed_differences": c["observed_differences"]} if c.get("observed_differences") else {}),
+            "comparisons": [{
+                "subject_id": x.get("subject_id"), "judgment": x.get("judgment"),
+                **{k: x[k] for k in ("reference_point", "condition", "limits") if x.get(k)},
+                "scope": x.get("scope"),
+                "statements": [{"text": st.get("text"), "evidence": [unit(r) for r in st.get("evidence_refs") or []]}
+                               for st in x.get("statements") or []],
+            } for x in c.get("comparisons") or []],
+            **({"unattributed_findings": c["unattributed_findings"]} if c.get("unattributed_findings") else {}),
+        })
+    purpose = (research_purpose or "").strip()
+    return (f"## 案例\ncase_id: {case_id}\n\n"
+            + (f"## 研究目的（只用來評估維度和研究的關係，不拿來決定兩極）\n{purpose}\n\n" if purpose else "")
+            + context_block
+            + _hmw_scope_section(hmw_scope)
+            + ("## 研究者檢查第一階段後定下的證據使用限制（必須遵守）\n"
+               + "".join(f"- {line}\n" for line in researcher_limits) + "\n" if researcher_limits else "")
+            + "## 第一階段的逐人比較（已檢查；只能使用這裡的比較與證據）\n```yaml\n" + _yaml_dump(concerns) + "```")
+
+
+def assemble_persona_matrix(comparison_doc: dict, synthesis: dict, participants: list[dict], case_id: str) -> dict:
+    """The system-built persona_matrix.yaml: Stage 1 concerns with Stage 2
+    decisions, Stage 2 axes, and every fixed participant on every axis -- a
+    participant the model gave no placement is marked as not having
+    discussed the concern."""
+    decisions = {d.get("concern_id"): d for d in synthesis.get("decisions") or [] if isinstance(d, dict)}
+    concerns = []
+    for c in comparison_doc.get("concerns") or []:
+        decision = decisions.get(c.get("id")) or {}
+        concerns.append({
+            "id": c.get("id"), "question": c.get("question"), "grounded_in": c.get("grounded_in"),
+            "comparisons": [{**{k: x[k] for k in ("subject_id", "judgment", "reference_point", "condition",
+                                                  "scope", "statements", "limits") if k in x},
+                             "evidence_refs": _comparison_evidence(x)} for x in c.get("comparisons") or []],
+            **({"unattributed_findings": c["unattributed_findings"]} if c.get("unattributed_findings") else {}),
+            **({"observed_differences": c["observed_differences"]} if c.get("observed_differences") else {}),
+            "outcome": decision.get("outcome"), "outcome_note": decision.get("outcome_note"),
+            **({"checks": decision["checks"]} if decision.get("checks") else {}),
+        })
+    grounded = {c.get("id"): c.get("grounded_in") for c in comparison_doc.get("concerns") or []}
+    axes = [{**a, "grounded_in": list(dict.fromkeys(cat for ref in axis_concern_refs(a) for cat in grounded.get(ref) or []))}
+            for a in synthesis.get("axes") or [] if isinstance(a, dict)]
+    given = {(p.get("subject_id"), p.get("axis_id")): p for p in synthesis.get("placements") or [] if isinstance(p, dict)}
+    subjects = []
+    for participant in participants:
+        placements = []
+        for axis in axes:
+            p = given.get((participant["id"], axis.get("id")))
+            placements.append({k: v for k, v in p.items() if k != "subject_id"} if p else
+                              {"axis_id": axis.get("id"), "position": "no_data",
+                               "unplaced_reason": "insufficient_evidence",
+                               "rationale": UNPLACED_INSUFFICIENT_RATIONALE})
+        subjects.append({"id": participant["id"], "evidence_refs": list(participant["evidence_refs"]),
+                         "placements": placements})
+    return {"schema_version": 1, "case_id": case_id, "concerns": concerns, "axes": axes, "subjects": subjects}
+
+
+def persona_purpose_assessment_errors(synthesis: object, purposes: list[str]) -> list[str]:
+    """purpose-aware-research-calibration (2026-10-23 ruling): each concern the
+    researcher names in the purposes is assessed once, quoted verbatim; one with
+    a comparable difference is named by at least one candidate axis's
+    purpose_relevance. No purpose, no assessment."""
+    if not isinstance(synthesis, dict):
+        return []
+    items = [i for i in synthesis.get("purpose_assessment") or [] if isinstance(i, dict)]
+    focuses = [i.get("focus") for i in items]
+    errors = V.purpose_focus_errors(focuses, purposes, "[persona_synthesis] purpose_assessment")
+    for focus in {f for f in focuses if focuses.count(f) > 1}:
+        errors.append(f"[persona_synthesis] purpose_assessment 對關注點「{focus}」寫了不只一筆")
+    axes = [a for a in synthesis.get("axes") or [] if isinstance(a, dict)]
+    for item in items:
+        focus = str(item.get("focus") or "")
+        if not focus:
+            continue
+        if item.get("has_comparable_difference"):
+            naming = [a for a in axes if focus in str(a.get("purpose_relevance") or "")]
+            if not naming:
+                errors.append(f"[persona_synthesis] 關注點「{focus}」有可比較的差異，至少一條候選軸的 "
+                              "purpose_relevance 要寫出它，並在 gaps 寫明支持強弱")
+            elif not any(str(a.get("gaps") or "").strip() for a in naming):
+                errors.append(f"[persona_synthesis] 關注點「{focus}」的候選軸要在 gaps 寫明每一端有幾個人支持")
+        elif not str(item.get("note") or "").strip():
+            errors.append(f"[persona_synthesis] 關注點「{focus}」沒有可比較的差異，note 要用一句話說為什麼")
+    return errors
+
+
+def _persona_synthesis_errors(synthesis: object, comparison_doc: dict, participants: list[dict],
+                              evidence_by_id: dict, category_ids: set[str], case_id: str) -> list[str]:
+    """Stage 2: one decision per compared concern, placements only for people
+    the comparison holds, and the assembled matrix passes the method B rules."""
+    errors = V.structural_errors(synthesis, V.load_schema("persona-dimension-synthesis"))
+    if not isinstance(synthesis, dict) or errors:
+        return errors
+    concern_ids = [c.get("id") for c in comparison_doc.get("concerns") or []]
+    decided = [d.get("concern_id") for d in synthesis.get("decisions") or []]
+    for cid in concern_ids:
+        if decided.count(cid) != 1:
+            errors.append(f"[persona_synthesis] 關切 {cid} 要恰好有一筆 decisions（目前 {decided.count(cid)} 筆）")
+    for cid in set(decided) - set(concern_ids):
+        errors.append(f"[persona_synthesis] decisions 寫了第一階段沒有的關切：{cid}")
+    for d in synthesis.get("decisions") or []:
+        prose = " ".join([str(d.get("outcome_note") or "")] + [str(v) for v in (d.get("checks") or {}).values()])
+        if internal_id_patterns.contains_internal_id(prose):
+            errors.append(f"[persona_synthesis] 關切 {d.get('concern_id')} 的決定說明寫了內部編號")
+    roster = {p["id"] for p in participants}
+    axis_ids = {a.get("id") for a in synthesis.get("axes") or []}
+    compared = {c.get("id"): {x.get("subject_id") for x in c.get("comparisons") or []}
+                for c in comparison_doc.get("concerns") or []}
+    concern_of = {a.get("id"): axis_concern_refs(a) for a in synthesis.get("axes") or []}
+    seen = set()
+    for p in synthesis.get("placements") or []:
+        key = (p.get("subject_id"), p.get("axis_id"))
+        if key[0] not in roster:
+            errors.append(f"[persona_synthesis] 落點寫了不在名冊上的受訪者：{key[0]}")
+        if key[1] not in axis_ids:
+            errors.append(f"[persona_synthesis] 落點寫了不存在的軸：{key[1]}")
+        if key in seen:
+            errors.append(f"[persona_synthesis] {key[0]} 在 {key[1]} 有兩筆落點")
+        seen.add(key)
+    for aid, cids in concern_of.items():
+        for sid in sorted(set().union(*(compared.get(cid, set()) for cid in cids)) if cids else set()):
+            if (sid, aid) not in seen:
+                errors.append(f"[persona_synthesis] {sid} 在這條軸的關切裡有比較，{aid} 上要有一筆落點"
+                              "（放不進兩端就寫 no_data 與原因）")
+    if errors:
+        return errors
+    if synthesis.get("axes"):
+        matrix = assemble_persona_matrix(comparison_doc, synthesis, participants, case_id)
+        errors += _persona_matrix_errors(matrix, category_ids, set(evidence_by_id), generation=True,
+                                         evidence_by_id=evidence_by_id)
+    return errors
+
+
+def persona_dimension_synthesis(evidence: list, comparison_doc: dict, categories_doc: dict, opts: dict,
+                                attribution: dict | None, research_purpose: str | None = None,
+                                hmw_scope: dict | None = None, researcher_limits: list[str] | None = None,
+                                context_block: str = "", purposes: list[str] | None = None) -> tuple:
+    """Method B stage 2: (synthesis, assembled matrix or None, usage). The
+    matrix is None when no concern became an axis. purpose-aware-research-calibration:
+    `context_block` frames priority; every concern named in `purposes` gets an assessment."""
+    from . import source_attribution
+    participants = source_attribution.fixed_participants(evidence, attribution)
+    if not participants:
+        raise ValueError("還沒有確認的受訪者，無法形成維度。")
+    case_id = opts.get("case_id") or "unknown"
+    evidence_by_id = {e["id"]: e for e in evidence if isinstance(e, dict) and e.get("id")}
+    category_ids = {c["id"] for c in categories_doc.get("categories") or [] if isinstance(c, dict) and c.get("id")}
+    user = _persona_synthesis_user_message(comparison_doc, evidence_by_id, case_id, research_purpose, hmw_scope,
+                                           researcher_limits, context_block)
+    synthesis, usage = _generate(
+        "persona_dimension_synthesis", _system("persona_dimension_synthesis"), user,
+        lambda d: _persona_synthesis_errors(d, comparison_doc, participants, evidence_by_id, category_ids, case_id)
+        + persona_purpose_assessment_errors(d, purposes or [])
+        + V.context_ids_never_in_evidence_refs(d, "persona_dimension_synthesis"),
+        opts, max_retries=PERSONA_STAGE_MAX_RETRIES)
+    matrix = assemble_persona_matrix(comparison_doc, synthesis, participants, case_id) if synthesis.get("axes") else None
+    return synthesis, matrix, usage
+
+
+def draft_persona_quadrant_names(run_dir, pairs: list[list[str]], opts: dict) -> tuple:
+    """persona-matrix-comparison-first: the AI's names for the four cells of
+    every requested axis pair, in one call. Returns (draft, usage, projections)."""
+    from . import persona_quadrant_names as Q
+    projections = [Q.input_projection(run_dir, pair) for pair in pairs]
+    if not projections or any(p is None for p in projections):
+        raise ValueError("找不到這些軸，無法替四格命名。")
+    user = ("## 每一組兩條軸與它們的四格（四格的成員由系統依落點算出；why 是成員在兩條軸上的落點理由）\n```yaml\n"
+            + _yaml_dump(projections) + "```")
+    draft, usage = _generate("persona_quadrant_names", _system("persona_quadrant_names"), user,
+                             lambda d: V.structural_errors(d, V.load_schema("persona-quadrant-names-draft"))
+                             + Q.drafts_errors(d, projections), opts, max_retries=PERSONA_STAGE_MAX_RETRIES)
+    return draft, usage, projections
 
 
 def _persona_content_axis_block(axis: dict, pole: object, categories_by_id: dict) -> dict:
@@ -6026,8 +7158,10 @@ def _persona_content_user_message(evidence: list, quadrant: dict, axes: list, su
         # (2026-10-01): every item carries its evidence id -- field provenance
         # and the representative quote must cite member ids, and without them
         # the model guessed sequential ids that belonged to other people.
+        # representative-quotes-standalone: the answer kind travels too, so a
+        # brief agreement is not chosen as the representative quote.
         texts = [
-            _evidence_unit(evidence_by_id[ref], "id", "text")
+            _answer_kind_unit(evidence_by_id[ref], "id", "text")
             for ref in subject.get("evidence_refs") or []
             if isinstance(evidence_by_id.get(ref), dict) and evidence_by_id[ref].get("text")
         ]
@@ -6126,7 +7260,8 @@ def _persona_content_errors(data: object, subject_ids: set[str],
                              designated_quadrant_id: str | None = None,
                              evidence_refs_by_subject: dict[str, set[str]] | None = None,
                              allow_researcher: bool = False,
-                             member_texts: dict[str, str] | None = None) -> list[str]:
+                             member_texts: dict[str, str] | None = None,
+                             evidence_by_id: dict | None = None) -> list[str]:
     """generate-persona-for-target-quadrant：跟 `_persona_matrix_errors` 一樣
     的純函式，檢查 schema 表達不了的事：每個 persona 的 `member_subject_ids`
     是不是真的在供給的 persona_matrix.yaml 受訪者清單裡；`representative_quote`
@@ -6170,6 +7305,11 @@ def _persona_content_errors(data: object, subject_ids: set[str],
                     )
     errors.extend(V.persona_field_provenance_errors(data, evidence_refs_by_subject,
                                                     allow_researcher=allow_researcher))
+    # representative-quotes-standalone: generation only -- a stored Persona
+    # being exported or confirmed is read without `evidence_by_id`.
+    if evidence_by_id is not None:
+        errors += [f"[persona_content] {detail}" for detail in V.representative_quote_not_standalone(
+            data, evidence_by_id=evidence_by_id, kind="persona")]
     # Generation only: the embodiment boundaries apply to what the model writes,
     # not to a stored Persona being exported or confirmed.
     if member_texts is not None:
@@ -6238,7 +7378,7 @@ def persona_content(evidence: list, quadrant: dict, axes: list, persona_matrix_d
     data, usage = _generate(
         "persona_content", _system("persona_content"), user,
         lambda d: _persona_content_errors(d, subject_ids, designated_quadrant_id, evidence_refs_by_subject,
-                                          member_texts=member_texts),
+                                          member_texts=member_texts, evidence_by_id=evidence_by_id),
         opts,
     )
     data["case_id"] = case_id
@@ -6444,7 +7584,7 @@ def _narrative_framing_section(selections) -> str:
 
 def _how_might_we_user_message(categories_doc: dict, category_properties_doc: dict, case_id: str,
                                 selections=None, selective_doc: dict | None = None, *,
-                                evidence: list | None = None) -> str:
+                                evidence: list | None = None, context_block: str = "") -> str:
     """HMW method v9 (multi-jtbd-single-job-source, 2026-10-03): the material
     for the three analytical functions -- observed behaviour (axial
     relationships + behaviour patterns), the user-need scope (the selected
@@ -6497,6 +7637,7 @@ def _how_might_we_user_message(categories_doc: dict, category_properties_doc: di
         f"## 案例\ncase_id: {case_id}\n\n"
         + _narrative_framing_section(selections)
         + related_block
+        + context_block
         + "## 各類別的主軸關係與行為模式（in_scope 標出選定顧客任務涵蓋的類別）\n```yaml\n" + _yaml_dump(blocks) + "```"
     )
 
@@ -6510,6 +7651,31 @@ HMW_RETIRED_DOCUMENT_FIELDS = ("final_questions", "final_questions_rationale")
 # canonical id prefixes are matched; natural-language method jargon is the
 # prompt's job, not a blacklist's.
 _RAW_INTERNAL_ID = re.compile(r"(?<![A-Za-z0-9])(?:CAT|JOB|E|HMW|STEP)-\d+")
+
+
+def hmw_purpose_errors(data: object, purposes: list[str]) -> list[str]:
+    """purpose-aware-research-calibration (HMW method v13, 2026-10-23 ruling):
+    each concern the researcher names in the purposes is assessed once, quoted
+    verbatim -- the framings that respond to it, or a reason the evidence cannot
+    frame it, never both. No purpose, no assessment."""
+    if not isinstance(data, dict):
+        return []
+    entry_ids = {e.get("id") for e in data.get("entries") or [] if isinstance(e, dict)}
+    items = [i for i in data.get("purpose_assessment") or [] if isinstance(i, dict)]
+    focuses = [i.get("focus") for i in items]
+    errors = V.purpose_focus_errors(focuses, purposes, "[how_might_we] purpose_assessment")
+    for focus in {f for f in focuses if focuses.count(f) > 1}:
+        errors.append(f"[how_might_we] purpose_assessment 對關注點「{focus}」寫了不只一筆")
+    for item in items:
+        focus = item.get("focus")
+        addressed = item.get("addressed_by") or []
+        reason = str(item.get("insufficient_evidence_reason") or "").strip()
+        if bool(addressed) == bool(reason):
+            errors.append(f"[how_might_we] 關注點「{focus}」要寫回應它的框法，或證據不足的原因，兩者只能一種")
+        for hmw_id in addressed:
+            if hmw_id not in entry_ids:
+                errors.append(f"[how_might_we] 關注點「{focus}」的 addressed_by 引用不存在的框法 {hmw_id}")
+    return errors
 
 
 def _selection_count(selections) -> int:
@@ -6615,7 +7781,8 @@ def _how_might_we_errors(data: object, category_ids: set[str], evidence_ids: set
 
 
 def how_might_we(categories_doc: dict, category_properties_doc: dict, evidence: list, opts: dict,
-                  selections=None, selective_doc: dict | None = None) -> tuple:
+                  selections=None, selective_doc: dict | None = None, context_block: str = "",
+                  purposes: list[str] | None = None) -> tuple:
     """HMW method v9 (multi-jtbd-single-job-source, 2026-10-03): the selected
     JTBDs, one or more, frame one design scope. The model reads observed
     behaviour (axial relationships, behaviour patterns), the need scope (the
@@ -6626,11 +7793,13 @@ def how_might_we(categories_doc: dict, category_properties_doc: dict, evidence: 
     category_ids = {c["id"] for c in (categories_doc.get("categories") or []) if isinstance(c, dict) and c.get("id")}
     evidence_ids = {e["id"] for e in evidence if isinstance(e, dict) and e.get("id")}
     user = _how_might_we_user_message(categories_doc, category_properties_doc, case_id, selections, selective_doc,
-                                       evidence=evidence)
+                                       evidence=evidence, context_block=context_block)
     data, usage = _generate(
         "how_might_we", _system("how_might_we"), user,
         lambda d: _how_might_we_errors(d, category_ids, evidence_ids, generation=True,
-                                       selection_count=_selection_count(selections)), opts,
+                                       selection_count=_selection_count(selections))
+        + hmw_purpose_errors(d, purposes or [])
+        + V.context_ids_never_in_evidence_refs(d, "how_might_we"), opts,
     )
     data["case_id"] = case_id
     return data, usage

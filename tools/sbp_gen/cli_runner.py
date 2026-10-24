@@ -57,7 +57,14 @@ def deadline(seconds: float) -> Iterator[None]:
 # (definition, members, representative quotes per theme) much larger. Selective
 # Coding and JTBD candidates read the same enlarged material. Stability only;
 # the speed work is separate (docs/operations/performance-debt.md).
-STAGE_MIN_TIMEOUT_SECONDS: dict[str, float] = {"persona_matrix": 1800.0, "align": 1200.0, "journey": 1200.0,
+# journey_core_problems (cjm-as-is-first-core-problems) reads the whole as-is
+# journey with its evidence, the same input size as `journey`.
+# persona-matrix-comparison-first: method B's two stages read the same
+# evidence volume as the single-call matrix.
+STAGE_MIN_TIMEOUT_SECONDS: dict[str, float] = {"persona_matrix": 1800.0, "persona_comparison": 1800.0,
+                                               "persona_dimension_synthesis": 1800.0,
+                                               "align": 1200.0, "journey": 1200.0,
+                                               "journey_core_problems": 1200.0,
                                                "structure": 1800.0, "axial_coding": 1200.0,
                                                "selective_themes": 1200.0, "narrative_job_candidates": 1200.0}
 DEFAULT_TIMEOUT_SECONDS = 600.0

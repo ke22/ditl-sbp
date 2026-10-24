@@ -35,9 +35,80 @@
       "items": {
         "$ref": "#/definitions/subject"
       }
+    },
+    "concerns": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/concern"},
+      "description": "persona-matrix-comparison-first（2026-10-22 研究者裁定，方法 B）：定軸之前先記下每個共同關切的逐人比較。新生成時由生成驗證要求；舊檔沒有這一欄照常可讀。"
     }
   },
   "definitions": {
+    "concern": {
+      "type": "object",
+      "required": ["id", "question", "grounded_in", "comparisons", "outcome", "outcome_note"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^CONCERN-[0-9]+$"},
+        "question": {"type": "string", "minLength": 1, "description": "共同關切，寫成一個問題，例如「用餐者怎麼判斷這一餐值不值得？」"},
+        "grounded_in": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^CAT-[0-9]+$"}},
+        "comparisons": {"type": "array", "items": {"$ref": "#/definitions/comparison"}, "description": "每位談到這個關切的確認受訪者最多一筆。"},
+        "unattributed_findings": {
+          "type": "array",
+          "description": "歸屬不明的群體證據裡看到的判斷方式：只用來發現，不能用來定位任何人。",
+          "items": {
+            "type": "object",
+            "required": ["judgment", "evidence_refs"],
+            "additionalProperties": false,
+            "properties": {
+              "judgment": {"type": "string", "minLength": 1},
+              "evidence_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^E-[0-9]+$"}}
+            }
+          }
+        },
+        "outcome": {"type": "string", "enum": ["axis", "coexisting_factors", "situational_only", "service_evaluation", "no_difference", "insufficient"]},
+        "outcome_note": {"type": "string", "minLength": 1, "description": "為什麼是這個結論；並存因素要寫出是哪幾個。"},
+        "observed_differences": {"type": "string", "minLength": 1, "description": "兩階段生成：第一階段比較之後看到的差異與看不出來的地方。"},
+        "checks": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "兩階段生成：第二階段形成或不形成維度之前的四項檢查。",
+          "properties": {
+            "measures": {"type": "string"},
+            "same_construct": {"type": "string"},
+            "coexistence": {"type": "string"},
+            "situation": {"type": "string"},
+            "counterexamples": {"type": "string"}
+          }
+        }
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "required": ["subject_id", "judgment", "scope", "evidence_refs"],
+      "additionalProperties": false,
+      "properties": {
+        "subject_id": {"type": "string", "pattern": "^P-[0-9]+$"},
+        "judgment": {"type": "string", "minLength": 1, "description": "這個人怎麼判斷：依據、參照點、怎麼取捨。"},
+        "condition": {"type": "string", "description": "選填：這個判斷成立的情境。"},
+        "reference_point": {"type": "string", "description": "選填：他拿什麼當參照（兩階段生成）。"},
+        "limits": {"type": "string", "description": "選填：這個人的資料看不出什麼（兩階段生成）。"},
+        "statements": {
+          "type": "array",
+          "description": "兩階段生成：逐句判斷，各自附證據。",
+          "items": {
+            "type": "object",
+            "required": ["text", "evidence_refs"],
+            "additionalProperties": false,
+            "properties": {
+              "text": {"type": "string", "minLength": 1},
+              "evidence_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^E-[0-9]+$"}}
+            }
+          }
+        },
+        "scope": {"type": "string", "enum": ["across_situations", "in_situation", "unclear"]},
+        "evidence_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^E-[0-9]+$"}}
+      }
+    },
     "axis": {
       "type": "object",
       "required": ["id", "label", "pole_low", "pole_high", "discriminating_basis", "grounded_in"],
@@ -70,6 +141,15 @@
           "minLength": 1,
           "description": "為什麼這是一條能區辨受訪者的軸，不是複述類別定義。"
         },
+        "concern_ref": {"type": "string", "pattern": "^CONCERN-[0-9]+$", "description": "persona-matrix-comparison-first：這條軸來自哪個共同關切。"},
+        "difference_kind": {"type": "string", "enum": ["across_situations", "in_situation"], "description": "across_situations＝跨情境觀察到的差異；in_situation＝只在特定情境觀察到，是候選，不能當成穩定的個人特質。"},
+        "purpose_relevance": {"type": "string", "minLength": 1, "description": "這個差異和研究目的的關係。"},
+        "axis_type": {"type": "string", "enum": ["judgment_or_behavior", "need", "experience_condition", "situational_mode", "dominant_orientation"], "description": "兩階段生成：使用者特徵、情境性決策方式或主導取向。"},
+        "concern_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^CONCERN-[0-9]+$"}, "description": "兩階段生成：這條軸綜合了哪些共同關切。"},
+        "gaps": {"type": "string", "minLength": 1, "description": "兩階段生成：反例、混合的人與證據缺口。"},
+        "overlap_note": {"type": "string", "minLength": 1, "description": "兩階段生成：和其他候選軸是否重複。"},
+        "measures_note": {"type": "string", "minLength": 1, "description": "兩階段生成：為什麼這條軸描述的是使用者，不是服務的表現。"},
+        "design_implication": {"type": "string", "minLength": 1, "description": "兩階段生成：兩端的人需要什麼不同的服務支持。"},
         "grounded_in": {
           "type": "array",
           "minItems": 1,
@@ -129,6 +209,7 @@
           "items": {"type": "string", "pattern": "^E-[0-9]+$"},
           "description": "persona-segmentation-reasoning-contract（2026-10-01）：撐住這個真實落點的證據 id，只能是這個受訪者自己的證據；no_data 不列。新生成時真實落點必填（由生成驗證檢查），舊檔沒有這一欄照舊可讀。落點理由是給研究者讀的文字，證據 id 只放在這裡。"
         },
+        "unplaced_reason": {"type": "string", "enum": ["insufficient_evidence", "poles_do_not_fit", "mixed", "situation_dependent"], "description": "persona-matrix-comparison-first：no_data 的原因——證據不足／兩極表達不了他的判斷／兩端都有／看情境。新生成時必填；舊檔沒有這一欄照常可讀。"},
         "rationale": {
           "type": "string",
           "minLength": 1,

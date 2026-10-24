@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0 — Purposes, core problems on the journey, two example projects (2026-10-24)
+
+- 建立專案 asks for two optional purposes, 專案目的 and 研究目的. When written, they frame selective coding, the Persona Matrix, HMW and the core problems; a theme the participants barely mention is reported as such, not promoted. Left blank, each step uses the service-design default.
+- Upload asks for interview transcripts only; there is no per-file type menu.
+- 顧客旅程地圖（CJM）: the journey is built from every participant's evidence, then core problems are drafted for the chosen Persona. Each core problem is a short title shown as a band across the steps it affects; click a band to adopt it, and its steps are included. Every step gets a pre-judged emotion that you can drag or set back to unknown; steps where participants felt differently are marked.
+- 服務藍圖（SBP）: developed Solutions start unadopted, so you choose which to carry forward. External references lead with a one-sentence summary in Traditional Chinese, link to their source, and say plainly when no web search was available. With Claude Code, research requests search the web.
+- 資料與編碼: every open code is listed, grouped by source; the axial-coding drawer leads with the category's scope and a condition → action → consequence flow. Representative quotes are participant sentences that read on their own, cited by role and source code.
+- Persona: matrix cells carry AI-drafted names you can rewrite, and the Persona takes its cell's name. Respondents are labelled P-1, P-2, ….
+- 輸出: each confirmed deliverable can be exported without waiting for the service blueprint.
+- Fixed: a newly created project reopens after a page reload; a failed blueprint build stays visible with what happened, what was kept and what to do; a coding failure is explained by step; customer cards on the blueprint show the whole step instead of cutting it at 16 characters; a relation line in one column goes round the cards between its ends; adopting a Solution right after developing it no longer asks you to reconfirm it.
+- Open coding retries send only the segments being repaired, so a retry is smaller and faster.
+- New examples: two finished projects are available as separate downloads, `ditl-sbp-muji-demo-0.3.0.zip` (Café&Meal MUJI, 15 interviews) and `ditl-sbp-henglong-demo-0.3.0.zip` (恆隆行 filter recycling, focus group). Both were run from a blank project with this version; the choices at each step follow a fixed demo rule (see the release notes) and can be changed in the workbench.
+
 ## 0.2.1 — Fixes and MUJI example (2026-10-21)
 
 - Fixed: transcripts that use `---` as a divider (common in Markdown) were cut apart when the files were read, so most evidence lost its file name and was attributed to 「原始資料」; 語意分段 then stopped with 「這些證據的來源不在上傳的逐字稿裡」. Files are now joined with a boundary that transcripts cannot contain. Projects whose files contain no `---` are unaffected and keep their evidence; projects whose files do should start a new coding run, since their earlier evidence attribution was unreliable.

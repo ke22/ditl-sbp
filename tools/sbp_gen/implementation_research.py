@@ -527,6 +527,7 @@ def accepted_references(run_dir: str | Path, *, job_active: bool = False) -> lis
         references.append({
             "id": f"XR-{len(references) + 1}",
             "text": claim.get("text"),
+            **({"summary": claim["summary"]} if claim.get("summary") else {}),
             "applicability_context": claim.get("applicability_context"),
             "uncertainty": claim.get("uncertainty"),
             "supports": [_source_view(catalog, l) for l in links if l.get("relationship") == "supports"],

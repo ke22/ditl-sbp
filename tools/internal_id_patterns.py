@@ -41,7 +41,7 @@ import re
 
 # Schema-derived (see test_internal_id_patterns.py) -- 3+ letter prefixes.
 MULTICHAR_ID_PREFIXES: tuple[str, ...] = (
-    "AXIS", "CAT", "HMW", "JOB", "JTBD", "PERSONA", "PROP", "QUADRANT", "SEG", "SRC", "STEP",
+    "AXIS", "CAT", "CONCERN", "HMW", "ISS", "JOB", "JTBD", "PERSONA", "PROP", "QUADRANT", "SEG", "SRC", "STEP",
 )
 
 # One prefix's alternation could be a substring of another's (there is no

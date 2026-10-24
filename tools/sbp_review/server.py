@@ -112,6 +112,7 @@ from internal_id_patterns import ID_PATTERN, readable_without_ids  # noqa: E402
 import validate_sbp as V  # noqa: E402
 from sbp_gen import ingest as sbp_ingest  # noqa: E402
 from sbp_gen import source_attribution as sbp_source_attribution  # noqa: E402
+from sbp_gen import journey_core_problems as sbp_core_problems  # noqa: E402
 from sbp_gen import coding_deliverable as sbp_coding_deliverable  # noqa: E402
 from sbp_gen import as_is_research as sbp_as_is_research  # noqa: E402
 from sbp_gen import decisions as sbp_decisions  # noqa: E402
@@ -129,9 +130,11 @@ from sbp_gen import llm as sbp_llm  # noqa: E402
 from sbp_gen import openai_llm as sbp_openai_llm  # noqa: E402
 from sbp_gen import researcher_edits as sbp_researcher_edits  # noqa: E402
 from sbp_gen import chart_guides as sbp_chart_guides  # noqa: E402
+from sbp_gen import persona_quadrant_names as sbp_quadrant_names  # noqa: E402
 from sbp_gen import sbp_basis  # noqa: E402
 from sbp_gen import implementation_research as sbp_implementation_research  # noqa: E402
 from sbp_gen import selective_themes as sbp_selective  # noqa: E402
+from sbp_gen import project_context as sbp_project_context  # noqa: E402
 from sbp_gen import stages as sbp_stages  # noqa: E402
 from sbp_gen import to_be as sbp_to_be  # noqa: E402
 from sbp_gen import validation as sbp_validation  # noqa: E402
@@ -932,8 +935,10 @@ PERSONA_CONTENT_GENERATION_OPERATION_KIND = "persona_content_generation"
 HMW_FORMATION_OPERATION_KIND = "hmw_formation"
 JOURNEY_GENERATION_OPERATION_KIND = "journey_generation"
 JOURNEY_SOLUTIONS_OPERATION_KIND = "journey_solutions"
+JOURNEY_CORE_PROBLEMS_OPERATION_KIND = "journey_core_problems"
 AS_IS_BLUEPRINT_OPERATION_KIND = "as_is_blueprint_generation"
 CHART_GUIDE_OPERATION_KIND = "chart_guide_drafting"
+PERSONA_QUADRANT_NAMES_OPERATION_KIND = "persona_quadrant_naming"
 SELECTIVE_THEMES_OPERATION_KIND = "selective_themes_generation"
 JTBD_CANDIDATES_OPERATION_KIND = "jtbd_candidates_generation"
 IMPLEMENTATION_RESEARCH_OPERATION_KIND = "implementation_research"
@@ -997,8 +1002,10 @@ JOB_KIND_ACTIVE_PHRASES = {
     HMW_FORMATION_OPERATION_KIND: "HMW 形成",
     JOURNEY_GENERATION_OPERATION_KIND: "顧客旅程建立",
     JOURNEY_SOLUTIONS_OPERATION_KIND: "解方發展",
+    JOURNEY_CORE_PROBLEMS_OPERATION_KIND: "核心問題起草",
     AS_IS_BLUEPRINT_OPERATION_KIND: "服務藍圖產生",
     CHART_GUIDE_OPERATION_KIND: "導讀起草",
+    PERSONA_QUADRANT_NAMES_OPERATION_KIND: "四格命名起草",
     SELECTIVE_THEMES_OPERATION_KIND: "選擇編碼形成",
     JTBD_CANDIDATES_OPERATION_KIND: "顧客任務候選形成",
     "to_be_generation": "改善方案形成",
@@ -2345,6 +2352,7 @@ def _cancel_running_job() -> dict:
 _UNLOCKED_JOB_KINDS = frozenset({
     sbp_to_be.OPERATION_KIND, sbp_as_is_research.OPERATION_KIND,
     CHART_GUIDE_OPERATION_KIND, IMPLEMENTATION_RESEARCH_OPERATION_KIND,
+    PERSONA_QUADRANT_NAMES_OPERATION_KIND,
 })
 JOB_START_BUSY_MESSAGE = "目前無法開始。此專案仍有其他工作正在執行，可能是先前未結束的背景分析。請稍後再試。"
 
@@ -2918,6 +2926,25 @@ def _save_upload(intake_name: str, files: list[tuple[str, bytes]]) -> dict:
     return {"intake_id": intake_id, "raw_dir": str(raw_dir.relative_to(_active_data_root())), "files": saved}
 
 
+def _record_upload_kinds(case_folder: Path, saved_files: list[str], raw_kinds: object) -> dict:
+    """purpose-aware-research-calibration: each uploaded file's kind, sent as a
+    JSON list in upload order. Missing or unknown kinds are interview
+    transcripts. Non-evidence kinds become business inputs awaiting a summary;
+    they never reach evidence extraction."""
+    try:
+        requested = json.loads(raw_kinds) if isinstance(raw_kinds, str) and raw_kinds.strip() else []
+    except json.JSONDecodeError:
+        requested = []
+    requested = requested if isinstance(requested, list) else []
+    kinds = sbp_ingest.load_source_kinds(case_folder)
+    for index, saved in enumerate(saved_files):
+        kind = str(requested[index]) if index < len(requested) else sbp_ingest.DEFAULT_KIND
+        kinds[Path(saved).name] = kind if kind in sbp_ingest.SOURCE_KINDS else sbp_ingest.DEFAULT_KIND
+    sbp_ingest.write_source_kinds(case_folder, kinds)
+    sbp_project_context.register_business_inputs(case_folder)
+    return kinds
+
+
 def _write_intake_case(saved: dict, *, label: str) -> str:
     # 只寫名稱與歷程佔位欄位：服務情境、顧客、提供者、改善目標都不再由站①提供，
     # 也不用任何通用值代替（決定六增補；first-project-intake 規格）。
@@ -3140,6 +3167,47 @@ def _discover_runs() -> list[dict]:
 
 
 
+def _persona_concerns_view(matrix: dict, records: list, identity: dict) -> list[dict]:
+    """persona-matrix-comparison-first: each shared concern's per-person
+    comparison, for the station's 比較依據 drawer. Subjects appear by their
+    speaker label, evidence as verbatim excerpts with the interviewer question;
+    an older matrix without concerns gives an empty list."""
+    by_id = {r.get("id"): r for r in records if isinstance(r, dict)}
+
+    def excerpts(refs):
+        return [{"id": ref, "text": by_id[ref].get("text", ""), "role": by_id[ref].get("role", ""),
+                 "locator": by_id[ref].get("locator", ""), "source": by_id[ref].get("source", ""),
+                 "question": by_id[ref].get("question_context", "")} for ref in refs or [] if ref in by_id]
+
+    axis_ids = {}
+    for axis in matrix.get("axes") or []:
+        for ref in sbp_stages.axis_concern_refs(axis):
+            axis_ids.setdefault(ref, []).append(axis.get("id"))
+    out = []
+    for concern in matrix.get("concerns") or []:
+        if not isinstance(concern, dict):
+            continue
+        out.append({
+            "id": concern.get("id"),
+            "question": readable_without_ids(str(concern.get("question") or "")),
+            "outcome": concern.get("outcome"),
+            "outcome_note": readable_without_ids(str(concern.get("outcome_note") or "")),
+            "axis_ids": axis_ids.get(concern.get("id"), []),
+            "comparisons": [{
+                "subject": c.get("subject_id"),
+                "short": _short_speaker_label((identity.get(c.get("subject_id")) or {}).get("role") or ""),
+                "judgment": readable_without_ids(str(c.get("judgment") or "")),
+                "condition": readable_without_ids(str(c.get("condition") or "")),
+                "scope": c.get("scope"),
+                "evidence": excerpts(c.get("evidence_refs")),
+            } for c in concern.get("comparisons") or [] if isinstance(c, dict)],
+            "findings": [{"judgment": readable_without_ids(str(f.get("judgment") or "")),
+                          "evidence": excerpts(f.get("evidence_refs"))}
+                         for f in concern.get("unattributed_findings") or [] if isinstance(f, dict)],
+        })
+    return out
+
+
 def _persona_matrix_projection(run_name: str) -> tuple[dict, int]:
     """把矩陣攤成畫得出來的形狀：軸、受訪者、每個人在每條軸上的落點。
 
@@ -3159,6 +3227,14 @@ def _persona_matrix_projection(run_name: str) -> tuple[dict, int]:
         "pole_low": a.get("pole_low"), "pole_high": a.get("pole_high"),
         # persona-axis-representation: older axes carry none and read as continuum.
         "representation": a.get("representation") if a.get("representation") in ("continuum", "contrast") else "continuum",
+        # persona-matrix-comparison-first: why the axis exists (absent on older matrices).
+        **({"concern_ids": sbp_stages.axis_concern_refs(a), "difference_kind": a.get("difference_kind"),
+            "gaps": readable_without_ids(str(a.get("gaps") or "")),
+            "purpose_relevance": readable_without_ids(str(a.get("purpose_relevance") or "")),
+            "axis_type": a.get("axis_type"),
+            "design_implication": readable_without_ids(str(a.get("design_implication") or "")),
+            "discriminating_basis": readable_without_ids(str(a.get("discriminating_basis") or ""))}
+           if sbp_stages.axis_concern_refs(a) else {}),
     } for a in matrix.get("axes") or []]
     subjects = []
     for s in matrix.get("subjects") or []:
@@ -3174,7 +3250,10 @@ def _persona_matrix_projection(run_name: str) -> tuple[dict, int]:
             # their ids; the researcher sees readable text.
             "rationales": {pl.get("axis_id"): readable_without_ids(str(pl.get("rationale") or ""))
                            for pl in s.get("placements") or []},
+            "unplaced_reasons": {pl.get("axis_id"): pl.get("unplaced_reason") for pl in s.get("placements") or []
+                                 if pl.get("position") == "no_data" and pl.get("unplaced_reason")},
         })
+    concerns = _persona_concerns_view(matrix, records, identity)
     # New targets are confirmed from the matrix itself. Older runs can still
     # carry AI-written quadrant portraits, but they are not a prerequisite.
     confirmed = None
@@ -3235,14 +3314,33 @@ def _persona_matrix_projection(run_name: str) -> tuple[dict, int]:
     # against the HMW selected now; the segmentation is not re-framed.
     if framing == "stale" and _persona_hmw_retained(run_dir):
         framing = "retained"
-    return {"status": "ready", "axes": axes, "subjects": subjects, "confirmed": confirmed,
+    return {"status": "ready", "axes": axes, "subjects": subjects, "confirmed": confirmed, "concerns": concerns,
+            "quadrant_names": sbp_quadrant_names.view(run_dir),
             "confirmed_axis_ids": confirmed_axis_ids,
             "default_axis_ids": default_axis_ids,
-            "default_basis": (pair or {}).get("basis") if default_axis_ids else None,
+            "default_basis": readable_without_ids(str((pair or {}).get("basis") or "")) if default_axis_ids else None,
+            # purpose-aware-research-calibration: which concerns named in the
+            # purposes each axis relates to (quoted from the purposes), and the
+            # concerns the comparison shows no difference on.
+            "purpose_focus": {b.get("axis_id"): [str(f) for f in b.get("purpose_focus") or []]
+                              for b in (briefs or {}).get("briefs") or [] if isinstance(b, dict) and b.get("purpose_focus")}
+                             if isinstance(briefs, dict) else {},
+            "purpose_no_difference": _persona_purpose_no_difference(run_dir),
             "hmw_framing": {"state": framing},
             # speaker-attribution-for-persona: read-only quality summary; never changes the matrix.
             "attribution": sbp_source_attribution.attribution_report(
                 matrix, records, sbp_source_attribution.load(run_dir))}, 200
+
+
+def _persona_purpose_no_difference(run_dir: Path) -> list[dict]:
+    """purpose-aware-research-calibration: the concerns named in the purposes
+    that Persona dimension synthesis found no comparable difference on, with
+    its one-sentence note. Empty without a synthesis document."""
+    path = run_dir / "persona_dimension_synthesis.yaml"
+    doc = _load(path) if path.is_file() else None
+    return [{"focus": str(i.get("focus")), "note": readable_without_ids(str(i.get("note") or ""))}
+            for i in (doc or {}).get("purpose_assessment") or []
+            if isinstance(i, dict) and i.get("focus") and i.get("has_comparable_difference") is False]
 
 
 EXECUTOR_LABELS = {"codex": "Codex", "claude": "Claude Code"}
@@ -7446,6 +7544,65 @@ def _retain_journey_against_persona(run_dir: Path) -> dict:
     return {"journey_current": _journey_persona_current(run_dir)}
 
 
+def _journey_is_as_is(run_dir: Path) -> bool:
+    """True for a CJM built by the as-is method (`generation_basis`)."""
+    path = run_dir / "journey_proposal.yaml"
+    if not path.is_file():
+        path = run_dir / "journey.yaml"
+    return sbp_core_problems.is_as_is_journey(_load(path) if path.is_file() else None)
+
+
+def _journey_core_problems_view(run_dir: Path, proposal: dict) -> dict | None:
+    """cjm-as-is-first-core-problems: the core problem layer of an as-is CJM --
+    per-step Persona relevance and candidates with their cited source text,
+    and whether an upstream change asks the researcher to recheck them.
+    None for a CJM built by the earlier method."""
+    if not sbp_core_problems.is_as_is_journey(proposal):
+        return None
+    doc = sbp_core_problems.load(run_dir) or {}
+    freshness = sbp_core_problems.freshness(run_dir, proposal, _persona_lens_digest(run_dir))
+    state = _load(run_dir / "run.json") if (run_dir / "run.json").is_file() else {}
+    evidence_by_id = _evidence_lookup(run_dir)
+    steps = {}
+    for entry in doc.get("steps") or []:
+        if not isinstance(entry, dict) or not entry.get("step_id"):
+            continue
+        item = {"relevance": entry.get("persona_relevance"), "relevance_note": entry.get("relevance_note") or ""}
+        candidate = entry.get("candidate")
+        if isinstance(candidate, dict):
+            item["candidate"] = {
+                "id": candidate.get("id"), "problem": candidate.get("problem") or "",
+                "inferred": candidate.get("inferred") is True, "group_evidence": candidate.get("group_evidence") is True,
+                "hmw_relation": candidate.get("hmw_relation"), "hmw_note": candidate.get("hmw_note") or "",
+                "evidence": _journey_step_evidence_views([candidate], evidence_by_id)[0]["evidence"],
+            }
+        steps[entry["step_id"]] = item
+    # source-attribution-integrity: relevance judged from unconfirmed identities, or from
+    # one person standing for the whole target group, is provisional.
+    persona, _ = sbp_core_problems.confirmed_persona(run_dir)
+    single_member = isinstance(persona, dict) and len(persona.get("member_subject_ids") or []) == 1
+    # cjm-core-problem-synthesis: v2 holds journey-level candidates; a v1 file keeps its
+    # per-step candidates above and is never promoted.
+    candidates = [{
+        "id": p.get("id"), "problem": p.get("problem") or "", "title": p.get("title") or "",
+        "step_ids": list(p.get("step_ids") or []),
+        "basis": list(p.get("basis") or []), "why_core": p.get("why_core") or "", "jtbd_note": p.get("jtbd_note") or "",
+        "research_prompted": p.get("research_prompted") is True, "inferred": p.get("inferred") is True,
+        "group_evidence": p.get("group_evidence") is True, "hmw_relation": p.get("hmw_relation"),
+        "hmw_note": p.get("hmw_note") or "",
+        "evidence_elicitation": dict(p.get("evidence_elicitation") or {}),
+        "evidence": _journey_step_evidence_views([p], evidence_by_id)[0]["evidence"]}
+        for p in doc.get("core_problems") or [] if isinstance(p, dict)]
+    return {"state": freshness["state"], "changed": freshness["changed"], "steps": steps,
+            "version": doc.get("schema_version") or 1, "candidates": candidates,
+            "hmw_scope_note": doc.get("hmw_scope_note") or "",
+            "group_evidence_limited": doc.get("group_evidence_limited") is True,
+            "relevance_provisional": doc.get("group_evidence_limited") is True or single_member,
+            "job": (state or {}).get("journey_core_problems_state"),
+            "failure": (state or {}).get("journey_core_problems_failure") if (state or {}).get(
+                "journey_core_problems_state") == "failed" else None}
+
+
 def _journey_persona_current(run_dir: Path) -> bool:
     """Persona is the CJM's analytical lens (2026-09-30 ruling): a new-workflow
     CJM stays current only while the confirmed Persona it was built from is still
@@ -7454,6 +7611,11 @@ def _journey_persona_current(run_dir: Path) -> bool:
     regenerated. Legacy (pre-Solution) Journeys never recorded a lens and keep
     their historical behavior -- a bounded, explicit compatibility exemption."""
     if not _journey_uses_solution_selection(run_dir):
+        return True
+    # cjm-as-is-first-core-problems (2026-10-21): an as-is journey read no Persona,
+    # so a Persona change cannot make it stale; only its core problem candidates
+    # are marked for recheck (_journey_core_problems_view).
+    if _journey_is_as_is(run_dir):
         return True
     try:
         state = json.loads((run_dir / "run.json").read_text(encoding="utf-8")) if (run_dir / "run.json").is_file() else {}
@@ -7505,6 +7667,22 @@ def _journey_candidate_evidence_ids(run_dir: Path) -> set[str]:
     return {item.get("id") for item in evidence or [] if isinstance(item, dict) and item.get("id")}
 
 
+def _include_moment(step: dict, on: bool) -> None:
+    step["develop_solution"] = on
+    # solutions-start-unadopted (2026-10-23 ruling): checking does not adopt; the researcher
+    # adopts at the SBP station. Unchecking clears the adoption and keeps the Solution readable.
+    if not on:
+        step["selected_solution_ids"] = []
+
+
+def _adopted_without_included_step(proposal: dict) -> bool:
+    if not proposal.get("core_problems"):
+        return False
+    steps = [st for sc in proposal.get("scenarios") or [] if isinstance(sc, dict)
+             for st in sc.get("steps") or [] if isinstance(st, dict) and "develop_solution" in st]
+    return bool(steps) and not any(st.get("develop_solution") for st in steps)
+
+
 @_owns_project_lock(_run_dir_argument)
 def _confirm_journey_candidate(run_dir: Path, journey_digest: object) -> dict:
     if not _journey_is_candidate_path(run_dir):
@@ -7515,6 +7693,8 @@ def _confirm_journey_candidate(run_dir: Path, journey_digest: object) -> dict:
     reason = _journey_prerequisite_reason(run_dir)
     if reason:
         raise JourneyCandidateRejected(reason)
+    if _adopted_without_included_step(proposal):
+        raise JourneyCandidateRejected("沒有確認：已採用核心問題，但還沒有任何步驟納入這次要解決。勾選要處理的步驟後再確認。")
     confirmed = copy.deepcopy(proposal)
     for scenario in confirmed.get("scenarios") or []:
         if isinstance(scenario, dict):
@@ -7549,7 +7729,9 @@ JOURNEY_CANDIDATE_EDIT_KINDS = {"step_label", "stage_label", "action", "solution
                                 # ←→ / 刪除 on a step, and 步驟之間可插入.
                                 "move_step", "delete_step", "insert_step",
                                 # sbp-solution-adoption-and-core-problem: the researcher rewrites the core problem.
-                                "core_problem"}
+                                "core_problem",
+                                # cjm-core-problem-synthesis: journey-level core problems, stored once.
+                                "core_problem_adopt", "core_problem_unadopt", "core_problem_text"}
 
 
 @_owns_project_lock(_run_dir_argument)
@@ -7600,6 +7782,9 @@ def _edit_journey_candidate(run_dir: Path, payload: dict) -> dict:
         elif kind == "delete_step":
             if len(steps) <= 1:
                 raise JourneyCandidateRejected("旅程至少要留一個步驟。")
+            if any(isinstance(r, dict) and payload.get("step_id") in (r.get("step_ids") or [])
+                   for r in proposal.get("core_problems") or []):
+                raise JourneyCandidateRejected("這一步連到已採用的核心問題；請先取消採用那個核心問題，再刪除這一步。")
             steps.pop(index)
         else:
             if not value:
@@ -7623,6 +7808,56 @@ def _edit_journey_candidate(run_dir: Path, payload: dict) -> dict:
         used = {s.get("stage_id") for s in steps if isinstance(s, dict)}
         if scenario.get("stages"):
             scenario["stages"] = [stage for stage in scenario["stages"] if stage.get("id") in used]
+    elif kind in ("core_problem_adopt", "core_problem_unadopt", "core_problem_text"):
+        # cjm-core-problem-synthesis (2026-10-22 researcher ruling): an adopted core problem
+        # is one journey-level record linked to its steps; no step receives a copy, and
+        # step pain points and evidence stay as they are.
+        if not sbp_core_problems.is_as_is_journey(proposal):
+            raise JourneyCandidateRejected("這份顧客旅程是舊方法建立的，沒有旅程層級的核心問題。")
+        records = proposal.setdefault("core_problems", [])
+        wanted = payload.get("id") if kind != "core_problem_adopt" else payload.get("candidate_id")
+        if kind == "core_problem_adopt":
+            candidate = sbp_core_problems.candidate(run_dir, wanted) if isinstance(wanted, str) else None
+            if candidate is None or "step_ids" not in candidate:
+                raise JourneyCandidateRejected("這個核心問題候選已經不在了，請重新載入。")
+            if any(r.get("candidate_id") == wanted for r in records if isinstance(r, dict)):
+                raise JourneyCandidateRejected("這個核心問題已經採用過了。")
+            live = {st.get("id") for st in scenario.get("steps") or [] if isinstance(st, dict)}
+            linked = [sid for sid in candidate.get("step_ids") or [] if sid in live]
+            if not linked:
+                raise JourneyCandidateRejected("這個候選連到的步驟都已經不在了，請重新起草核心問題。")
+            records.append({"id": wanted, **{k: candidate[k] for k in ("problem", "title", "evidence_refs", "basis", "why_core",
+                                                                       "jtbd_note", "inferred", "research_prompted",
+                                                                       "evidence_elicitation")
+                                               if k in candidate},
+                            "step_ids": linked, "candidate_id": wanted, "source": "adopted"})
+            # adopt-core-problem-includes-steps (2026-10-23): adopting chooses this round's scope,
+            # so the linked steps are included as if checked; unadopting leaves inclusion alone.
+            for st in scenario.get("steps") or []:
+                if isinstance(st, dict) and st.get("id") in linked and st.get("develop_solution") is False:
+                    _include_moment(st, True)
+        else:
+            record = next((r for r in records if isinstance(r, dict) and r.get("id") == wanted), None)
+            if record is None:
+                raise JourneyCandidateRejected("這個核心問題已經不在了，請重新載入。")
+            if kind == "core_problem_unadopt":
+                records.remove(record)
+                # cjm-core-problem-bands (2026-10-24): the steps are chosen through core problems,
+                # so a step only this record held leaves the round with it.
+                still = {sid for r in records if isinstance(r, dict) for sid in r.get("step_ids") or []}
+                for st in scenario.get("steps") or []:
+                    if (isinstance(st, dict) and st.get("id") in (record.get("step_ids") or [])
+                            and st.get("id") not in still and not st.get("core_problem")
+                            and st.get("develop_solution") is True):
+                        _include_moment(st, False)
+            else:
+                if not value:
+                    raise JourneyCandidateRejected("核心問題不能是空的；要拿掉請按「取消採用」。")
+                record["problem"] = value
+                record["source"] = "researcher"
+                record.pop("title", None)  # the AI's short title no longer names the rewritten text
+        if not records:
+            proposal.pop("core_problems", None)
     elif kind == "stage_label":
         stage = next((s for s in scenario.get("stages") or [] if s.get("id") == payload.get("stage_id")), None)
         if stage is None:
@@ -7651,6 +7886,10 @@ def _edit_journey_candidate(run_dir: Path, payload: dict) -> dict:
                 if "develop_solution" not in step and step.get("solution_candidates") \
                         and not sbp_stages._journey_step_is_problematic(step):
                     raise JourneyCandidateRejected("這一步已有候選做法；請先保留痛點或負面情緒，再調整候選做法。")
+        elif kind == "emotion" and value == "" and "develop_solution" in step:
+            # cjm-as-is-first-core-problems (2026-10-22 researcher ruling): the researcher
+            # can set an emotion back to unknown; unknown is absent, never neutral.
+            step.pop("emotion", None)
         elif kind in ("emotion", "satisfaction"):
             if not value.isdigit() or not 1 <= int(value) <= 5:
                 raise JourneyCandidateRejected("程度要是 1 到 5。")
@@ -7661,21 +7900,32 @@ def _edit_journey_candidate(run_dir: Path, payload: dict) -> dict:
         elif kind == "core_problem":
             if "develop_solution" not in step:
                 raise JourneyCandidateRejected("這份舊格式的旅程沒有核心問題可以改。")
-            if value:
+            # cjm-as-is-first-core-problems: adopting an AI candidate carries its id and
+            # must be the candidate's exact text; any other write is the researcher's.
+            candidate_id = payload.get("candidate_id")
+            if candidate_id is not None:
+                candidate = sbp_core_problems.candidate(run_dir, candidate_id) if isinstance(candidate_id, str) else None
+                if candidate is None or candidate.get("step_id") != step.get("id"):
+                    raise JourneyCandidateRejected("這個核心問題候選已經不在了，請重新載入。")
+                if value != str(candidate.get("problem") or "").strip():
+                    raise JourneyCandidateRejected("採用的文字跟候選不同；要改寫請直接編輯核心問題。")
                 step["core_problem"] = value
+                # The cited evidence travels with the adoption, so a later redraft of the
+                # candidates cannot change what this core problem rests on.
+                step["core_problem_origin"] = {"candidate_id": candidate_id,
+                                               "evidence_refs": list(candidate.get("evidence_refs") or [])}
+            elif value:
+                step["core_problem"] = value
+                step.pop("core_problem_origin", None)
             else:
                 step.pop("core_problem", None)
+                step.pop("core_problem_origin", None)
         elif kind == "develop_moment":
             if "develop_solution" not in step:
                 raise JourneyCandidateRejected("這份旅程的解方是跟旅程一起起草的，不用另外選時刻。")
             if value not in ("true", "false"):
                 raise JourneyCandidateRejected("不認得這個選擇。")
-            step["develop_solution"] = value == "true"
-            # 2026-10-02: checking 發展解方 is the adoption. A checked moment adopts the
-            # Solution it already has; unchecking keeps it readable but adopts nothing.
-            step["selected_solution_ids"] = ([item["id"] for item in step.get("solution_candidates") or []
-                                              if isinstance(item, dict) and item.get("id")]
-                                             if step["develop_solution"] else [])
+            _include_moment(step, value == "true")
         elif kind in ("satisfaction_text", "satisfaction_item", "satisfaction_item_add"):
             evaluation = str(payload.get("evaluation") or "").strip()
             reason = str(payload.get("reason") or "").strip()
@@ -7808,7 +8058,7 @@ def _edit_journey_candidate(run_dir: Path, payload: dict) -> dict:
     if errors:
         raise JourneyCandidateRejected("沒有寫入：" + "；".join(errors[:3]))
     _write_yaml_atomic(path, proposal)
-    if kind in JOURNEY_SOLUTION_SIDE_KINDS or kind == "develop_moment":
+    if kind in JOURNEY_SOLUTION_SIDE_KINDS or kind in ("develop_moment", "core_problem_adopt", "core_problem_unadopt"):
         _sync_confirmed_solutions(run_dir)
     return _journey_channel_map_response(run_dir)
 
@@ -7834,8 +8084,17 @@ def _satisfaction_items_view(value: object) -> list[dict]:
 def _solution_analysis_view(value: object) -> dict | None:
     if not isinstance(value, dict):
         return None
+    # purpose-aware-research-calibration: a constraint may carry its basis; older
+    # journeys hold plain strings, shown without a basis mark.
+    constraints = []
+    for item in value.get("constraints") or []:
+        if isinstance(item, dict) and str(item.get("text") or "").strip():
+            constraints.append({"text": str(item["text"]), "basis": str(item.get("basis") or ""),
+                                "refs": [str(r) for r in item.get("refs") or []]})
+        elif isinstance(item, str) and item.strip():
+            constraints.append({"text": item, "basis": "", "refs": []})
     return {"problem": str(value.get("problem") or ""), "why_it_matters": str(value.get("why_it_matters") or ""),
-            "constraints": [str(item) for item in value.get("constraints") or [] if str(item).strip()]}
+            "constraints": constraints}
 
 
 def _journey_moment_solution_blockers(proposal: dict, run_dir: Path | None = None) -> list[str]:
@@ -7850,7 +8109,8 @@ def _journey_moment_solution_blockers(proposal: dict, run_dir: Path | None = Non
         applicability = sbp_solution_applicability.journey_applicability(run_dir, proposal)
     else:
         applicability = {step.get("id"): {"reasons": ["step_changed"]} for step in scenario.get("steps") or []
-                         if isinstance(step, dict) and sbp_stages.journey_step_solutions_stale(step)}
+                         if isinstance(step, dict)
+                         and sbp_stages.journey_step_solutions_stale(sbp_stages.effective_step(proposal, step))}
     blockers = []
     for step in scenario.get("steps") or []:
         if not isinstance(step, dict) or step.get("develop_solution") is not True:
@@ -7897,9 +8157,23 @@ def _journey_candidate_response(run_dir: Path, build: dict) -> dict:
                                 refs += list(role.get("evidence_refs") or [])
             return list(dict.fromkeys(refs))
 
+        as_is = sbp_core_problems.is_as_is_journey(proposal)
         return {
             "state": "candidate", "build": build, "solution_selection_model": True,
             "alternatives": alternatives,
+            # cjm-as-is-first-core-problems: the as-is CJM and its core problem layer.
+            "as_is_first": as_is,
+            "core_problems": _journey_core_problems_view(run_dir, proposal),
+            # cjm-core-problem-synthesis: adopted journey-level core problems, each stored once.
+            "adopted_core_problems": [{
+                "id": r.get("id"), "problem": r.get("problem") or "", "title": r.get("title") or "",
+                "step_ids": list(r.get("step_ids") or []),
+                "basis": list(r.get("basis") or []), "why_core": r.get("why_core") or "",
+                "research_prompted": r.get("research_prompted") is True, "inferred": r.get("inferred") is True,
+                "source": r.get("source"), "candidate_id": r.get("candidate_id"),
+                "evidence_elicitation": dict(r.get("evidence_elicitation") or {}),
+                "evidence": _journey_step_evidence_views([r], _evidence_lookup(run_dir))[0]["evidence"]}
+                for r in proposal.get("core_problems") or [] if isinstance(r, dict)],
             "step_evidence": [item["evidence"] for item in _journey_step_evidence_views(
                 [{"evidence_refs": analytical_refs(step)} for step in steps], _evidence_lookup(run_dir))],
             "confirmation": confirmation,
@@ -7908,7 +8182,8 @@ def _journey_candidate_response(run_dir: Path, build: dict) -> dict:
                 "primary_hmw": _primary_hmw_statement(run_dir) or JOURNEY_MAP_NOT_CHOSEN_YET,
                 # formation-time-basis-display: the HMW this journey was formed from, verified by
                 # the digest its build recorded, or "unknown"; primary_hmw stays the current choice.
-                "topic": formation_basis.journey_formation_hmw(run_dir),
+                # An as-is journey is formed from no HMW: one line, the current design question.
+                "topic": None if as_is else formation_basis.journey_formation_hmw(run_dir),
                 "primary_target": _primary_target_name(run_dir) or JOURNEY_MAP_NOT_CHOSEN_YET,
             },
             "stages": [{"id": stage.get("id"), "label": stage.get("label")}
@@ -7919,6 +8194,9 @@ def _journey_candidate_response(run_dir: Path, build: dict) -> dict:
                                    if isinstance(item, dict) and item.get("text")],
                        "pain_points": list(step.get("pain_points") or []),
                        "emotion": sbp_stages._experience_level_value(step.get("emotion")),
+                       "emotion_divergent": step.get("emotion_divergent") is True,
+                       "reaction": ((step.get("experience") or {}).get("reaction") or "")
+                       if isinstance(step.get("experience"), dict) else "",
                        "satisfaction": sbp_stages._experience_level_value(step.get("satisfaction")),
                        "satisfaction_items": _satisfaction_items_view(step.get("satisfaction")),
                        "solution_candidates": [{"id": item.get("id"), "text": item.get("text"),
@@ -7932,6 +8210,12 @@ def _journey_candidate_response(run_dir: Path, build: dict) -> dict:
                        "solution_analysis": _solution_analysis_view(step.get("solution_analysis")),
                        # sbp-solution-adoption-and-core-problem: the researcher's own core problem, when written.
                        "core_problem": step.get("core_problem") or None,
+                       # cjm-as-is-first-core-problems: set when adopted from an AI candidate.
+                       "core_problem_candidate_id": (step.get("core_problem_origin") or {}).get("candidate_id")
+                       if isinstance(step.get("core_problem_origin"), dict) else None,
+                       "core_problem_evidence": _journey_step_evidence_views(
+                           [step.get("core_problem_origin")], _evidence_lookup(run_dir))[0]["evidence"]
+                       if isinstance(step.get("core_problem_origin"), dict) else [],
                        # solution-reconfirmation: one applicability function decides it.
                        "solutions_stale": (applicability.get(step.get("id")) or {}).get("state") == "needs_reconfirmation",
                        "solution_applicability": applicability.get(step.get("id")),
@@ -7961,7 +8245,7 @@ def _journey_candidate_response(run_dir: Path, build: dict) -> dict:
         "journey_confirmed": confirmation["state"] == "confirmed",
         "header": {
             "primary_hmw": _primary_hmw_statement(run_dir) or JOURNEY_MAP_NOT_CHOSEN_YET,
-            "topic": formation_basis.journey_formation_hmw(run_dir),
+            "topic": None if _journey_is_as_is(run_dir) else formation_basis.journey_formation_hmw(run_dir),
             "primary_target": _primary_target_name(run_dir) or JOURNEY_MAP_NOT_CHOSEN_YET,
         },
         "stages": [{"id": stage.get("id"), "label": stage.get("label")}
@@ -8050,7 +8334,7 @@ def _journey_channel_map_response(run_dir: Path) -> dict:
         "journey_confirmed": (scenario or {}).get("status") == "confirmed",
         "header": {
             "primary_hmw": _primary_hmw_statement(run_dir) or JOURNEY_MAP_NOT_CHOSEN_YET,
-            "topic": formation_basis.journey_formation_hmw(run_dir),
+            "topic": None if _journey_is_as_is(run_dir) else formation_basis.journey_formation_hmw(run_dir),
             "primary_target": _primary_target_name(run_dir) or JOURNEY_MAP_NOT_CHOSEN_YET,
         },
         "steps": [{"step": i, "id": step.get("id") or "", "label": label, "stage_id": step.get("stage_id")} for i, (step, label) in enumerate(zip(steps, step_labels), 1)],
@@ -8230,6 +8514,41 @@ def _axial_coding_backlog(
     ]
 
 
+def _axial_paradigm_view(category: dict, evidence_by_id: dict) -> dict | None:
+    """Read-only display of a category's paradigm model: each item's text, its
+    basis (none for older string items), its cited evidence with speaker and
+    location, and the reasoning of an inference; plus supporting participants,
+    exceptions and the stated gap."""
+    sessions = sbp_source_attribution.session_codes(list(evidence_by_id.values()))
+
+    def quote(ref):
+        # 2026-10-23 walkthrough: like a representative quote, the card reads
+        # "role, S-code" and the location stays inside its provenance.
+        item = evidence_by_id.get(ref) or {}
+        session = sessions.get(str(item.get("source"))) if item else None
+        return {"text": item.get("text") or "", "role": item.get("role") or "", "locator": item.get("locator") or "",
+                "source": item.get("source") or "", **({"session": session} if session else {})} if item else None
+
+    lists = {}
+    for field in ("conditions", "actions", "consequences"):
+        items = []
+        for item in category.get(field) or []:
+            if isinstance(item, str) and item.strip():
+                items.append({"text": item, "basis": "", "kind": "", "reasoning": "", "quotes": []})
+            elif isinstance(item, dict) and str(item.get("text") or "").strip():
+                items.append({"text": item["text"], "basis": item.get("basis") or "", "kind": item.get("kind") or "",
+                              "reasoning": item.get("reasoning") or "",
+                              "quotes": [q for q in (quote(r) for r in item.get("evidence_refs") or []) if q]})
+        if items:
+            lists[field] = items
+    exceptions = [{"participant": e.get("participant") or "", "note": e.get("note") or "", "quote": quote(e.get("evidence_ref"))}
+                  for e in category.get("exceptions") or [] if isinstance(e, dict)]
+    view = {**lists, **({"supported_by": list(category["supported_by"])} if category.get("supported_by") else {}),
+            **({"exceptions": exceptions} if exceptions else {}),
+            **({"gap": category["paradigm_gap"]} if category.get("paradigm_gap") else {})}
+    return view or None
+
+
 def _axial_coding_review_response(run_dir: Path) -> dict:
     ax_path = run_dir / "axial_coding.yaml"
     if not ax_path.is_file():
@@ -8283,14 +8602,21 @@ def _axial_coding_review_response(run_dir: Path) -> dict:
         if category.get("definition"):
             view["definition"] = category["definition"]
         picked = [ref for ref in category.get("representative_evidence_refs") or [] if ref in evidence_by_id]
-        if category.get("representative_quote_refs"):
+        if _picks_open_code_quotes(category):
             # converge-coding-contracts: the member open codes' readable quotes.
             view["representative_quotes"] = _open_code_quote_views(
-                run_dir, category["representative_quote_refs"], context=quote_context)
+                run_dir, category.get("representative_quote_refs") or [], context=quote_context)
+            if not view["representative_quotes"]:
+                view["no_standalone_quote"] = True
         elif picked:
             view["representative_quotes"] = [
                 {"text": evidence_by_id[ref].get("text") or "", "role": evidence_by_id[ref].get("role") or ""}
                 for ref in picked]
+        # purpose-aware-research-calibration: the paradigm model with each item's
+        # basis, the participants behind the category and its exceptions.
+        paradigm = _axial_paradigm_view(category, evidence_by_id)
+        if paradigm:
+            view["paradigm"] = paradigm
         concepts = concepts_by_category.get(category.get("id"))
         if concepts is not None:
             view["concepts"] = concepts
@@ -8380,6 +8706,7 @@ def _open_code_quote_views(run_dir: Path, code_ids: list, *, context: dict | Non
     evidence's shared label when more specific -- and the segment's
     location). The quote text is never rewritten here."""
     from sbp_gen import semantic_segments as sbp_segments
+    from sbp_gen import source_attribution as sbp_source_attribution
     if context is None:
         context = {"concepts": {c.get("id"): c for c in _open_coding_concepts(run_dir) or []},
                    "evidence": {e["id"]: e for e in (evidence_locator.locate_evidence(run_dir)[0] or [])
@@ -8387,15 +8714,29 @@ def _open_code_quote_views(run_dir: Path, code_ids: list, *, context: dict | Non
     if "segments" not in context:
         context["segments"] = sbp_segments.segments_by_id(sbp_segments.load(run_dir))
     concepts, segments, evidence_by_id = context["concepts"], context["segments"], context["evidence"]
+    if "sessions" not in context:
+        context["sessions"] = sbp_source_attribution.session_codes(list(evidence_by_id.values()))
     views = []
     for ref in code_ids or []:
         code = concepts.get(ref) or {}
-        view = sbp_segments.quote_view(code, segments, evidence_by_id)
+        # representative-quotes-standalone: a quote that does not read on its
+        # own is skipped, never replaced; the rest keep their recorded order.
+        if sbp_segments.standalone_quote_problem(code, evidence_by_id):
+            continue
+        view = sbp_segments.quote_view(code, segments, evidence_by_id, context["sessions"])
         if view:
             views.append({"text": view["answer"], "role": view["role"], "locator": view["locator"],
                           "source": _open_code_source(code, evidence_by_id),
-                          **({"question": view["question"]} if view.get("question") else {})})
+                          **({"session": view["session"]} if view.get("session") else {})})
     return views
+
+
+def _picks_open_code_quotes(item: dict) -> bool:
+    """representative-quotes-standalone: a current-method theme names its
+    quotes from its own open codes -- possibly none -- while an older one
+    carries evidence picks."""
+    return not item.get("representative_evidence_refs") and (
+        "representative_quote_refs" in item or bool(item.get("concept_refs")))
 
 
 def _open_code_source(code: dict, evidence_by_id: dict) -> str:
@@ -8417,7 +8758,7 @@ def _selective_themes_view(run_dir: Path, categories: list[dict], evidence_by_id
     """The first station's selective section: state plus themes with names,
     never internal ids as display text (ids are kept only for edits)."""
     view = dict(sbp_selective.freshness(run_dir))
-    if (sbp_selective.state_from_run(run_dir) == "failed") and view["state"] in ("none", "needs_purpose"):
+    if (sbp_selective.state_from_run(run_dir) == "failed") and view["state"] == "none":
         view["state"] = "failed"
     with _job_lock:
         if _job.get("kind") == SELECTIVE_THEMES_OPERATION_KIND and _job.get("state") == "running" \
@@ -8435,13 +8776,24 @@ def _selective_themes_view(run_dir: Path, categories: list[dict], evidence_by_id
         "key_insights": list(theme.get("key_insights") or []),
         "axial_names": [names.get(ref, "") for ref in theme.get("axial_refs") or [] if names.get(ref)],
         "open_code_names": [concepts[ref].get("name") for ref in theme.get("concept_refs") or [] if ref in concepts],
-        "quotes": (_open_code_quote_views(run_dir, theme["representative_quote_refs"], context=quote_context)
-                   if theme.get("representative_quote_refs") else
+        "quotes": (_open_code_quote_views(run_dir, theme.get("representative_quote_refs") or [], context=quote_context)
+                   if _picks_open_code_quotes(theme) else
                    [{"role": evidence_by_id[ref].get("role") or "", "text": evidence_by_id[ref].get("text") or "",
                      "locator": evidence_by_id[ref].get("locator") or "",
                      "source": evidence_by_id[ref].get("source") or ""}
                     for ref in theme.get("representative_evidence_refs") or [] if ref in evidence_by_id]),
     } for theme in doc.get("themes") or [] if isinstance(theme, dict)]
+    for shown, theme in zip(view["themes"], [t for t in doc.get("themes") or [] if isinstance(t, dict)]):
+        if _picks_open_code_quotes(theme) and not shown["quotes"]:
+            shown["no_standalone_quote"] = True
+    # purpose-aware-research-calibration: where each concern named in the purposes
+    # went, in the researcher's own words (the focus quotes a purpose verbatim).
+    view["purpose_report"] = [{
+        "focus": str(item.get("focus") or ""),
+        "found_in_layers": dict(item.get("found_in_layers") or {}),
+        "why_not_core": item.get("why_not_core") or "",
+        "axial_names": [names.get(ref, "") for ref in item.get("related_axial_refs") or [] if names.get(ref)],
+    } for item in doc.get("purpose_report") or [] if isinstance(item, dict) and str(item.get("focus") or "").strip()]
     return view
 
 
@@ -8492,6 +8844,81 @@ def _handle_research_purpose(handler, payload: object) -> None:
     except sbp_selective.SelectiveError as exc:
         return handler._send({"error": str(exc)}, 409)
     return handler._send({"research_purpose": {"text": str(payload.get("text") or "").strip()},
+                          "selective_themes": dict(sbp_selective.freshness(run_dir)) if run_dir else None,
+                          "identities": identities})
+
+
+def _hmw_purpose_view(run_dir: Path) -> dict:
+    """purpose-aware-research-calibration (2026-10-23 ruling): which concern
+    named in the purposes each HMW framing responds to, and the reason given
+    for concerns no framing answers -- in the researcher's own words."""
+    try:
+        doc = _load(run_dir / "hmw.yaml") or {}
+    except Exception:
+        doc = {}
+    items = [i for i in doc.get("purpose_assessment") or []
+             if isinstance(i, dict) and str(i.get("focus") or "").strip()]
+    by_hmw: dict[str, list[str]] = {}
+    for item in items:
+        for hmw_id in item.get("addressed_by") or []:
+            by_hmw.setdefault(hmw_id, []).append(str(item["focus"]))
+    unanswered = [{"focus": str(i["focus"]), "reason": i.get("insufficient_evidence_reason") or ""}
+                  for i in items if not i.get("addressed_by")]
+    return {"by_hmw": by_hmw, "unanswered": unanswered}
+
+
+def _project_context_target(case_id: object, run: object) -> tuple[Path | None, Path | None]:
+    """purpose-aware-research-calibration: the case folder holding the master
+    researcher context, and the run that also receives a copy when one is named."""
+    run_dir = None
+    if run:
+        try:
+            run_dir = _axial_coding_run_dir(run)
+        except ReviewRunNotFound:
+            return None, None
+    folder = _run_case_folder(run_dir) if run_dir is not None else None
+    if folder is None and case_id:
+        folder = _research_purpose_case_folder(case_id)
+    return (folder or run_dir), run_dir
+
+
+def _project_context_view(folder: Path) -> dict:
+    doc = sbp_project_context.load(folder)
+    return {**doc, "exists": sbp_project_context.exists(folder),
+            "awaiting_summary": [i["id"] for i in doc["business_inputs"] if not str(i.get("summary") or "").strip()]}
+
+
+def _handle_project_context(handler, payload: object) -> None:
+    """POST /api/project-context {case_id | run, project_purpose?, research_purpose?,
+    business_inputs?, basis}: the researcher context is saved to the case folder
+    and, when a run is named, to the run. Fields left out keep their value; an
+    `issues` field is ignored (2026-10-23: concerns are written in the purposes)."""
+    payload = payload if isinstance(payload, dict) else {}
+    folder, run_dir = _project_context_target(payload.get("case_id"), payload.get("run"))
+    if folder is None:
+        return handler._send({"error": "找不到這個案例。"}, 404)
+    fields = {k: payload[k] for k in ("project_purpose", "research_purpose", "business_inputs") if k in payload}
+    try:
+        with contextlib.ExitStack() as locks:
+            for directory in dict.fromkeys(d for d in (folder, run_dir) if d is not None):
+                locks.enter_context(sbp_run_lock.hold(directory))
+            try:
+                artifact_identity.check(folder, "project-context", payload.get("basis"))
+            except artifact_identity.StaleBasis:
+                body, status = artifact_identity.refusal()
+                return handler._send(body, status)
+            doc = sbp_project_context.load(folder)
+            doc.update(fields)
+            saved = sbp_project_context.save(folder, doc)
+            if run_dir is not None and run_dir != folder:
+                sbp_project_context.save(run_dir, saved)
+            identities = {name: artifact_identity.compute(folder, name)
+                          for name in artifact_identity.sharing(folder, "project-context")}
+    except sbp_run_lock.RunLockBusy:
+        return handler._send({"error": sbp_run_lock.BUSY_MESSAGE, "reason": "project_busy"}, 409)
+    except sbp_project_context.ContextError as exc:
+        return handler._send({"error": str(exc)}, 409)
+    return handler._send({"project_context": _project_context_view(folder),
                           "selective_themes": dict(sbp_selective.freshness(run_dir)) if run_dir else None,
                           "identities": identities})
 
@@ -8651,8 +9078,8 @@ def _theme_quote_views(run_dir: Path, theme: dict) -> list[dict]:
     """A selective theme's representative quotes as the coding station shows
     them: open-code quotes for the current method, evidence records for a
     theme that cites evidence directly."""
-    if theme.get("representative_quote_refs"):
-        return _open_code_quote_views(run_dir, theme["representative_quote_refs"])
+    if _picks_open_code_quotes(theme):
+        return _open_code_quote_views(run_dir, theme.get("representative_quote_refs") or [])
     refs = theme.get("representative_evidence_refs") or []
     records = (evidence_locator.locate_evidence(run_dir)[0] or []) if refs else []
     return framework_points.basis_evidence(refs, records, limit=len(refs))
@@ -9861,7 +10288,14 @@ def _run_persona_segmentation_cli(
             return
         with _job_lock:
             _job["segmentation_step"] = "axes"
-    _run_stage_cli("segmentation-axes", "分群軸候選", run_dir, execution)
+    _run_stage_cli("segmentation-axes", "分群軸候選", run_dir, execution, final=False)
+    with _job_lock:
+        if _job.get("state") != "running":
+            return
+        _job["segmentation_step"] = "names"
+    # persona-matrix-comparison-first: every axis pair gets its cell names in
+    # the same action, so switching axes never waits.
+    _run_stage_cli("persona-quadrant-names", "四格名稱", run_dir, execution)
 
 
 # form-hmw-from-confirmed-narrative: the HMW station's one AI action. The five
@@ -10025,6 +10459,76 @@ def _run_journey_solutions_cli(run_dir: Path, execution: sbp_execution.Execution
             _job["phase"] = "發展解方沒有完成，旅程沒有變動"
 
 
+def _run_journey_core_problems_cli(run_dir: Path, execution: sbp_execution.ExecutionConfig) -> None:
+    cmd = [sys.executable, "-m", "sbp_gen", "journey-core-problems", "--run", str(run_dir)]
+    try:
+        code = _stream_stage(cmd, "核心問題起草", execution)
+    except OSError as exc:
+        with _job_lock:
+            _job["state"] = "failed"
+            _job["phase"] = f"起草核心問題沒有跑起來：{exc}"
+        return
+    with _job_lock:
+        _job["proc"] = None
+        if _job.get("state") == "cancelled":
+            return
+        if code == TRANSPORT_SUSPENDED_EXIT:
+            _job["state"] = "waiting_for_model"
+            _job["phase"] = "已經把提示詞準備好，等模型回覆"
+        elif code == 0:
+            _job["state"] = "done"
+            _job["phase"] = "核心問題候選已起草"
+        else:
+            _job["state"] = "failed"
+            _job["phase"] = "起草核心問題沒有完成，旅程與既有候選都沒有變動"
+
+
+def _journey_core_problems_prerequisite_reason(run_dir: Path) -> str | None:
+    if not _journey_is_candidate_path(run_dir) or not (run_dir / "evidence.yaml").is_file():
+        return "這份產出還沒有可以起草核心問題的顧客旅程。"
+    if not _journey_is_as_is(run_dir):
+        return "這份顧客旅程是舊方法建立的（依 Persona 收窄），請先依新方法重新建立顧客旅程，再起草核心問題。"
+    return None
+
+
+def _handle_build_journey_core_problems(handler, payload: object) -> None:
+    """POST /api/build-journey-core-problems (cjm-as-is-first-core-problems). Every
+    refusal happens before any subprocess starts; the journey is never written."""
+    payload = payload if isinstance(payload, dict) else {}
+    try:
+        run_dir = _axial_coding_run_dir(payload.get("run"))
+    except ReviewRunNotFound as exc:
+        return handler._send({"error": str(exc)}, 404)
+    reason = _journey_core_problems_prerequisite_reason(run_dir)
+    if reason:
+        return handler._send({"error": reason}, 409)
+    try:
+        execution = _execution_for_payload(payload, allow_legacy=False)
+    except sbp_execution.ExecutionConfigError as exc:
+        return handler._send({"reason": "runner_unavailable", "error": str(exc)}, 400)
+    with _job_lock:
+        if _job.get("state") == "running":
+            return handler._send({"error": f"目前已有{_job_kind_active_phrase(_job.get('kind'))}正在進行，完成後再試。"}, 409)
+        _replace_job(kind=JOURNEY_CORE_PROBLEMS_OPERATION_KIND, state="running", phase="正在起草核心問題",
+                     log=[], out=run_dir.name, output_identity=run_dir.name)
+    _start_job_thread(_run_journey_core_problems_cli, (run_dir, execution))
+    return handler._send({"ok": True, "kind": JOURNEY_CORE_PROBLEMS_OPERATION_KIND, "state": "running"}, 202)
+
+
+@_owns_project_lock(_run_dir_argument)
+def _retain_journey_core_problems(run_dir: Path) -> dict:
+    """「保留目前核心問題」: no model call, candidates unchanged; records the
+    current Persona, JTBD, HMW and journey as accepted for them."""
+    proposal = _load(run_dir / "journey_proposal.yaml") or {}
+    view = _journey_core_problems_view(run_dir, proposal)
+    if view is None or view["state"] == "absent":
+        raise StaleDecisionRejected("還沒有核心問題候選，沒有可以保留的內容。")
+    if view["state"] == "current":
+        raise StaleDecisionRejected("核心問題候選的依據沒有變更，不需要保留或重新起草。")
+    sbp_core_problems.retain(run_dir, proposal, _persona_lens_digest(run_dir))
+    return {"core_problems": _journey_core_problems_view(run_dir, proposal)}
+
+
 def _journey_solutions_prerequisite_reason(run_dir: Path) -> str | None:
     if not _journey_is_candidate_path(run_dir):
         return "這份產出沒有可以發展解方的顧客旅程。"
@@ -10121,6 +10625,88 @@ def _handle_edit_chart_guide(handler, payload: object) -> None:
     return handler._send(_chart_guide_payload(run_dir, kind))
 
 
+# persona-matrix-comparison-first：Persona Matrix 四格的名稱。起草、改寫都只碰 persona_quadrant_names.yaml。
+def _quadrant_name_axes(payload: dict, *, optional: bool = False) -> list[str] | None:
+    axis_ids = payload.get("axis_ids")
+    if axis_ids is None and optional:
+        return None
+    if not (isinstance(axis_ids, list) and len(axis_ids) == 2 and all(isinstance(a, str) for a in axis_ids)):
+        raise ValueError("要先選兩條軸。")
+    return list(axis_ids)
+
+
+def _run_quadrant_names_cli(run_dir: Path, axis_ids: list[str] | None, execution: sbp_execution.ExecutionConfig) -> None:
+    """One pair when axis_ids is given; otherwise every pair, in one call."""
+    cmd = [sys.executable, "-m", "sbp_gen", "persona-quadrant-names", "--run", str(run_dir)]
+    if axis_ids:
+        cmd += ["--axes", ",".join(axis_ids)]
+    try:
+        code = _stream_stage(cmd, "起草四格名稱", execution)
+    except OSError as exc:
+        with _job_lock:
+            _job["state"] = "failed"
+            _job["phase"] = f"起草四格名稱沒有跑起來：{exc}"
+        return
+    with _job_lock:
+        _job["proc"] = None
+        if _job.get("state") == "cancelled":
+            return
+        if code == TRANSPORT_SUSPENDED_EXIT:
+            _job["state"] = "waiting_for_model"
+            _job["phase"] = "已經把提示詞準備好，等模型回覆"
+        elif code == 0:
+            _job["state"] = "done"
+            _job["phase"] = "四格名稱已起草"
+        else:
+            _job["state"] = "failed"
+            _job["phase"] = "起草四格名稱沒有完成，原本的名稱沒有變動"
+
+
+def _handle_draft_quadrant_names(handler, payload: object) -> None:
+    """POST /api/persona-matrix/quadrant-names/draft {run, axis_ids?}: starts one
+    drafting job -- one pair, or every pair when axis_ids is left out."""
+    payload = payload if isinstance(payload, dict) else {}
+    try:
+        run_dir = _axial_coding_run_dir(payload.get("run"))
+        axis_ids = _quadrant_name_axes(payload, optional=True)
+    except ReviewRunNotFound as exc:
+        return handler._send({"error": str(exc)}, 404)
+    except ValueError as exc:
+        return handler._send({"error": str(exc)}, 400)
+    if (sbp_quadrant_names.input_projection(run_dir, axis_ids) is None if axis_ids
+            else not sbp_quadrant_names.all_pairs(run_dir)):
+        return handler._send({"error": "找不到可以命名的兩條軸。"}, 409)
+    try:
+        execution = _execution_for_payload(payload, allow_legacy=False)
+    except sbp_execution.ExecutionConfigError as exc:
+        return handler._send({"reason": "runner_unavailable", "error": str(exc)}, 400)
+    with _job_lock:
+        if _job.get("state") == "running":
+            return handler._send({"error": f"目前已有{_job_kind_active_phrase(_job.get('kind'))}正在進行，完成後再試。"}, 409)
+        _replace_job(kind=PERSONA_QUADRANT_NAMES_OPERATION_KIND, state="running", phase="正在起草四格名稱",
+                     log=[], out=run_dir.name, output_identity=f"{run_dir.name}:{'|'.join(axis_ids or ['all'])}")
+    _start_job_thread(_run_quadrant_names_cli, (run_dir, axis_ids, execution))
+    return handler._send({"ok": True, "kind": PERSONA_QUADRANT_NAMES_OPERATION_KIND, "state": "running"}, 202)
+
+
+def _handle_edit_quadrant_names(handler, payload: object) -> None:
+    """POST /api/persona-matrix/quadrant-names/edit {run, axis_ids, quadrant_id, name, description}."""
+    payload = payload if isinstance(payload, dict) else {}
+    try:
+        run_dir = _axial_coding_run_dir(payload.get("run"))
+        axis_ids = _quadrant_name_axes(payload)
+        now = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+        document = sbp_quadrant_names.apply_edit(sbp_quadrant_names.load_document(run_dir), axis_ids,
+                                                 str(payload.get("quadrant_id") or ""), payload.get("name"),
+                                                 payload.get("description"), now)
+    except ReviewRunNotFound as exc:
+        return handler._send({"error": str(exc)}, 404)
+    except ValueError as exc:
+        return handler._send({"error": str(exc)}, 400)
+    sbp_quadrant_names.write_document(run_dir, document)
+    return handler._send({"ok": True, "quadrant_names": sbp_quadrant_names.view(run_dir)})
+
+
 def _handle_build_journey_solutions(handler, payload: object) -> None:
     """POST /api/build-journey-solutions. Every refusal happens before any subprocess starts."""
     payload = payload if isinstance(payload, dict) else {}
@@ -10168,7 +10754,31 @@ def _as_is_build_state(run_dir: Path) -> dict | None:
     if research and research["state"] in sbp_implementation_research.BLOCKING:
         return {"state": "research_unresolved", "available": False, "reason": research["reason"],
                 "research_blocked": True, "solution_selection": solution_selection}
-    return {"state": "eligible", "available": True, "reason": None, "solution_selection": solution_selection}
+    state = {"state": "eligible", "available": True, "reason": None, "solution_selection": solution_selection}
+    failure = _blueprint_build_last_failure(run_dir)
+    if failure:
+        state["last_failure"] = failure
+    return state
+
+
+def _blueprint_build_last_failure(run_dir: Path) -> dict | None:
+    """sbp-build-failure-visible: the last blueprint build's failure, read from
+    the run state so it survives a reload and a later return -- what happened,
+    what was saved, what to do, and the technical text for a collapsed detail."""
+    try:
+        run_state = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if run_state.get("structure_state") == "failed":
+        what, detail = "上一次建立服務藍圖沒有完成：AI 產生的藍圖沒有通過檢查。", run_state.get("structure_failure")
+    elif run_state.get("compare_state") == "failed":
+        what, detail = "上一次建立服務藍圖沒有完成：整理比對資料時中斷。", run_state.get("compare_failure")
+    else:
+        return None
+    return {"what_happened": what,
+            "saved": "沒有寫出新的服務藍圖；顧客旅程與已採用的解方都沒有變動。",
+            "next_action": "可以再按一次「產生服務藍圖」。同樣的檢查一直沒過時，請把這個專案交給開發者查看 AI 執行資訊，不要一直重試。",
+            "detail": str(detail or "")}
 
 
 # pre-blueprint-implementation-research：建立 SBP 前可選的落地研究。開始了就要
@@ -10407,7 +11017,7 @@ def _reconfirm_solution(run_dir: Path, payload: dict) -> dict:
     state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.is_file() else {}
     records = state.setdefault(sbp_solution_applicability.RECONFIRMATIONS_KEY, {}).setdefault(step_id, [])
     records.append(sbp_solution_applicability.reconfirmation_record(
-        step, current["hmw_digest"], sbp_solution_applicability.now_iso()))
+        sbp_stages.effective_step(journey, step), current["hmw_digest"], sbp_solution_applicability.now_iso()))
     _write_json_atomic(state_path, state)
     return {"solution_applicability": sbp_solution_applicability.journey_applicability(run_dir, journey)[step_id]}
 
@@ -11574,11 +12184,14 @@ _IDENTITY_ROUTES = {
     "/api/persona-matrix/segmentation-axes-picker/select": "segmentation-axes",
     "/api/persona-matrix/target-segmentation-picker/select": "target-segmentation",
     "/api/journey-candidate/field": "journey",
+    # cjm-as-is-first-core-problems: keeping the core problems decides about the journey on screen.
+    "/api/journey-core-problems/retain": "journey",
     # Moving, deleting or inserting a journey step is an edit of the journey on screen.
     "/api/journey-operation": "journey",
     "/api/journey-annotations": "journey-annotations",
     "/api/journey/persona-basis/retain": "journey",
     "/api/chart-guide/edit": "chart-guides",
+    "/api/persona-matrix/quadrant-names/edit": "persona",
     # The research station is hidden in this release, but this write stays reachable.
     "/api/research-review/save": "research-review",
     # No current screen calls these, but they stay reachable research-decision writes.
@@ -11644,6 +12257,10 @@ def _identity_for_read(path: str, query: dict) -> dict | None:
     if path == "/api/research-purpose":  # case-level: the identity is computed on the case folder
         folder = _research_purpose_case_folder((query.get("case_id") or [""])[0])
         return {"research-purpose": artifact_identity.compute(folder, "research-purpose")} if folder else None
+    if path == "/api/project-context":  # case-level too; a run resolves to its case folder
+        folder, _run = _project_context_target(query.get("case_id", [""])[0], query.get("run", [""])[0])
+        return ({name: artifact_identity.compute(folder, name)
+                 for name in artifact_identity.sharing(folder, "project-context")} if folder else None)
     entry = _IDENTITY_READS.get(path)
     if entry is None:
         return None
@@ -11663,6 +12280,7 @@ def _identity_for_read(path: str, query: dict) -> dict | None:
 # the shared writer refuses any state write whose project lock is not owned.
 _STATE_WRITE_ROUTES = frozenset({
     "/api/review",
+    "/api/persona-matrix/quadrant-names/edit",
     "/api/as-is/confirm",
     "/api/as-is-research",
     "/api/save-version",
@@ -12026,6 +12644,12 @@ class Handler(BaseHTTPRequestHandler):
                     self._send({"error": "run query 參數不可省略。"}, 400)
                 else:
                     self._send(_delivery_projection(names[0]))
+            elif u.path == "/api/project-context":
+                folder, _run = _project_context_target(q.get("case_id", [""])[0], q.get("run", [""])[0])
+                if folder is None:
+                    self._send({"error": "找不到這個案例。"}, 404)
+                else:
+                    self._send({"project_context": _project_context_view(folder)})
             elif u.path == "/api/research-purpose":
                 case_id = q.get("case_id", [""])[0]
                 case = next((c for c in _discover_cases() if c.get("case_id") == case_id), None)
@@ -12058,7 +12682,14 @@ class Handler(BaseHTTPRequestHandler):
                 if len(names) != 1 or not names[0]:
                     self._send({"error": "run query 參數不可省略。"}, 400)
                 else:
-                    self._send(_research_deliverables(names[0]))
+                    # A project that does not exist is a 404, never an unhandled error
+                    # (v0.2.1; release acceptance 2026-10-21). The path is not echoed back.
+                    try:
+                        menu = _research_deliverables(names[0])
+                    except FileNotFoundError:
+                        self._send({"error": "找不到這份專案。"}, 404)
+                    else:
+                        self._send(menu)
             elif u.path == "/api/research-deliverables/export":
                 names = q.get("run", [])
                 ids = [item for item in (q.get("ids", [""])[0]).split(",") if item]
@@ -12123,6 +12754,9 @@ class Handler(BaseHTTPRequestHandler):
             elif u.path == "/api/primary-hmw-picker":
                 run_name = q.get("run", [""])[0]
                 body, status = _framework_point_get("primary-hmw", run_name)
+                if status == 200 and isinstance(body, dict) and _safe_component(run_name, "") == run_name \
+                        and (RUNS_DIR / run_name).is_dir():
+                    body["purpose_view"] = _hmw_purpose_view(RUNS_DIR / run_name)
                 self._send(body, status)
             elif u.path == "/api/axial-coding/core-category-picker":
                 run_name = q.get("run", [""])[0]
@@ -12398,6 +13032,7 @@ class Handler(BaseHTTPRequestHandler):
                 saved = _save_upload(intake, files)
                 saved["case"] = _write_intake_case(saved, label=intake)
                 saved["label"] = intake
+                saved["source_kinds"] = _record_upload_kinds(upload_root, saved["files"], fields.get("source_kinds"))
                 if service is not None:
                     case_path = str((upload_root / "case.yaml").relative_to(_active_data_root()))
                     project = service.register_project(
@@ -13332,22 +13967,25 @@ class Handler(BaseHTTPRequestHandler):
             except (ValueError, json.JSONDecodeError) as exc:
                 return self._send({"error": str(exc)}, 400)
             return _handle_generate_jtbd_candidates(self, payload)
-        if path in ("/api/research-purpose", "/api/selective-themes/generate", "/api/selective-themes/edit"):
+        if path in ("/api/research-purpose", "/api/project-context", "/api/selective-themes/generate", "/api/selective-themes/edit"):
             try:
                 n = int(self.headers.get("Content-Length", 0))
                 payload = json.loads(self.rfile.read(n) or b"{}")
             except (ValueError, json.JSONDecodeError) as exc:
                 return self._send({"error": str(exc)}, 400)
             return {"/api/research-purpose": _handle_research_purpose,
+                    "/api/project-context": _handle_project_context,
                     "/api/selective-themes/generate": _handle_generate_selective_themes,
                     "/api/selective-themes/edit": _handle_edit_selective_theme}[path](self, payload)
-        if path in ("/api/persona/hmw-basis/retain", "/api/journey/persona-basis/retain"):
+        if path in ("/api/persona/hmw-basis/retain", "/api/journey/persona-basis/retain",
+                    "/api/journey-core-problems/retain"):
             try:
                 n = int(self.headers.get("Content-Length", 0))
                 payload = json.loads(self.rfile.read(n) or b"{}")
                 run_dir = _axial_coding_run_dir((payload or {}).get("run"))
-                action = (_retain_persona_against_hmw if path == "/api/persona/hmw-basis/retain"
-                          else _retain_journey_against_persona)
+                action = {"/api/persona/hmw-basis/retain": _retain_persona_against_hmw,
+                          "/api/journey/persona-basis/retain": _retain_journey_against_persona,
+                          "/api/journey-core-problems/retain": _retain_journey_core_problems}[path]
                 return self._send(action(run_dir))
             except ReviewRunNotFound as exc:
                 return self._send({"error": str(exc)}, 404)
@@ -13384,6 +14022,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send({"error": str(exc)}, 409)
             except (ValueError, json.JSONDecodeError) as exc:
                 return self._send({"error": str(exc)}, 400)
+        if path in ("/api/persona-matrix/quadrant-names/draft", "/api/persona-matrix/quadrant-names/edit"):
+            try:
+                n = int(self.headers.get("Content-Length", 0))
+                payload = json.loads(self.rfile.read(n) or b"{}")
+            except (ValueError, json.JSONDecodeError) as exc:
+                return self._send({"error": str(exc)}, 400)
+            return (_handle_draft_quadrant_names if path.endswith("/draft") else _handle_edit_quadrant_names)(self, payload)
         if path in ("/api/chart-guide/draft", "/api/chart-guide/edit"):
             try:
                 n = int(self.headers.get("Content-Length", 0))
@@ -13391,13 +14036,14 @@ class Handler(BaseHTTPRequestHandler):
             except (ValueError, json.JSONDecodeError) as exc:
                 return self._send({"error": str(exc)}, 400)
             return (_handle_draft_chart_guide if path.endswith("/draft") else _handle_edit_chart_guide)(self, payload)
-        if path == "/api/build-journey-solutions":
+        if path in ("/api/build-journey-solutions", "/api/build-journey-core-problems"):
             try:
                 n = int(self.headers.get("Content-Length", 0))
                 payload = json.loads(self.rfile.read(n) or b"{}")
             except (ValueError, json.JSONDecodeError) as exc:
                 return self._send({"error": str(exc)}, 400)
-            return _handle_build_journey_solutions(self, payload)
+            return (_handle_build_journey_solutions if path == "/api/build-journey-solutions"
+                    else _handle_build_journey_core_problems)(self, payload)
         if path == "/api/form-hmw":
             try:
                 n = int(self.headers.get("Content-Length", 0))
